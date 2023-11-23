@@ -1,0 +1,24 @@
+{
+  "name": "hide-a-bed-stub",
+  "version": "1.0.0",
+  "description": "Stub couchdb calls that match the hide-a-bed api",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ryanramae/hide-a-bed.git"
+  },
+  "keywords": [
+    "couch",
+    "couchdb",
+    "testing"
+  ],
+  "author": "ryan ramage",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ryanramae/hide-a-bed/issues"
+  },
+  "homepage": "https://github.com/ryanramae/hide-a-bed#readme"
+}

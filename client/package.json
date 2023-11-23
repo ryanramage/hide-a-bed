@@ -1,0 +1,27 @@
+{
+  "name": "hide-a-bed",
+  "version": "1.0.0",
+  "description": "An abstraction over couchdb calls that includes easy mock/stubs with pouchdb",
+  "main": "index.mjs",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ryanramage/hide-a-bed.git"
+  },
+  "keywords": [
+    "couchdb",
+    "test"
+  ],
+  "author": "ryan ramage",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ryanramage/hide-a-bed/issues"
+  },
+  "homepage": "https://github.com/ryanramage/hide-a-bed#readme",
+  "dependencies": {
+    "needle": "^3.2.0",
+    "zod": "^3.22.4"
+  }
+}
