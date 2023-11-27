@@ -1,6 +1,6 @@
-import { bulkGet, bulkSave, bulkRemove } from './impl/bulk'
-import { get, put } from './impl/crud'
-import { query } from './impl/query'
+// import { bulkGet, bulkSave, bulkRemove } from './impl/bulk.mjs'
+import { get, put } from './impl/crud.mjs'
+// import { query } from './impl/query.mjs'
 
-export { bulkGet, bulkSave, bulkRemove, get, put, query }
+export { get, put }
 

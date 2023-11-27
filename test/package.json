@@ -1,0 +1,17 @@
+{
+  "name": "hide-a-bed-test",
+  "version": "1.0.0",
+  "description": "just the internal testing ",
+  "scripts": {
+    "test": "tape tests/**/*.mjs"
+  },
+  "author": "ryan ramage",
+  "license": "ISC",
+  "dependencies": {
+    "hide-a-bed": "^1.0.0",
+    "hide-a-bed-stub": "^1.0.0",
+    "msw": "^2.0.8",
+    "tap": "^18.6.1",
+    "tape": "^5.7.2"
+  }
+}

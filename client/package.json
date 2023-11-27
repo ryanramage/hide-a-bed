@@ -21,6 +21,7 @@
   },
   "homepage": "https://github.com/ryanramage/hide-a-bed#readme",
   "dependencies": {
+    "lodash": "^4.17.21",
     "needle": "^3.2.0",
     "zod": "^3.22.4"
   }
