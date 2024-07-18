@@ -10,7 +10,7 @@ const { includes } = pkg
 /** @type { z.infer<SimpleViewQuery> } query */
 export const query = SimpleViewQuery.implement(async (config, view, options) => {
   // @ts-ignore
-  const qs = queryString(options, ['key', 'startkey', 'endkey', 'reduce', 'group', 'group_level'])
+  const qs = queryString(options, ['key', 'startkey', 'endkey', 'reduce', 'group', 'group_level', 'stale', 'limit'])
 
   const opts = {
     json: true,
@@ -27,14 +27,17 @@ export const query = SimpleViewQuery.implement(async (config, view, options) => 
   return body
 })
 
-function queryString (options, params) {
+export function queryString (options, params) {
   const parts = Object.keys(options).map(key => {
     let value = options[key]
     if (includes(params, key)) {
-      if (typeof value === 'string') value = `"${value}"`
+      if (typeof value === 'string' && key !== 'stale') value = `"${value}"`
       if (Array.isArray(value)) {
         value = '[' + value.map(i => {
+          if (i === null) return 'null'
           if (typeof i === 'string') return `"${i}"`
+          if (typeof i === 'object' && Object.keys(i).length === 0) return '{}'
+          if (typeof i === 'object') return JSON.stringify(i)
           return i
         }).join(',') + ']'
       }
