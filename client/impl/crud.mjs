@@ -13,6 +13,7 @@ export const get = CouchGet.implement(async (config, id) => {
   const url = `${config.couch}/${id}`
   const resp = await needle('get', url, opts)
   const result = resp?.body || {}
+  result.statusCode = resp.statusCode
   if (resp.statusCode !== 200) {
     throw new Error('not found')
   }
