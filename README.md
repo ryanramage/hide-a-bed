@@ -14,30 +14,30 @@ npm i hide-a-bed-stub --save-dev
 
 ```
 
-Code that uses some example db apis
+A function that uses some db apis. The config is described here: https://github.com/ryanramage/hide-a-bed/blob/master/client/schema/crud.mjs#L16-L18
+but is basically an object that has a couch property which is the database url.
+
 ```
 export function doStuff (config, services, id) {
   const doc = await services.db.get(config, id)
-  const apiResult = services.callSomeApi(config, doc.userName)
   const query = {
-    startkey: apiResult.startTime,
-    endkey: apiResult.endTime
+    startkey: 0,
+    endkey: Date.now()
   }
-  const queryResults = await db.query(config, '_design/userThings/_view/byTime', query)
+  const queryResults = await services.db.query(config, '_design/userThings/_view/byTime', query)
   return queryResults.rows
 }
 
 ```
 
-Using doStuff, in a real env, connecting to a real couch
+Using doStuff, connecting to a real couch
 ```
 import db from 'hide-a-bed'
 import { doStuff } from './doStuff'
-import { callSomeApi } from './api'
 // the config object needs a couch url
 const config = { couch: 'http://localhost:5984/mydb' }
 // build up a service api for all your external calls that can be mocked/stubbed
-const services = { db, callSomeApi }
+const services = { db }
 const afterStuff = await doStuff(config, services, 'happy-doc-id')
 
 ```
@@ -46,7 +46,6 @@ Mocking out the calls in a test, never connects to the network
 ```
 import { setup } from 'hide-a-bed-stub' // different package, since installed with --save-dev reduces space
 import { doStuff } from './doStuff'
-import { callSomeApiMock } from './test/mock/api'
 // the config object needs a couch url, prove to yourself that its mocked with a fakeurl
 const config = { couch: 'http://fakeurl:5984/mydb' }
 
@@ -58,7 +57,7 @@ test('doStuff works in stub mode', async t => {
     const db = await setup([userThingsDesignDoc])
 
     // build up a service api with all your fake endpoints
-    const services = { db, callSomeApi: callSomeApiMock }
+    const services = { db }
     const afterStuff = await doStuff(config, services, 'happy-doc-id')
 })
 
