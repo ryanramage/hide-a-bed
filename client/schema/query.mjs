@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { CouchConfig } from './config.mjs'
 
 export const SimpleViewQueryResponse = z.object({
   error: z.string().optional().describe('if something is wrong'),
@@ -10,12 +11,9 @@ export const SimpleViewQueryResponse = z.object({
   }))
 }).passthrough()
 
-export const SimpleViewQueryConfig = z.object({
-  couch: z.string().describe('the url of the couch db')
-}).passthrough().describe('The std config object')
 
 export const SimpleViewQuery = z.function().args(
-  SimpleViewQueryConfig,
+  CouchConfig,
   z.string().describe('the view name'),
   z.object({
     startkey: z.any().optional(),

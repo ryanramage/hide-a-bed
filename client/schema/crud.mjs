@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { CouchConfig } from './config.mjs'
 
 export const CouchDoc = z.object({
   _id: z.string().describe('the couch doc id'),
@@ -12,10 +13,6 @@ export const CouchDocResponse = z.object({
   id: z.string().optional().describe('the couch doc id'),
   rev: z.string().optional().describe('the new rev of the doc')
 })
-
-export const CouchConfig = z.object({
-  couch: z.string().describe('the url of the couch db')
-}).passthrough().describe('The std config object')
 
 export const CouchPut = z.function().args(
   CouchConfig,
