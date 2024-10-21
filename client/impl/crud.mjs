@@ -12,8 +12,9 @@ const opts = {
 export const get = CouchGet.implement(async (config, id) => {
   const url = `${config.couch}/${id}`
   const resp = await needle('get', url, opts)
+  if (resp.statusCode === 404) return null
   const result = resp?.body || {}
-  if (resp.statusCode !== 200) { throw new Error('not found') }
+  if (resp.statusCode !== 200) { throw new Error(result.reason || 'failed') }
   return result
 })
 
