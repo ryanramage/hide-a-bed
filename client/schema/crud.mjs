@@ -22,4 +22,4 @@ export const CouchPut = z.function().args(
 export const CouchGet = z.function().args(
   CouchConfig,
   z.string().describe('the couch doc id')
-).returns(z.promise(CouchDoc))
+).returns(z.promise(CouchDoc.nullable()))
