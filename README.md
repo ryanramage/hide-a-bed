@@ -36,11 +36,7 @@ const config = {
   couch: 'http://localhost:5984/mydb'
 }
 
-// Example function using the database
-async function getUserData(userId) {
-  const doc = await db.get(config, userId)
-  return doc
-}
+const doc = await db.get(config, userId)
 ```
 
 ### Writing Testable Code
