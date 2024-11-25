@@ -1,72 +1,131 @@
-hide-a-bed
------------
+# hide-a-bed
 
-A simple way to abstract couchdb, and make your interface to the database testable. 
+> A clean, testable CouchDB abstraction layer for Node.js
 
-Install
------
+`hide-a-bed` makes it easy to work with CouchDB in your Node.js applications while keeping your database code testable. It provides a simple interface for common CouchDB operations and includes a companion package for painless testing.
 
-There are two packages, one for runtime that contains the real implementations and schema, and the other contains the stubs for tests.
+## Features
 
+- 🚀 Simple, promise-based API for CouchDB operations
+- 🧪 Built-in testing support with mock capabilities
+- 🔄 Bulk operations support
+- 📝 Type definitions included
+- ⚡️ Modern ESM imports
+
+## Installation
+
+```bash
+# Install the main package for production use
+npm install hide-a-bed
+
+# Install the testing utilities (recommended)
+npm install hide-a-bed-stub --save-dev
 ```
-npm i hide-a-bed --save
-npm i hide-a-bed-stub --save-dev
 
-```
+## Quick Start
 
-A function that uses some db apis. The config is described here: https://github.com/ryanramage/hide-a-bed/blob/master/client/schema/crud.mjs#L16-L18
-but is basically an object that has a couch property which is the database url.
+### Basic Usage
 
-```
-export function doStuff (config, services, id) {
-  const doc = await services.db.get(config, id)
-  const query = {
-    startkey: 0,
-    endkey: Date.now()
-  }
-  const queryResults = await services.db.query(config, '_design/userThings/_view/byTime', query)
-  return queryResults.rows
+Here's a simple example of how to use hide-a-bed in your application:
+
+```javascript
+import db from 'hide-a-bed'
+
+// Configure your database connection
+const config = { 
+  couch: 'http://localhost:5984/mydb'
 }
 
+// Example function using the database
+async function getUserData(userId) {
+  const doc = await db.get(config, userId)
+  return doc
+}
 ```
 
-Using doStuff, connecting to a real couch
+### Writing Testable Code
+
+The key to writing testable database code is to use dependency injection. Here's the recommended pattern:
+
+```javascript
+// userService.js
+export async function getUserActivity(config, services, userId) {
+  const user = await services.db.get(config, userId)
+  const activity = await services.db.query(
+    config,
+    '_design/userThings/_view/byTime',
+    {
+      startkey: 0,
+      endkey: Date.now()
+    }
+  )
+  return { user, activity: activity.rows }
+}
 ```
+
+### Production Usage
+
+```javascript
 import db from 'hide-a-bed'
-import { doStuff } from './doStuff'
-// the config object needs a couch url
-const config = { couch: 'http://localhost:5984/mydb' }
-// build up a service api for all your external calls that can be mocked/stubbed
+import { getUserActivity } from './userService.js'
+
+const config = { 
+  couch: 'http://localhost:5984/mydb' 
+}
 const services = { db }
-const afterStuff = await doStuff(config, services, 'happy-doc-id')
 
+// Use in your application
+const userData = await getUserActivity(config, services, 'user-123')
 ```
 
-Mocking out the calls in a test, never connects to the network
-```
-import { setup } from 'hide-a-bed-stub' // different package, since installed with --save-dev reduces space
-import { doStuff } from './doStuff'
-// the config object needs a couch url, prove to yourself that its mocked with a fakeurl
-const config = { couch: 'http://fakeurl:5984/mydb' }
+### Testing
 
-// we import or design docs that we will need for the db
-import userThingsDesignDoc from './ddocs/userThingsDDoc.js'
+Using the stub package makes testing your database code easy and reliable:
 
-test('doStuff works in stub mode', async t => {
-    // we have to setup the db with the design docs that are required
-    const db = await setup([userThingsDesignDoc])
+```javascript
+import { setup } from 'hide-a-bed-stub'
+import { getUserActivity } from './userService.js'
+import userDesignDoc from './ddocs/userThings.js'
 
-    // build up a service api with all your fake endpoints
+describe('getUserActivity', () => {
+  it('retrieves user data and activity', async () => {
+    // Setup mock database with design docs
+    const db = await setup([userDesignDoc])
+    
+    // Test configuration
+    const config = { 
+      couch: 'http://test:5984/testdb' 
+    }
     const services = { db }
-    const afterStuff = await doStuff(config, services, 'happy-doc-id')
-})
 
+    // Run your test
+    const result = await getUserActivity(config, services, 'test-user-id')
+    assert(result.user)
+    assert(Array.isArray(result.activity))
+  })
+})
 ```
 
-Below are all the couch apis available
--------------
+## API Reference
 
-__TODO__
+The following CouchDB operations are supported:
 
+- `get(config, id)` - Retrieve a document by ID
+- `put(config, doc)` - Create or update a document
+- `post(config, doc)` - Create a new document with auto-generated ID
+- `delete(config, id, rev)` - Delete a document
+- `bulkGet(config, ids)` - Retrieve multiple documents
+- `bulkSave(config, docs)` - Save multiple documents
+- `query(config, viewPath, options)` - Query a view
+
+For detailed API documentation, please visit our [API Reference](https://github.com/ryanramage/hide-a-bed/wiki/API-Reference).
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+MIT
 
 
