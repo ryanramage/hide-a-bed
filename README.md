@@ -114,7 +114,7 @@ The following CouchDB operations are supported:
 - `bulkSave(config, docs)` - Save multiple documents
 - `query(config, viewPath, options)` - Query a view
 
-For detailed API documentation, please visit our [API Reference](https://github.com/ryanramage/hide-a-bed/wiki/API-Reference).
+For detailed API documentation, please visit our [API Reference](https://github.com/ryanramage/hide-a-bed/blob/master/client/README.md)
 
 ## Contributing
 
