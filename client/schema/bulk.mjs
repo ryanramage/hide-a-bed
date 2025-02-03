@@ -22,3 +22,8 @@ export const BulkGet = z.function().args(
   CouchConfig,
   z.array(z.string().describe('the ids to get'))
 )
+
+export const BulkRemove = z.function().args(
+  CouchConfig,
+  z.array(z.string().describe('the ids to delete'))
+).returns(z.promise(BulkSaveResponseSchema))
