@@ -34,6 +34,30 @@ const result = await put(config, doc)
 // result: { ok: true, id: 'doc-123', rev: '1-abc123' }
 ```
 
+#### patch(config, id, properties)
+Update specific properties of a document with retry mechanism.
+- `config`: Object with:
+  - `couch`: URL string
+  - `retries`: Optional number of retry attempts (default: 5)
+  - `delay`: Optional milliseconds between retries (default: 1000)
+- `id`: Document ID string
+- `properties`: Object with properties to update
+- Returns: Promise resolving to response with `ok`, `id`, `rev` properties
+
+```javascript
+const config = { 
+  couch: 'http://localhost:5984/mydb',
+  retries: 3,
+  delay: 500
+}
+const properties = { 
+  name: 'Alice Smith',
+  updated: true
+}
+const result = await patch(config, 'doc-123', properties)
+// result: { ok: true, id: 'doc-123', rev: '2-xyz789' }
+```
+
 #### remove(config, id)
 Delete a document by ID.
 - `config`: Object with `couch` URL string
