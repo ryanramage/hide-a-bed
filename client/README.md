@@ -15,6 +15,12 @@ Save a document.
 - `doc`: Document object with `_id` property
 - Returns: Promise resolving to response with `ok`, `id`, `rev` properties
 
+#### remove(config, id)
+Delete a document by ID.
+- `config`: Object with `couch` URL string
+- `id`: Document ID string to delete
+- Returns: Promise resolving to response with `ok` and `rev` properties
+
 ### Bulk Operations
 
 #### bulkSave(config, docs)
@@ -28,6 +34,12 @@ Get multiple documents by ID.
 - `config`: Object with `couch` URL string
 - `ids`: Array of document ID strings
 - Returns: Promise resolving to array of documents
+
+#### bulkRemove(config, ids)
+Delete multiple documents in one request.
+- `config`: Object with `couch` URL string
+- `ids`: Array of document ID strings to delete
+- Returns: Promise resolving to array of results with `ok`, `id`, `rev` for each deletion
 
 ### View Queries
 
@@ -48,19 +60,4 @@ Query a view with options.
   - `group_level`: Number for group level
 - Returns: Promise resolving to response with `rows` array
 
-### Document Deletion
-
-#### remove(config, id)
-Delete a document by ID.
-- `config`: Object with `couch` URL string
-- `id`: Document ID string to delete
-- Returns: Promise resolving to response with `ok` and `rev` properties
-
-### Bulk Operations (continued)
-
-#### bulkRemove(config, ids)
-Delete multiple documents in one request.
-- `config`: Object with `couch` URL string
-- `ids`: Array of document ID strings to delete
-- Returns: Promise resolving to array of results with `ok`, `id`, `rev` for each deletion
 
