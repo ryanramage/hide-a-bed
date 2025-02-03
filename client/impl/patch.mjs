@@ -11,10 +11,24 @@ export async function patch (config, id, properties) {
     try {
       const doc = await get(config, id)
       const updatedDoc = { ...doc, ...properties }
-      return await put(config, updatedDoc)
-    } catch (err) {
+      const result = await put(config, updatedDoc)
+      
+      // Check if the response indicates a conflict
+      if (result.ok) {
+        return result
+      }
+      // If not ok, treat as conflict and retry
       attempts++
-      if (attempts > maxRetries) throw new Error(`Failed to patch after ${maxRetries} attempts`)
+      if (attempts > maxRetries) {
+        throw new Error(`Failed to patch after ${maxRetries} attempts`)
+      }
+      await sleep(delay)
+    } catch (err) {
+      // Handle other errors (network, etc)
+      attempts++
+      if (attempts > maxRetries) {
+        throw new Error(`Failed to patch after ${maxRetries} attempts: ${err.message}`)
+      }
       await sleep(delay)
     }
   }
