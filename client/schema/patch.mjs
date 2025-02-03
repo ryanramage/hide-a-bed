@@ -1,15 +1,18 @@
-import { Type } from '@sinclair/typebox'
+import { z } from 'zod'
 import { CouchConfig } from './config.mjs'
+import { CouchDocResponse } from './crud.mjs'
 
-export const PatchConfig = Type.Intersect([
-  CouchConfig,
-  Type.Object({
-    retries: Type.Optional(Type.Number({ minimum: 0, maximum: 100 })),
-    delay: Type.Optional(Type.Number({ minimum: 0 }))
-  })
-])
-
-export const PatchDoc = Type.Object({
-  id: Type.String(),
-  properties: Type.Record(Type.String(), Type.Any())
+export const PatchConfig = CouchConfig.extend({
+  retries: z.number().min(0).max(100).optional(),
+  delay: z.number().min(0).optional()
 })
+
+export const PatchProperties = z.record(z.string(), z.any())
+
+export const CouchPatch = z.function()
+  .args(
+    PatchConfig,
+    z.string().describe('the couch doc id'),
+    PatchProperties
+  )
+  .returns(z.promise(CouchDocResponse))

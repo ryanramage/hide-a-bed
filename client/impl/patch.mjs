@@ -1,8 +1,9 @@
 import { get, put } from './crud.mjs'
+import { CouchPatch } from '../schema/patch.mjs'
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
 
-export async function patch (config, id, properties) {
+export const patch = CouchPatch.implement(async (config, id, properties) => {
   const maxRetries = config.retries || 5
   const delay = config.delay || 1000
   let attempts = 0
@@ -32,4 +33,4 @@ export async function patch (config, id, properties) {
       await sleep(delay)
     }
   }
-}
+})
