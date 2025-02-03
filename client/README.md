@@ -64,7 +64,7 @@ test('doStuff works in stub mode', async t => {
 
 ```
 
-API Reference
+API 
 -------------
 
 ### Document Operations
