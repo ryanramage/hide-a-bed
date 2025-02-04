@@ -18,6 +18,9 @@ export const queryStream = (config, view, options) => new Promise((resolve, reje
   const url = `${config.couch}/${view}?${qs.toString()}`
   const streamer = JSONStream.parse('rows.*')
   streamer.on('data', onRow)
+  /**
+   * @param {Error} err
+   */
   streamer.on('end', (err) => {
     if (err) return reject(err)
     resolve(null) // all work should be done in the stream
