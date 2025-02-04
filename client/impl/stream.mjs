@@ -5,6 +5,11 @@ import { queryString } from './query.mjs'
 // @ts-ignore
 import JSONStream from 'JSONStream'
 
+/**
+ * @param {any} config
+ * @param {any} view
+ * @param {any} options
+ */
 export const queryStream = (config, view, options) => new Promise((resolve, reject) => {
   if (!options) options = {}
 
