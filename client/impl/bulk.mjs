@@ -31,11 +31,13 @@ export const bulkGet = BulkGet.implement(async (config, ids) => {
   if (resp.statusCode !== 200) throw new Error('could not fetch')
   const rows = resp?.body?.rows || []
   const docs = []
-  rows.forEach(r => {
+  rows.forEach(r => { // eslint-disable-line
     if (r.error) return
     if (!r.key) return
     if (!r.doc) return
-    docs.push(r.doc)
+    /** @type { import('../schema/crud.mjs').CouchDocSchema } */
+    const doc = r.doc
+    docs.push(doc)
   })
   return docs
 })
