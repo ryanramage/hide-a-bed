@@ -9,7 +9,7 @@ export const PatchConfig = CouchConfig.extend({
 
 export const PatchProperties = z.record(z.string(), z.any())
 
-export const CouchPatch = z.function()
+export const Patch = z.function()
   .args(
     PatchConfig,
     z.string().describe('the couch doc id'),

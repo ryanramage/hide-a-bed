@@ -6,7 +6,7 @@ import { queryStream } from './impl/stream.mjs'
 import { BulkSave, BulkGet } from './schema/bulk.mjs'
 import { CouchConfig } from './schema/config.mjs'
 import { SimpleViewQuery, SimpleViewQueryResponse } from './schema/query.mjs'
-import { PatchConfig, PatchDoc } from './schema/patch.mjs'
+import { PatchConfig, Patch } from './schema/patch.mjs'
 import { CouchDoc, CouchDocResponse, CouchPut, CouchGet } from './schema/crud.mjs'
 
 const schema = {
@@ -20,7 +20,7 @@ const schema = {
   CouchDoc,
   CouchDocResponse,
   PatchConfig,
-  PatchDoc
+  Patch
 }
 
 export { get, put, patch, bulkGet, bulkSave, bulkRemove, query, queryStream, schema }
