@@ -24,4 +24,3 @@ const schema = {
 }
 
 export { get, put, patch, bulkGet, bulkSave, bulkRemove, query, queryStream, schema }
-

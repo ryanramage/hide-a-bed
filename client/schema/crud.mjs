@@ -5,6 +5,7 @@ export const CouchDoc = z.object({
   _id: z.string().describe('the couch doc id'),
   _rev: z.string().optional().describe('the doc revision')
 }).passthrough()
+/** @typedef { z.infer<typeof CouchDoc> } CouchDocSchema */
 
 export const CouchDocResponse = z.object({
   ok: z.boolean().optional().describe('did the request succeed'),

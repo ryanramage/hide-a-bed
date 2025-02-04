@@ -1,0 +1,13 @@
+{
+  "include": ["*.mjs"],
+  "compilerOptions": {
+    "module": "Node16",
+    "target": "es2020",
+    "verbatimModuleSyntax": true,
+    "strict": true,
+    "allowJs": true,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "declarationMap": true
+  }
+}

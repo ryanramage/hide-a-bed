@@ -19,9 +19,9 @@ export const queryStream = (config, view, options) => new Promise((resolve, reje
   const streamer = JSONStream.parse('rows.*')
   streamer.on('data', onRow)
   /**
-   * @param {Error} err
+   * @param {any} err
    */
-  streamer.on('end', (err) => {
+  streamer.on('end', (/** @type any */err) => {
     if (err) return reject(err)
     resolve(null) // all work should be done in the stream
   })

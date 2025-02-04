@@ -11,7 +11,6 @@ export const SimpleViewQueryResponse = z.object({
   }))
 }).passthrough()
 
-
 export const SimpleViewQuery = z.function().args(
   CouchConfig,
   z.string().describe('the view name'),

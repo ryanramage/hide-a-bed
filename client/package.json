@@ -1,10 +1,22 @@
 {
   "name": "hide-a-bed",
-  "version": "2.1.0",
+  "version": "3.0.0",
   "description": "An abstraction over couchdb calls that includes easy mock/stubs with pouchdb",
-  "main": "index.mjs",
+  "module": "index.mjs",
+  "main": "cjs/index.cjs",
+  "type": "module",
+  "exports": {
+    "import": "./index.mjs",
+    "require": "./cjs/index.cjs",
+    "default": "./cjs/index.cjs"
+  },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "clean": "(find . -name \"*.mts\" -type f -delete || true) && (find . -name \"*.map\" -type f -delete || true)",
+    "build": "npm run clean && tsc && npm run build:cjs",
+    "build:cjs": "rm -rf cjs && node build/build.mjs",
+    "test": "standard && tape tests/*.mjs",
+    "lint:fix": "standard --fix",
+    "prepublish": "npm run build"
   },
   "repository": {
     "type": "git",
@@ -25,5 +37,18 @@
     "lodash": "^4.17.21",
     "needle": "^3.2.0",
     "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/lodash": "^4.17.15",
+    "@types/needle": "^3.3.0",
+    "esbuild": "^0.24.2",
+    "glob": "^11.0.0",
+    "standard": "17.1.0",
+    "tape": "5.8.1",
+    "typescript": "5.6.2"
+  },
+  "volta": {
+    "node": "20.17.0",
+    "npm": "10.8.2"
   }
 }

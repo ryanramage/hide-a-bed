@@ -13,7 +13,7 @@ export const patch = CouchPatch.implement(async (config, id, properties) => {
       const doc = await get(config, id)
       const updatedDoc = { ...doc, ...properties }
       const result = await put(config, updatedDoc)
-      
+
       // Check if the response indicates a conflict
       if (result.ok) {
         return result

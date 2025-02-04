@@ -22,7 +22,7 @@ export const BulkSave = z.function().args(
 export const BulkGet = z.function().args(
   CouchConfig,
   z.array(z.string().describe('the ids to get'))
-).returns(z.array(CouchDoc))
+).returns(z.promise(z.array(CouchDoc)))
 /** @typedef { z.infer<typeof BulkGet> } BulkGetSchema */
 
 export const BulkRemove = z.function().args(

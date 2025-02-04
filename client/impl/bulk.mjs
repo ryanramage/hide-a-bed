@@ -32,7 +32,9 @@ export const bulkGet = BulkGet.implement(async (config, ids) => {
   const rows = resp?.body?.rows || []
   /** @type {Array<import('../schema/crud.mjs').CouchDocSchema>} */
   const docs = []
-  rows.forEach((/** @type {{ error?: any, key?: string, doc?: import('../schema/crud.mjs').CouchDocSchema }} */ r) => { // eslint-disable-line
+  rows.forEach((
+    /** @type {{ error?: any, key?: string, doc?: import('../schema/crud.mjs').CouchDocSchema }} */ r
+  ) => {
     if (r.error) return
     if (!r.key) return
     if (!r.doc) return
