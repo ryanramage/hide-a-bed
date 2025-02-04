@@ -27,6 +27,10 @@ export const query = SimpleViewQuery.implement(async (config, view, options) => 
   return body
 })
 
+/**
+ * @param {Object} options - The options object containing query parameters.
+ * @param {string[]} params - The list of parameter names to include in the query string.
+ */
 export function queryString (options, params) {
   const parts = Object.keys(options).map(key => {
     let value = options[key]
