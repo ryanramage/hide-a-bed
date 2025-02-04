@@ -1,5 +1,6 @@
 // @ts-check
 import needle from 'needle'
+import { BulkSave, BulkGet, BulkRemove } from '../schema/bulk.mjs'
 
 const opts = {
   json: true,
@@ -8,9 +9,10 @@ const opts = {
   }
 }
 
-export async function bulkSave (config, docs) {
-  if (!docs) return
-  if (!docs.length) return
+/** @type { import('../schema/bulk.mjs').BulkSaveSchema } */
+export const bulkSave = BulkSave.implement(async (config, docs) => {
+  if (!docs) return { ok: false, error: 'noDocs', reason: 'no docs provided' }
+  if (!docs.length) return { ok: false, error: 'noDocs', reason: 'no docs provided' }
 
   const url = `${config.couch}/_bulk_docs`
   const body = { docs }
@@ -18,9 +20,10 @@ export async function bulkSave (config, docs) {
   if (resp.statusCode !== 201) throw new Error('could not save')
   const results = resp?.body || []
   return results
-}
+})
 
-export async function bulkGet (config, ids) {
+/** @type { import('../schema/bulk.mjs').BulkGetSchema } */
+export const bulkGet = BulkGet.implement(async (config, ids) => {
   const keys = ids
   const url = `${config.couch}/_all_docs?include_docs=true`
   const body = { keys }
@@ -35,10 +38,11 @@ export async function bulkGet (config, ids) {
     docs.push(r.doc)
   })
   return docs
-}
+})
 
-export async function bulkRemove (config, ids) {
+/** @type { import('../schema/bulk.mjs').BulkRemoveSchema } */
+export const bulkRemove = BulkRemove.implement(async (config, ids) => {
   const docs = await bulkGet(config, ids)
   docs.forEach(d => { d._deleted = true })
   return bulkSave(config, docs)
-}
+})
