@@ -30,8 +30,9 @@ export const bulkGet = BulkGet.implement(async (config, ids) => {
   const resp = await needle('post', url, body, opts)
   if (resp.statusCode !== 200) throw new Error('could not fetch')
   const rows = resp?.body?.rows || []
+  /** @type {Array<import('../schema/crud.mjs').CouchDocSchema>} */
   const docs = []
-  rows.forEach(r => { // eslint-disable-line
+  rows.forEach(/** @type {any} */ (r) => { // eslint-disable-line
     if (r.error) return
     if (!r.key) return
     if (!r.doc) return
