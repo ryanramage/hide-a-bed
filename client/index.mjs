@@ -23,4 +23,17 @@ const schema = {
   Patch
 }
 
-export { get, put, patch, bulkGet, bulkSave, bulkRemove, query, queryStream, schema }
+const bindConfig = (config) => {
+  return {
+    get: get.bind(null, config),
+    put: put.bind(null, config),
+    patch: patch.bind(null, config),
+    bulkGet: bulkGet.bind(null, config),
+    bulkSave: bulkSave.bind(null, config),
+    bulkRemove: bulkRemove.bind(null, config),
+    query: query.bind(null, config),
+    queryStream: queryStream.bind(null, config)
+  }
+}
+
+export { get, put, patch, bulkGet, bulkSave, bulkRemove, query, queryStream, schema, bindConfig }
