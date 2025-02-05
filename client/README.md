@@ -12,6 +12,20 @@ import { get, put, patch, remove, bulkSave, bulkGet, bulkRemove, query } from 'h
 const { get, put, patch, remove, bulkSave, bulkGet, bulkRemove, query } = require('hide-a-bed')
 ```
 
+### Config
+
+Anywhere you see a config, it is an object with the following setup
+
+```
+{ couch: 'https://username:pass@the.couch.url.com:5984' }
+```
+Couch get is weird. We have chosen to return ```undefined``` if the doc is not found. All other things throw. If you want 
+not_found to also throw an exception, add the following to your config:
+
+```
+{ throwOnGetNotFound: true, couch: '...' }
+```
+
 ### Document Operations
 
 
