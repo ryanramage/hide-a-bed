@@ -40,12 +40,12 @@ const bindConfig = Bind.implement((
 
   return {
     get: config.bindWithRetry ? withRetry(get.bind(null, config), retryOptions) : get.bind(null, config),
-    put: withRetry(put.bind(null, config), retryOptions),
+    put: config.bindWithRetry ? withRetry(put.bind(null, config), retryOptions) : put.bind(null, config),
     patch: patch.bind(null, config), // patch not included in retry
-    bulkGet: withRetry(bulkGet.bind(null, config), retryOptions),
-    bulkSave: withRetry(bulkSave.bind(null, config), retryOptions),
-    bulkRemove: withRetry(bulkRemove.bind(null, config), retryOptions),
-    query: withRetry(query.bind(null, config), retryOptions),
+    bulkGet: config.bindWithRetry ? withRetry(bulkGet.bind(null, config), retryOptions) : bulkGet.bind(null, config),
+    bulkSave: config.bindWithRetry ? withRetry(bulkSave.bind(null, config), retryOptions) : bulkSave.bind(null, config),
+    bulkRemove: config.bindWithRetry ? withRetry(bulkRemove.bind(null, config), retryOptions) : bulkRemove.bind(null, config),
+    query: config.bindWithRetry ? withRetry(query.bind(null, config), retryOptions) : query.bind(null, config),
     queryStream: queryStream.bind(null, config) // stream not included in retry
   }
 })
