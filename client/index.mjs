@@ -23,6 +23,23 @@ const schema = {
   Patch
 }
 
+/**
+ * @typedef {Object} BoundFunctions
+ * @property {import('./schema/crud.mjs').CouchGetSchema['implementation']} get
+ * @property {import('./schema/crud.mjs').CouchPutSchema['implementation']} put
+ * @property {import('./schema/patch.mjs').PatchSchema['implementation']} patch
+ * @property {import('./schema/bulk.mjs').BulkGetSchema['implementation']} bulkGet
+ * @property {import('./schema/bulk.mjs').BulkSaveSchema['implementation']} bulkSave
+ * @property {import('./schema/bulk.mjs').BulkRemoveSchema['implementation']} bulkRemove
+ * @property {import('./schema/query.mjs').SimpleViewQuery['implementation']} query
+ * @property {(view: string, options: any) => Promise<null>} queryStream
+ */
+
+/**
+ * Binds all API functions to a specific configuration
+ * @param {import('./schema/config.mjs').CouchConfig} config - The CouchDB configuration
+ * @returns {BoundFunctions} The bound API functions
+ */
 const bindConfig = (config) => {
   return {
     get: get.bind(null, config),
