@@ -19,14 +19,31 @@ export const BulkSave = z.function().args(
 ).returns(z.promise(BulkSaveResponseSchema))
 /** @typedef { z.infer<typeof BulkSave> } BulkSaveSchema */
 
+export const BulkSaveBound = z.function().args(
+  z.array(z.object({
+    _id: z.string()
+  }).passthrough())
+).returns(z.promise(BulkSaveResponseSchema))
+/** @typedef { z.infer<typeof BulkSaveBound> } BulkSaveBoundSchema */
+
 export const BulkGet = z.function().args(
   CouchConfig,
   z.array(z.string().describe('the ids to get'))
 ).returns(z.promise(z.array(CouchDoc)))
 /** @typedef { z.infer<typeof BulkGet> } BulkGetSchema */
 
+export const BulkGetBound = z.function().args(
+  z.array(z.string().describe('the ids to get'))
+).returns(z.promise(z.array(CouchDoc)))
+/** @typedef { z.infer<typeof BulkGetBound> } BulkGetBoundSchema */
+
 export const BulkRemove = z.function().args(
   CouchConfig,
   z.array(z.string().describe('the ids to delete'))
 ).returns(z.promise(BulkSaveResponseSchema))
 /** @typedef { z.infer<typeof BulkRemove> } BulkRemoveSchema */
+
+export const BulkRemoveBound = z.function().args(
+  z.array(z.string().describe('the ids to delete'))
+).returns(z.promise(BulkSaveResponseSchema))
+/** @typedef { z.infer<typeof BulkRemoveBound> } BulkRemoveBoundSchema */

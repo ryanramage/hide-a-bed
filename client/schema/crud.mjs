@@ -21,8 +21,18 @@ export const CouchPut = z.function().args(
 ).returns(z.promise(CouchDocResponse))
 /** @typedef { z.infer<typeof CouchPut> } CouchPutSchema */
 
+export const CouchPutBound = z.function().args(
+  CouchDoc
+).returns(z.promise(CouchDocResponse))
+/** @typedef { z.infer<typeof CouchPutBound> } CouchPutBoundSchema */
+
 export const CouchGet = z.function().args(
   CouchConfig,
   z.string().describe('the couch doc id')
 ).returns(z.promise(CouchDoc.nullable()))
 /** @typedef { z.infer<typeof CouchGet> } CouchGetSchema */
+
+export const CouchGetBound = z.function().args(
+  z.string().describe('the couch doc id')
+).returns(z.promise(CouchDoc.nullable()))
+/** @typedef { z.infer<typeof CouchGetBound> } CouchBoundSchema */

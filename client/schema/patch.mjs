@@ -17,3 +17,11 @@ export const Patch = z.function()
   )
   .returns(z.promise(CouchDocResponse))
 /** @typedef { z.infer<typeof Patch> } PatchSchema */
+
+export const PatchBound = z.function()
+  .args(
+    z.string().describe('the couch doc id'),
+    PatchProperties
+  )
+  .returns(z.promise(CouchDocResponse))
+/** @typedef { z.infer<typeof PatchBound> } PatchBoundSchema */
