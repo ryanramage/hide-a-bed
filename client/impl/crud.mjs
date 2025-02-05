@@ -1,6 +1,7 @@
 // @ts-check
 import needle from 'needle'
 import { CouchGet, CouchPut } from '../schema/crud.mjs'
+import { RetryableError } from './errors.mjs'
 
 const opts = {
   json: true,
@@ -19,7 +20,12 @@ export const get = CouchGet.implement(async (config, id) => {
     if (config.throwOnGetNotFound) throw new Error(result.reason || 'not_found') 
     else return undefined
   }
-  if (resp.statusCode !== 200) { throw new Error(result.reason || 'failed') }
+  if (RetryableError.isRetryableStatusCode(resp.statusCode)) {
+    throw new RetryableError(result.reason || 'retryable error', resp.statusCode)
+  }
+  if (resp.statusCode !== 200) {
+    throw new Error(result.reason || 'failed')
+  }
   return result
 })
 
@@ -33,6 +39,10 @@ export const put = CouchPut.implement(async (config, doc) => {
   if (resp.statusCode === 409) {
     result.ok = false
     result.error = 'conflict'
+    return result
+  }
+  if (RetryableError.isRetryableStatusCode(resp.statusCode)) {
+    throw new RetryableError(result.reason || 'retryable error', resp.statusCode)
   }
   return result
 })

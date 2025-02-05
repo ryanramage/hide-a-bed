@@ -1,6 +1,7 @@
 // @ts-check
 import needle from 'needle'
 import { BulkSave, BulkGet, BulkRemove } from '../schema/bulk.mjs'
+import { RetryableError } from './errors.mjs'
 
 const opts = {
   json: true,
@@ -17,6 +18,9 @@ export const bulkSave = BulkSave.implement(async (config, docs) => {
   const url = `${config.couch}/_bulk_docs`
   const body = { docs }
   const resp = await needle('post', url, body, opts)
+  if (RetryableError.isRetryableStatusCode(resp.statusCode)) {
+    throw new RetryableError('retryable error during bulk save', resp.statusCode)
+  }
   if (resp.statusCode !== 201) throw new Error('could not save')
   const results = resp?.body || []
   return results
@@ -28,6 +32,9 @@ export const bulkGet = BulkGet.implement(async (config, ids) => {
   const url = `${config.couch}/_all_docs?include_docs=true`
   const body = { keys }
   const resp = await needle('post', url, body, opts)
+  if (RetryableError.isRetryableStatusCode(resp.statusCode)) {
+    throw new RetryableError('retryable error during bulk get', resp.statusCode)
+  }
   if (resp.statusCode !== 200) throw new Error('could not fetch')
   const rows = resp?.body?.rows || []
   /** @type {Array<import('../schema/crud.mjs').CouchDocSchema>} */

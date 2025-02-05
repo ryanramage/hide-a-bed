@@ -3,6 +3,7 @@
 import { z } from 'zod' // eslint-disable-line
 import needle from 'needle'
 import { SimpleViewQuery, SimpleViewQueryResponse } from '../schema/query.mjs' // eslint-disable-line
+import { RetryableError } from './errors.mjs'
 
 import pkg from 'lodash'
 const { includes } = pkg
@@ -23,6 +24,9 @@ export const query = SimpleViewQuery.implement(async (config, view, options) => 
   const results = await needle('get', url, opts)
   /** @type { z.infer<SimpleViewQueryResponse> } body */
   const body = results.body
+  if (RetryableError.isRetryableStatusCode(results.statusCode)) {
+    throw new RetryableError(body.error || 'retryable error during query', results.statusCode)
+  }
   if (body.error) throw new Error(body.error)
   return body
 })
