@@ -12,6 +12,7 @@ export const patch = Patch.implement(async (config, id, properties) => {
   while (attempts <= maxRetries) {
     try {
       const doc = await get(config, id)
+      if (!doc) return { ok: false, statusCode: 404, error: 'not_found' }
       const updatedDoc = { ...doc, ...properties }
       const result = await put(config, updatedDoc)
 
@@ -26,10 +27,12 @@ export const patch = Patch.implement(async (config, id, properties) => {
       }
       await sleep(delay)
     } catch (err) {
+      if (err.message !== 'not_found') return { ok: false, statusCode: 404, error: 'not_found' }
       // Handle other errors (network, etc)
       attempts++
       if (attempts > maxRetries) {
-        throw new Error(`Failed to patch after ${maxRetries} attempts: ${err.message}`)
+        const error = `Failed to patch after ${maxRetries} attempts: ${err.message}`
+        return { ok: false, statusCode: 500, error }
       }
       await sleep(delay)
     }

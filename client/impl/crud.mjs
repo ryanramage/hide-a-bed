@@ -15,9 +15,14 @@ export const get = CouchGet.implement(async (config, id) => {
   const resp = await needle('get', url, opts)
   if (resp.statusCode === 404) return null
   const result = resp?.body || {}
+  if (resp.statusCode === 404) {
+    if (config.throwOnGetNotFound) throw new Error(result.reason || 'not_found') 
+    else return undefined
+  }
   if (resp.statusCode !== 200) { throw new Error(result.reason || 'failed') }
   return result
 })
+
 /** @type { import('../schema/crud.mjs').CouchPutSchema } */
 export const put = CouchPut.implement(async (config, doc) => {
   const url = `${config.couch}/${doc._id}`
