@@ -39,7 +39,7 @@ const bindConfig = Bind.implement((
   }
 
   return {
-    get: withRetry(get.bind(null, config), retryOptions),
+    get: config.bindWithRetry ? withRetry(get.bind(null, config), retryOptions) : get.bind(null, config),
     put: withRetry(put.bind(null, config), retryOptions),
     patch: patch.bind(null, config), // patch not included in retry
     bulkGet: withRetry(bulkGet.bind(null, config), retryOptions),
