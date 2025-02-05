@@ -19,8 +19,10 @@ export const CouchPut = z.function().args(
   CouchConfig,
   CouchDoc
 ).returns(z.promise(CouchDocResponse))
+/** @typedef { z.infer<typeof CouchPut> } CouchPutSchema */
 
 export const CouchGet = z.function().args(
   CouchConfig,
   z.string().describe('the couch doc id')
 ).returns(z.promise(CouchDoc.nullable()))
+/** @typedef { z.infer<typeof CouchGet> } CouchGetSchema */

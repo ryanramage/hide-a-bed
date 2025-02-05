@@ -16,3 +16,4 @@ export const Patch = z.function()
     PatchProperties
   )
   .returns(z.promise(CouchDocResponse))
+/** @typedef { z.infer<typeof Patch> } PatchSchema */

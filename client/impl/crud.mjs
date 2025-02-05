@@ -9,6 +9,7 @@ const opts = {
   }
 }
 
+/** @type { import('../schema/crud.mjs').CouchGetSchema } */
 export const get = CouchGet.implement(async (config, id) => {
   const url = `${config.couch}/${id}`
   const resp = await needle('get', url, opts)
@@ -17,7 +18,7 @@ export const get = CouchGet.implement(async (config, id) => {
   if (resp.statusCode !== 200) { throw new Error(result.reason || 'failed') }
   return result
 })
-
+/** @type { import('../schema/crud.mjs').CouchPutSchema } */
 export const put = CouchPut.implement(async (config, doc) => {
   const url = `${config.couch}/${doc._id}`
   const body = doc

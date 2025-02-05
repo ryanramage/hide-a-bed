@@ -3,6 +3,7 @@ import { Patch } from '../schema/patch.mjs'
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
 
+/** @type { import('../schema/patch.mjs').PatchSchema } */
 export const patch = Patch.implement(async (config, id, properties) => {
   const maxRetries = config.retries || 5
   const delay = config.delay || 1000
