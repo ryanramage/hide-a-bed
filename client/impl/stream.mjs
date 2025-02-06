@@ -1,8 +1,6 @@
 // @ts-check
-import { z } from 'zod'
 import needle from 'needle'
 import { queryString } from './query.mjs'
-import { SimpleViewQueryStream } from '../schema/stream.mjs'
 import { RetryableError } from './errors.mjs'
 // @ts-ignore
 import JSONStream from 'JSONStream'
