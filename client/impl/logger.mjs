@@ -1,7 +1,15 @@
 /**
+ * @typedef {Object} Logger
+ * @property {(...args: any[]) => void} error - Log error messages
+ * @property {(...args: any[]) => void} warn - Log warning messages
+ * @property {(...args: any[]) => void} info - Log info messages
+ * @property {(...args: any[]) => void} debug - Log debug messages
+ */
+
+/**
  * Creates a unified logger interface that works with both function and object-style loggers
  * @param {import('../schema/config.mjs').CouchConfigSchema} config
- * @returns {Object} Normalized logger interface
+ * @returns {Logger} Normalized logger interface
  */
 export function createLogger(config) {
   // If no logger provided, return no-op logger
