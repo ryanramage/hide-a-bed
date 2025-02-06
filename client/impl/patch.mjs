@@ -30,7 +30,7 @@ export const patch = Patch.implement(async (config, id, properties) => {
 
       // Check if the response indicates a conflict
       if (result.ok) {
-        logger.info(`Successfully patched document ${id}`)
+        logger.info(`Successfully patched document ${id}, rev: ${result.rev}`)
         return result
       }
       
