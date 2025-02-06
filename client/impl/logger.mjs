@@ -17,13 +17,22 @@ export function createLogger(config) {
     return config._normalizedLogger
   }
 
-  // If no logger provided, return no-op logger
+  // If no logger provided, use console if useConsoleLogger is set, otherwise return no-op logger
   if (!config.logger) {
-    config._normalizedLogger = {
-      error: () => {},
-      warn: () => {},
-      info: () => {},
-      debug: () => {}
+    if (config.useConsoleLogger) {
+      config._normalizedLogger = {
+        error: (...args) => console.error(...args),
+        warn: (...args) => console.warn(...args),
+        info: (...args) => console.info(...args),
+        debug: (...args) => console.debug(...args)
+      }
+    } else {
+      config._normalizedLogger = {
+        error: () => {},
+        warn: () => {},
+        info: () => {},
+        debug: () => {}
+      }
     }
     return config._normalizedLogger
   }
