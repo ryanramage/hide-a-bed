@@ -2,6 +2,7 @@
 
 import needle from 'needle'
 import { queryString } from './query.mjs'
+import { RetryableError } from './errors.mjs'
 // @ts-ignore
 import JSONStream from 'JSONStream'
 
@@ -16,14 +17,43 @@ export const queryStream = (config, view, options) => new Promise((resolve, reje
   const { onRow, ...rest } = options
   const qs = queryString(rest, ['key', 'startkey', 'endkey', 'reduce', 'group', 'group_level', 'stale', 'limit'])
   const url = `${config.couch}/${view}?${qs.toString()}`
+  const opts = {
+    json: true,
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    parse_response: false // Keep as stream
+  }
+
   const streamer = JSONStream.parse('rows.*')
   streamer.on('data', onRow)
-  /**
-   * @param {any} err
-   */
-  streamer.on('end', (/** @type any */err) => {
-    if (err) return reject(err)
+  streamer.on('error', err => {
+    reject(new Error(`Stream parsing error: ${err.message}`))
+  })
+  
+  const req = needle.get(url, opts)
+  
+  req.on('response', response => {
+    if (RetryableError.isRetryableStatusCode(response.statusCode)) {
+      reject(new RetryableError('retryable error during stream query', response.statusCode))
+      req.destroy()
+      return
+    }
+  })
+
+  req.on('error', err => {
+    try {
+      RetryableError.handleNetworkError(err)
+    } catch (retryErr) {
+      reject(retryErr)
+      return
+    }
+    reject(err)
+  })
+
+  req.pipe(streamer)
+  
+  streamer.on('end', () => {
     resolve(null) // all work should be done in the stream
   })
-  needle.get(url).pipe(streamer)
 })
