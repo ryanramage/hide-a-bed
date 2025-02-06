@@ -27,7 +27,7 @@ export class RetryableError extends Error {
   }
 
   /**
-   * @param {NetworkError} err - The network error to handle
+   * @param {NetworkError | unknown} err - The network error to handle
    * @throws {RetryableError} If the error is retryable
    * @throws {Error} If the error is not retryable
    */
@@ -44,7 +44,8 @@ export class RetryableError extends Error {
       ESOCKETTIMEDOUT: 503
     };
 
-    if (err.code && networkErrors[err.code]) {
+    // Type guard for NetworkError shape
+    if (typeof err === 'object' && err !== null && 'code' in err && typeof err.code === 'string' && networkErrors[err.code]) {
       throw new RetryableError(`Network error: ${err.code}`, networkErrors[err.code]);
     }
     throw err;
