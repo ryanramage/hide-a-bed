@@ -29,13 +29,7 @@ export const get = CouchGet.implement(async (config, id) => {
     }
     return result
   } catch (err) {
-    if (err.code) {
-      if (err.code === 'ECONNREFUSED') throw new RetryableError('connection refused', 503)
-      if (err.code === 'ECONNRESET') throw new RetryableError('connection reset', 503)
-      if (err.code === 'ETIMEDOUT') throw new RetryableError('connection timeout', 503)
-    } 
-    else throw err
-    
+    RetryableError.handleNetworkError(err)
   }
 })
 
@@ -43,7 +37,12 @@ export const get = CouchGet.implement(async (config, id) => {
 export const put = CouchPut.implement(async (config, doc) => {
   const url = `${config.couch}/${doc._id}`
   const body = doc
-  const resp = await needle('put', url, body, opts)
+  let resp
+  try {
+    resp = await needle('put', url, body, opts)
+  } catch (err) {
+    RetryableError.handleNetworkError(err)
+  }
   const result = resp?.body || {}
   result.statusCode = resp.statusCode
   if (resp.statusCode === 409) {

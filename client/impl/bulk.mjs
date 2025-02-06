@@ -17,7 +17,12 @@ export const bulkSave = BulkSave.implement(async (config, docs) => {
 
   const url = `${config.couch}/_bulk_docs`
   const body = { docs }
-  const resp = await needle('post', url, body, opts)
+  let resp
+  try {
+    resp = await needle('post', url, body, opts)
+  } catch (err) {
+    RetryableError.handleNetworkError(err)
+  }
   if (RetryableError.isRetryableStatusCode(resp.statusCode)) {
     throw new RetryableError('retryable error during bulk save', resp.statusCode)
   }
@@ -31,7 +36,12 @@ export const bulkGet = BulkGet.implement(async (config, ids) => {
   const keys = ids
   const url = `${config.couch}/_all_docs?include_docs=true`
   const body = { keys }
-  const resp = await needle('post', url, body, opts)
+  let resp
+  try {
+    resp = await needle('post', url, body, opts)
+  } catch (err) {
+    RetryableError.handleNetworkError(err)
+  }
   if (RetryableError.isRetryableStatusCode(resp.statusCode)) {
     throw new RetryableError('retryable error during bulk get', resp.statusCode)
   }

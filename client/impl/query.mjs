@@ -21,7 +21,12 @@ export const query = SimpleViewQuery.implement(async (config, view, options) => 
   }
   const url = `${config.couch}/${view}?${qs.toString()}`
   // @ts-ignore
-  const results = await needle('get', url, opts)
+  let results
+  try {
+    results = await needle('get', url, opts)
+  } catch (err) {
+    RetryableError.handleNetworkError(err)
+  }
   /** @type { z.infer<SimpleViewQueryResponse> } body */
   const body = results.body
   if (RetryableError.isRetryableStatusCode(results.statusCode)) {
