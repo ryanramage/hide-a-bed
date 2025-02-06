@@ -191,18 +191,48 @@ const result = await query(config, view, options)
 // }
 ```
 
-Bind Config
-============
+Logging Support
+==============
 
-Dont want to pass around a config object everywhere? Bind the config for smaller api in your app
+The library supports flexible logging options that can be configured through the config object:
 
+```javascript
+// Enable console logging (error, warn, info, debug)
+const config = { 
+  couch: 'http://localhost:5984/mydb',
+  useConsoleLogger: true
+}
+
+// Use a custom logger object (winston-style)
+const config = {
+  couch: 'http://localhost:5984/mydb',
+  logger: {
+    error: (msg) => console.error(msg),
+    warn: (msg) => console.warn(msg),
+    info: (msg) => console.info(msg),
+    debug: (msg) => console.debug(msg)
+  }
+}
+
+// Use a simple function logger
+const config = {
+  couch: 'http://localhost:5984/mydb',
+  logger: (level, ...args) => console.log(level, ...args)
+}
 ```
-import { bindConfig } from 'hide-a-bed'
-import { env } from 'custom-env'
-env()
-const {get, put, patch, remove, bulkSave, bulkGet, bulkRemove, query} = bindConfig(process.env)
-const doc = await get('id-123')
-```
+
+The logger will track operations including:
+- Document operations (get, put, patch)
+- Bulk operations
+- View queries
+- Streaming operations
+- Retries and error handling
+
+Each operation logs appropriate information at these levels:
+- error: Fatal/unrecoverable errors
+- warn: Retryable errors, conflicts
+- info: Operation start/completion
+- debug: Detailed operation information
 
 
 Streaming Support
