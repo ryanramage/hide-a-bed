@@ -23,10 +23,10 @@ export const queryStream = (config, view, options, onRow) => new Promise((resolv
 
   const streamer = JSONStream.parse('rows.*')
   streamer.on('data', onRow)
-  streamer.on('error', err => {
+  streamer.on('error', /** @param {Error} err */ err => {
     reject(new Error(`Stream parsing error: ${err.message}`))
   })
-  streamer.on('done', err => {
+  streamer.on('done', /** @param {Error|null} err */ err => {
     try {
       RetryableError.handleNetworkError(err)
     } catch (e) {
@@ -42,7 +42,7 @@ export const queryStream = (config, view, options, onRow) => new Promise((resolv
   req.on('response', response => {
     if (RetryableError.isRetryableStatusCode(response.statusCode)) {
       reject(new RetryableError('retryable error during stream query', response.statusCode))
-      req.destroy()
+      req.abort()
       return
     }
   })
