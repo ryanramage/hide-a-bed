@@ -1,7 +1,7 @@
 node_modules/
-cjs/
 package-lock.json
 temp/
+build/
 .git/
 .github/
 .gitignore
