@@ -7,7 +7,10 @@ import {
   BulkSave, 
   BulkGet,
   CouchPut,
-  SimpleViewQuery
+  CouchGet,
+  SimpleViewQuery,
+  SimpleViewQueryStream,
+  Patch
 } from 'hide-a-bed'
 
 export const setup = async (designDocs) => {
@@ -42,7 +45,46 @@ export const setup = async (designDocs) => {
     return results
   })
 
-  return { bulkSave, bulkGet, put, simpleViewQuery }
+  const get = CouchGet.implement(async (_config, id) => {
+    return await db.get(id)
+  })
+
+  const patch = Patch.implement(async (_config, id, operations) => {
+    const doc = await db.get(id)
+    operations.forEach(op => {
+      if (op.op === 'add' || op.op === 'replace') {
+        lodash.set(doc, op.path, op.value)
+      } else if (op.op === 'remove') {
+        lodash.unset(doc, op.path)
+      }
+    })
+    return await db.put(doc)
+  })
+
+  const bulkRemove = BulkSave.implement(async (_config, docs) => {
+    const deleteDocs = docs.map(doc => ({
+      ...doc,
+      _deleted: true
+    }))
+    return await db.bulkDocs(deleteDocs)
+  })
+
+  const queryStream = SimpleViewQueryStream.implement(async (_config, view, options, onRow) => {
+    const query = cloneDeep(options)
+    const parts = view.split('/')
+    const pouchView = [parts[1], parts[3]].join('/')
+
+    if (options.startkey) query.startkey = options.startkey
+    if (options.endkey) query.endkey = options.endkey
+
+    const results = await db.query(pouchView, query)
+    for (const row of results.rows) {
+      await onRow(row)
+    }
+    return results
+  })
+
+  return { bulkSave, bulkGet, put, get, patch, bulkRemove, simpleViewQuery, queryStream }
 }
 
 function convert (designDocs) {
