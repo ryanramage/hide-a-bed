@@ -42,7 +42,7 @@ export const queryStream = (config, view, options, onRow) => new Promise((resolv
   req.on('response', response => {
     if (RetryableError.isRetryableStatusCode(response.statusCode)) {
       reject(new RetryableError('retryable error during stream query', response.statusCode))
-      req.abort()
+      // req.abort()
       return
     }
   })
