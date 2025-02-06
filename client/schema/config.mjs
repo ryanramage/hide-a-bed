@@ -7,7 +7,7 @@ const LoggerSchema = z.object({
   debug: z.function().args(z.any()).returns(z.void()).optional()
 }).or(z.function().args(
   z.string(), // level
-  z.any()     // message/args
+  z.any() // message/args
 ).returns(z.void()))
 
 export const CouchConfig = z.object({
@@ -22,4 +22,4 @@ export const CouchConfig = z.object({
   _normalizedLogger: z.any().optional() // Internal property for caching normalized logger
 }).passthrough().describe('The std config object')
 
-/** @typedef { z.infer<typeof CouchConfig> } CouchConfigSchema*/
+/** @typedef { z.infer<typeof CouchConfig> } CouchConfigSchema */

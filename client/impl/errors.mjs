@@ -11,19 +11,19 @@ export class RetryableError extends Error {
    * @param {string} message - The error message
    * @param {number|undefined} statusCode - The HTTP status code
    */
-  constructor(message, statusCode) {
-    super(message);
-    this.name = 'RetryableError';
-    this.statusCode = statusCode;
+  constructor (message, statusCode) {
+    super(message)
+    this.name = 'RetryableError'
+    this.statusCode = statusCode
   }
 
   /**
    * @param {number|undefined} statusCode - The HTTP status code to check
    * @returns {boolean} Whether the status code is retryable
    */
-  static isRetryableStatusCode(statusCode) {
-    if (statusCode === undefined) return false;
-    return [408, 429, 500, 502, 503, 504].includes(statusCode);
+  static isRetryableStatusCode (statusCode) {
+    if (statusCode === undefined) return false
+    return [408, 429, 500, 502, 503, 504].includes(statusCode)
   }
 
   /**
@@ -31,7 +31,7 @@ export class RetryableError extends Error {
    * @throws {RetryableError} If the error is retryable
    * @throws {Error} If the error is not retryable
    */
-  static handleNetworkError(err) {
+  static handleNetworkError (err) {
     /** @type {Record<string, number>} */
     const networkErrors = {
       ECONNREFUSED: 503,
@@ -42,12 +42,12 @@ export class RetryableError extends Error {
       EPIPE: 503,
       EHOSTUNREACH: 503,
       ESOCKETTIMEDOUT: 503
-    };
+    }
 
     // Type guard for NetworkError shape
     if (typeof err === 'object' && err !== null && 'code' in err && typeof err.code === 'string' && networkErrors[err.code]) {
-      throw new RetryableError(`Network error: ${err.code}`, networkErrors[err.code]);
+      throw new RetryableError(`Network error: ${err.code}`, networkErrors[err.code])
     }
-    throw err;
+    throw err
   }
 }

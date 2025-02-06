@@ -1,17 +1,20 @@
 import PouchDB from 'pouchdb'
 import PouchMemoryAdaptor from 'pouchdb-adapter-memory'
-PouchDB.plugin(PouchMemoryAdaptor)
 import lodash from 'lodash'
-const { cloneDeep } = lodash
-import { 
-  BulkSave, 
+import { schema } from 'hide-a-bed'
+PouchDB.plugin(PouchMemoryAdaptor)
+const { cloneDeep, set, unset } = lodash
+
+const {
+  BulkSave,
   BulkGet,
+  BulkRemove,
   CouchPut,
   CouchGet,
   SimpleViewQuery,
   SimpleViewQueryStream,
   Patch
-} from 'hide-a-bed'
+} = schema
 
 export const setup = async (designDocs) => {
   const db = new PouchDB('dbname', { adapter: 'memory' })
@@ -27,10 +30,16 @@ export const setup = async (designDocs) => {
 
   const bulkGet = BulkGet.implement(async (_config, ids) => {
     const options = { include_docs: true, keys: ids }
-    return await db.allDocs(options)
+    const resp = await db.allDocs(options)
+    const docs = resp.rows.map(row => row.doc)
+    return docs
   })
 
-  const put = CouchPut.implement(async (_config, doc) => await db.put(doc))
+  const put = CouchPut.implement(async (_config, doc) => {
+    const result = await db.put(doc)
+    result.statusCode = 201
+    return result
+  })
 
   const simpleViewQuery = SimpleViewQuery.implement(async (_config, view, options) => {
     const query = cloneDeep(options)
@@ -45,28 +54,30 @@ export const setup = async (designDocs) => {
     return results
   })
 
-  const get = CouchGet.implement(async (_config, id) => {
-    return await db.get(id)
-  })
+  const get = CouchGet.implement(async (_config, id) => await db.get(id))
 
   const patch = Patch.implement(async (_config, id, operations) => {
     const doc = await db.get(id)
     operations.forEach(op => {
       if (op.op === 'add' || op.op === 'replace') {
-        lodash.set(doc, op.path, op.value)
+        set(doc, op.path, op.value)
       } else if (op.op === 'remove') {
-        lodash.unset(doc, op.path)
+        unset(doc, op.path)
       }
     })
     return await db.put(doc)
   })
 
-  const bulkRemove = BulkSave.implement(async (_config, docs) => {
+  const bulkRemove = BulkRemove.implement(async (_config, ids) => {
+    const docs = await bulkGet(_config, ids)
     const deleteDocs = docs.map(doc => ({
       ...doc,
       _deleted: true
     }))
-    return await db.bulkDocs(deleteDocs)
+    console.log('doing the delte', deleteDocs)
+    const results = await db.bulkDocs(deleteDocs)
+    console.log('results', results)
+    return results
   })
 
   const queryStream = SimpleViewQueryStream.implement(async (_config, view, options, onRow) => {

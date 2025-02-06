@@ -5,7 +5,7 @@ import { patch } from './impl/patch.mjs'
 import { query } from './impl/query.mjs'
 import { queryStream } from './impl/stream.mjs'
 import { withRetry } from './impl/retry.mjs'
-import { BulkSave, BulkGet } from './schema/bulk.mjs'
+import { BulkSave, BulkGet, BulkRemove } from './schema/bulk.mjs'
 import { CouchConfig } from './schema/config.mjs'
 import { SimpleViewQuery, SimpleViewQueryResponse } from './schema/query.mjs'
 import { SimpleViewQueryStream, OnRow } from './schema/stream.mjs'
@@ -21,6 +21,7 @@ const schema = {
   OnRow,
   BulkSave,
   BulkGet,
+  BulkRemove,
   CouchGet,
   CouchPut,
   CouchDoc,
@@ -48,7 +49,7 @@ const bindConfig = Bind.implement((
     bulkSave: config.bindWithRetry ? withRetry(bulkSave.bind(null, config), retryOptions) : bulkSave.bind(null, config),
     bulkRemove: config.bindWithRetry ? withRetry(bulkRemove.bind(null, config), retryOptions) : bulkRemove.bind(null, config),
     query: config.bindWithRetry ? withRetry(query.bind(null, config), retryOptions) : query.bind(null, config),
-    queryStream: config.bindWithRetry? withRetry(queryStream.bind(null, config), retryOptions) : queryStream.bind(null, config) 
+    queryStream: config.bindWithRetry ? withRetry(queryStream.bind(null, config), retryOptions) : queryStream.bind(null, config)
   }
 })
 

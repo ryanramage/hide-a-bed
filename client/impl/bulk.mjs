@@ -15,7 +15,7 @@ const opts = {
 export const bulkSave = BulkSave.implement(async (config, docs) => {
   /** @type {import('./logger.mjs').Logger }  */
   const logger = createLogger(config)
-  
+
   if (!docs) {
     logger.warn('bulkSave called with no docs')
     return { ok: false, error: 'noDocs', reason: 'no docs provided' }
@@ -55,7 +55,7 @@ export const bulkSave = BulkSave.implement(async (config, docs) => {
 export const bulkGet = BulkGet.implement(async (config, ids) => {
   const logger = createLogger(config)
   const keys = ids
-  
+
   logger.info(`Starting bulk get for ${keys.length} documents`)
   const url = `${config.couch}/_all_docs?include_docs=true`
   const body = { keys }
@@ -80,17 +80,9 @@ export const bulkGet = BulkGet.implement(async (config, ids) => {
   }
   const rows = resp?.body?.rows || []
   /** @type {Array<import('../schema/crud.mjs').CouchDocSchema>} */
-  const docs = []
-  rows.forEach((
+  const docs = rows.map((
     /** @type {{ error?: any, key?: string, doc?: import('../schema/crud.mjs').CouchDocSchema }} */ r
-  ) => {
-    if (r.error) return
-    if (!r.key) return
-    if (!r.doc) return
-    /** @type { import('../schema/crud.mjs').CouchDocSchema } */
-    const doc = r.doc
-    docs.push(doc)
-  })
+  ) => r.doc)
   logger.info(`Successfully retrieved ${docs.length} documents`)
   return docs
 })

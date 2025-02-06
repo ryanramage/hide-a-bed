@@ -2,9 +2,21 @@
   "name": "hide-a-bed-stub",
   "version": "1.0.0",
   "description": "Stub couchdb calls that match the hide-a-bed api",
-  "main": "index.js",
+  "module": "index.mjs",
+  "main": "cjs/index.cjs",
+  "type": "module",
+  "exports": {
+    "import": "./index.mjs",
+    "require": "./cjs/index.cjs",
+    "default": "./cjs/index.cjs"
+  },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "clean": "(find . -name \"*.mts\" -type f -delete || true) && (find . -name \"*.map\" -type f -delete || true)",
+    "build": "npm run clean && tsc && npm run build:cjs",
+    "build:cjs": "rm -rf cjs && node build/build.mjs",
+    "test": "standard && tape tests/*.mjs",
+    "lint:fix": "standard --fix",
+    "prepublish": "npm run build"
   },
   "repository": {
     "type": "git",
@@ -20,5 +32,15 @@
   "bugs": {
     "url": "https://github.com/ryanramae/hide-a-bed/issues"
   },
-  "homepage": "https://github.com/ryanramae/hide-a-bed#readme"
+  "homepage": "https://github.com/ryanramae/hide-a-bed#readme",
+  "dependencies": {
+    "hide-a-bed": "^4.0.1",
+    "lodash": "^4.17.21",
+    "pouchdb": "^9.0.0",
+    "pouchdb-adapter-memory": "^9.0.0"
+  },
+  "devDependencies": {
+    "standard": "^17.1.2",
+    "tape": "^5.9.0"
+  }
 }

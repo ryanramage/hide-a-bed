@@ -43,7 +43,7 @@ export const query = SimpleViewQuery.implement(async (config, view, options) => 
 
   /** @type { z.infer<SimpleViewQueryResponse> } body */
   const body = results.body
-  
+
   if (RetryableError.isRetryableStatusCode(results.statusCode)) {
     logger.warn(`Retryable status code received: ${results.statusCode}`)
     throw new RetryableError(body.error || 'retryable error during query', results.statusCode)
@@ -64,10 +64,6 @@ export const query = SimpleViewQuery.implement(async (config, view, options) => 
  * @param {string[]} params - The list of parameter names to include in the query string.
  */
 export function queryString (options, params) {
-  const logger = createLogger({ useConsoleLogger: false })
-  logger.debug('Building query string with options:', options)
-  logger.debug('Allowed params:', params)
-  
   const parts = Object.keys(options).map(key => {
     let value = options[key]
     if (includes(params, key)) {

@@ -16,7 +16,7 @@ export const get = CouchGet.implement(async (config, id) => {
   const logger = createLogger(config)
   const url = `${config.couch}/${id}`
   logger.info(`Getting document with id: ${id}`)
-  
+
   try {
     const resp = await needle('get', url, opts)
     if (!resp) {
@@ -58,7 +58,7 @@ export const put = CouchPut.implement(async (config, doc) => {
   const logger = createLogger(config)
   const url = `${config.couch}/${doc._id}`
   const body = doc
-  
+
   logger.info(`Putting document with id: ${doc._id}`)
   let resp
   try {
@@ -67,27 +67,27 @@ export const put = CouchPut.implement(async (config, doc) => {
     logger.error('Error during put operation:', err)
     RetryableError.handleNetworkError(err)
   }
-  
+
   if (!resp) {
     logger.error('No response received from put request')
     throw new RetryableError('no response', 503)
   }
-  
+
   const result = resp?.body || {}
   result.statusCode = resp.statusCode
-  
+
   if (resp.statusCode === 409) {
     logger.warn(`Conflict detected for document: ${doc._id}`)
     result.ok = false
     result.error = 'conflict'
     return result
   }
-  
+
   if (RetryableError.isRetryableStatusCode(resp.statusCode)) {
     logger.warn(`Retryable status code received: ${resp.statusCode}`)
     throw new RetryableError(result.reason || 'retryable error', resp.statusCode)
   }
-  
+
   logger.info(`Successfully saved document: ${doc._id}`)
   return result
 })

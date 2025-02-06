@@ -11,7 +11,7 @@
  * @param {import('../schema/config.mjs').CouchConfigSchema} config
  * @returns {Logger} Normalized logger interface
  */
-export function createLogger(config) {
+export function createLogger (config) {
   // Return cached logger if it exists
   if (config._normalizedLogger) {
     return config._normalizedLogger

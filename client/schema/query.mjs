@@ -9,7 +9,7 @@ export const ViewRow = z.object({
 })
 export const SimpleViewQueryResponse = z.object({
   error: z.string().optional().describe('if something is wrong'),
-  rows: z.array(ViewRow),
+  rows: z.array(ViewRow)
 }).passthrough()
 /** @typedef { z.infer<typeof SimpleViewQueryResponse> } SimpleViewQueryResponseSchema */
 
