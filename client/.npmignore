@@ -1,0 +1,16 @@
+node_modules/
+cjs/
+package-lock.json
+temp/
+.git/
+.github/
+.gitignore
+.DS_Store
+*.test.mjs
+*.spec.mjs
+test/
+tests/
+coverage/
+.nyc_output/
+.vscode/
+.idea/
