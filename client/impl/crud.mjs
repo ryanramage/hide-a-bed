@@ -15,6 +15,7 @@ export const get = CouchGet.implement(async (config, id) => {
   const url = `${config.couch}/${id}`
   try {
     const resp = await needle('get', url, opts)
+    if (!resp) throw new RetryableError('no response', 503)
     if (resp.statusCode === 404) return null
     const result = resp?.body || {}
     if (resp.statusCode === 404) {
@@ -43,6 +44,7 @@ export const put = CouchPut.implement(async (config, doc) => {
   } catch (err) {
     RetryableError.handleNetworkError(err)
   }
+  if (!resp) throw new RetryableError('no response', 503)
   const result = resp?.body || {}
   result.statusCode = resp.statusCode
   if (resp.statusCode === 409) {

@@ -1,7 +1,7 @@
 import { get, put } from './crud.mjs'
 import { Patch } from '../schema/patch.mjs'
 
-const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
+export const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
 
 /** @type { import('../schema/patch.mjs').PatchSchema } */
 export const patch = Patch.implement(async (config, id, properties) => {

@@ -50,4 +50,4 @@ const bindConfig = Bind.implement((
   }
 })
 
-export { get, put, patch, bulkGet, bulkSave, bulkRemove, query, queryStream, schema, bindConfig }
+export { get, put, patch, bulkGet, bulkSave, bulkRemove, query, queryStream, schema, bindConfig, withRetry }

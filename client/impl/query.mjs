@@ -27,6 +27,7 @@ export const query = SimpleViewQuery.implement(async (config, view, options) => 
   } catch (err) {
     RetryableError.handleNetworkError(err)
   }
+  if (!results) throw new RetryableError('no response', 503)
   /** @type { z.infer<SimpleViewQueryResponse> } body */
   const body = results.body
   if (RetryableError.isRetryableStatusCode(results.statusCode)) {

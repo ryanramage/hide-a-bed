@@ -23,6 +23,7 @@ export const bulkSave = BulkSave.implement(async (config, docs) => {
   } catch (err) {
     RetryableError.handleNetworkError(err)
   }
+  if (!resp) throw new RetryableError('no response', 503)
   if (RetryableError.isRetryableStatusCode(resp.statusCode)) {
     throw new RetryableError('retryable error during bulk save', resp.statusCode)
   }
@@ -42,6 +43,7 @@ export const bulkGet = BulkGet.implement(async (config, ids) => {
   } catch (err) {
     RetryableError.handleNetworkError(err)
   }
+  if (!resp) throw new RetryableError('no response', 503)
   if (RetryableError.isRetryableStatusCode(resp.statusCode)) {
     throw new RetryableError('retryable error during bulk get', resp.statusCode)
   }
