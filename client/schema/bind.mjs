@@ -5,6 +5,7 @@ import { BulkSaveBound, BulkGetBound } from './bulk.mjs'
 import { CouchGetBound, CouchPutBound } from './crud.mjs'
 import { PatchBound } from './patch.mjs'
 import { SimpleViewQueryBound } from './query.mjs'
+import { SimpleViewQueryStreamBound } from './stream.mjs'
 
 const BindReturns = z.object({
   bulkGet: BulkGetBound,
@@ -12,7 +13,8 @@ const BindReturns = z.object({
   get: CouchGetBound,
   put: CouchPutBound,
   patch: PatchBound,
-  query: SimpleViewQueryBound
+  query: SimpleViewQueryBound,
+  queryStream: SimpleViewQueryStreamBound
 })
 
 export const Bind = z.function().args(CouchConfig).returns(BindReturns)

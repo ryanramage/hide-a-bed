@@ -1,14 +1,15 @@
 import { z } from 'zod'
 import { CouchConfig } from './config.mjs'
 
+export const ViewRow = z.object({
+  id: z.string().optional(),
+  key: z.any().nullable(),
+  value: z.any().nullable(),
+  doc: z.object({}).passthrough().optional()
+})
 export const SimpleViewQueryResponse = z.object({
   error: z.string().optional().describe('if something is wrong'),
-  rows: z.array(z.object({
-    id: z.string().optional(),
-    key: z.any().nullable(),
-    value: z.any().nullable(),
-    doc: z.object({}).passthrough().optional()
-  }))
+  rows: z.array(ViewRow),
 }).passthrough()
 /** @typedef { z.infer<typeof SimpleViewQueryResponse> } SimpleViewQueryResponseSchema */
 
