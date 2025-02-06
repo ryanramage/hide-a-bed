@@ -13,20 +13,30 @@ const opts = {
 /** @type { import('../schema/crud.mjs').CouchGetSchema } */
 export const get = CouchGet.implement(async (config, id) => {
   const url = `${config.couch}/${id}`
-  const resp = await needle('get', url, opts)
-  if (resp.statusCode === 404) return null
-  const result = resp?.body || {}
-  if (resp.statusCode === 404) {
-    if (config.throwOnGetNotFound) throw new Error(result.reason || 'not_found') 
-    else return undefined
+  try {
+    const resp = await needle('get', url, opts)
+    if (resp.statusCode === 404) return null
+    const result = resp?.body || {}
+    if (resp.statusCode === 404) {
+      if (config.throwOnGetNotFound) throw new Error(result.reason || 'not_found') 
+      else return undefined
+    }
+    if (RetryableError.isRetryableStatusCode(resp.statusCode)) {
+      throw new RetryableError(result.reason || 'retryable error', resp.statusCode)
+    }
+    if (resp.statusCode !== 200) {
+      throw new Error(result.reason || 'failed')
+    }
+    return result
+  } catch (err) {
+    if (err.code) {
+      if (err.code === 'ECONNREFUSED') throw new RetryableError('connection refused', 503)
+      if (err.code === 'ECONNRESET') throw new RetryableError('connection reset', 503)
+      if (err.code === 'ETIMEDOUT') throw new RetryableError('connection timeout', 503)
+    } 
+    else throw err
+    
   }
-  if (RetryableError.isRetryableStatusCode(resp.statusCode)) {
-    throw new RetryableError(result.reason || 'retryable error', resp.statusCode)
-  }
-  if (resp.statusCode !== 200) {
-    throw new Error(result.reason || 'failed')
-  }
-  return result
 })
 
 /** @type { import('../schema/crud.mjs').CouchPutSchema } */
