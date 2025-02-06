@@ -30,7 +30,6 @@ export const queryStream = (config, view, options, onRow) => new Promise((resolv
   let rowCount = 0
   streamer.on('data', row => {
     rowCount++
-    logger.debug(`Processing row ${rowCount}`)
     onRow(row)
   })
   

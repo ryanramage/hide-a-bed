@@ -4,7 +4,7 @@ import { SimpleViewOptions, ViewRow } from './query.mjs'
 
 export const OnRow = z.function().args(
   ViewRow
-).returns(z.undefined())
+)
 /** @typedef { z.infer<typeof OnRow> } OnRowSchema */
 
 export const SimpleViewQueryStream = z.function().args(
