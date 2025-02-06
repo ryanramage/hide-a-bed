@@ -12,31 +12,39 @@
  * @returns {Logger} Normalized logger interface
  */
 export function createLogger(config) {
+  // Return cached logger if it exists
+  if (config._normalizedLogger) {
+    return config._normalizedLogger
+  }
+
   // If no logger provided, return no-op logger
   if (!config.logger) {
-    return {
+    config._normalizedLogger = {
       error: () => {},
       warn: () => {},
       info: () => {},
       debug: () => {}
     }
+    return config._normalizedLogger
   }
 
   // If logger is a function, wrap it to provide object interface
   if (typeof config.logger === 'function') {
-    return {
+    config._normalizedLogger = {
       error: (...args) => config.logger('error', ...args),
       warn: (...args) => config.logger('warn', ...args),
       info: (...args) => config.logger('info', ...args),
       debug: (...args) => config.logger('debug', ...args)
     }
+    return config._normalizedLogger
   }
 
   // If logger is an object, use its methods or provide no-ops for missing ones
-  return {
+  config._normalizedLogger = {
     error: config.logger.error || (() => {}),
     warn: config.logger.warn || (() => {}),
     info: config.logger.info || (() => {}),
     debug: config.logger.debug || (() => {})
   }
+  return config._normalizedLogger
 }

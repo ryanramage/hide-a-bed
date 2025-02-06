@@ -17,7 +17,8 @@ export const CouchConfig = z.object({
   maxRetries: z.number().optional().default(3).describe('maximum number of retry attempts'),
   initialDelay: z.number().optional().default(1000).describe('initial retry delay in milliseconds'),
   backoffFactor: z.number().optional().default(2).describe('multiplier for exponential backoff'),
-  logger: LoggerSchema.optional().describe('logging interface supporting winston-like or simple function interface')
+  logger: LoggerSchema.optional().describe('logging interface supporting winston-like or simple function interface'),
+  _normalizedLogger: z.any().optional() // Internal property for caching normalized logger
 }).passthrough().describe('The std config object')
 
 /** @typedef { z.infer<typeof CouchConfig> } CouchConfigSchema*/
