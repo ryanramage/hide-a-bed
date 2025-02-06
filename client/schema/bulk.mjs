@@ -29,12 +29,12 @@ export const BulkSaveBound = z.function().args(
 export const BulkGet = z.function().args(
   CouchConfig,
   z.array(z.string().describe('the ids to get'))
-).returns(z.promise(z.array(CouchDoc)))
+).returns(z.promise(z.array(CouchDoc.nullable())))
 /** @typedef { z.infer<typeof BulkGet> } BulkGetSchema */
 
 export const BulkGetBound = z.function().args(
   z.array(z.string().describe('the ids to get'))
-).returns(z.promise(z.array(CouchDoc)))
+).returns(z.promise(z.array(CouchDoc.nullable())))
 /** @typedef { z.infer<typeof BulkGetBound> } BulkGetBoundSchema */
 
 export const BulkRemove = z.function().args(
