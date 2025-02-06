@@ -204,3 +204,39 @@ const {get, put, patch, remove, bulkSave, bulkGet, bulkRemove, query} = bindConf
 const doc = await get('id-123')
 ```
 
+
+Streaming Support
+=================
+
+Want to stream data from couch? You can with queryStream. It looks identical to query, except you add an extra 'onRow' function
+
+Here is a small hapi example of streaming data from couch to the client as ndjson. 
+We do a small transform by only streaming the doc. you can do a lot of things in the onrow function.
+
+```
+import Hapi from '@hapi/hapi';
+import { Readable } from 'stream';
+import { queryStream } from bindConfig(process.env)
+const view = '_design/users/_view/by_name'
+
+const init = async () => {
+  const server = Hapi.server({ port: 3000 })
+  server.route({
+    method: 'GET',
+    path: '/stream',
+    handler: async (request, h) => {
+      const stream = new Readable({ read() {} });
+      const onRow = ({id, key, value, doc}) => stream.push(JSON.stringify(doc) + '\n')
+      const options = { startkey: req.query.startLetter, endkey: req.query.startLetter + '|', include_docs: true}
+      await queryStream(view, options, onRow)
+      stream.push(null) // end stream
+      return h.response(stream).type('application/x-ndjson');
+    }
+  })
+
+  await server.start();
+  console.log(`Server running on ${server.info.uri}`);
+}
+init()
+```
+
