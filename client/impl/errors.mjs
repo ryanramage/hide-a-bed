@@ -9,7 +9,7 @@
 export class RetryableError extends Error {
   /**
    * @param {string} message - The error message
-   * @param {number} statusCode - The HTTP status code
+   * @param {number|undefined} statusCode - The HTTP status code
    */
   constructor(message, statusCode) {
     super(message);
@@ -18,10 +18,11 @@ export class RetryableError extends Error {
   }
 
   /**
-   * @param {number} statusCode - The HTTP status code to check
+   * @param {number|undefined} statusCode - The HTTP status code to check
    * @returns {boolean} Whether the status code is retryable
    */
   static isRetryableStatusCode(statusCode) {
+    if (statusCode === undefined) return false;
     return [408, 429, 500, 502, 503, 504].includes(statusCode);
   }
 
