@@ -1,21 +1,17 @@
 // @ts-check
-
+import { z } from 'zod'
 import needle from 'needle'
 import { queryString } from './query.mjs'
+import { SimpleViewQueryStream } from '../schema/stream.mjs'
 import { RetryableError } from './errors.mjs'
 // @ts-ignore
 import JSONStream from 'JSONStream'
 
-/**
- * @param {any} config
- * @param {any} view
- * @param {any} options
- */
-export const queryStream = (config, view, options) => new Promise((resolve, reject) => {
+/** @type { import('../schema/stream.mjs').SimpleViewQueryStreamSchema } */
+export const queryStream = (config, view, options, onRow) => new Promise((resolve, reject) => {
   if (!options) options = {}
 
-  const { onRow, ...rest } = options
-  const qs = queryString(rest, ['key', 'startkey', 'endkey', 'reduce', 'group', 'group_level', 'stale', 'limit'])
+  const qs = queryString(options, ['key', 'startkey', 'endkey', 'reduce', 'group', 'group_level', 'stale', 'limit'])
   const url = `${config.couch}/${view}?${qs.toString()}`
   const opts = {
     json: true,
@@ -29,6 +25,16 @@ export const queryStream = (config, view, options) => new Promise((resolve, reje
   streamer.on('data', onRow)
   streamer.on('error', err => {
     reject(new Error(`Stream parsing error: ${err.message}`))
+  })
+  streamer.on('done', err => {
+    try {
+      RetryableError.handleNetworkError(err)
+    } catch (e) {
+      reject(e)
+    }
+  })
+  streamer.on('end', () => {
+    resolve(undefined) // all work should be done in the stream
   })
   
   const req = needle.get(url, opts)
@@ -53,7 +59,4 @@ export const queryStream = (config, view, options) => new Promise((resolve, reje
 
   req.pipe(streamer)
   
-  streamer.on('end', () => {
-    resolve(null) // all work should be done in the stream
-  })
 })
