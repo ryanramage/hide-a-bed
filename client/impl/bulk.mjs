@@ -3,7 +3,6 @@ import needle from 'needle'
 import { BulkSave, BulkGet, BulkRemove } from '../schema/bulk.mjs'
 import { RetryableError } from './errors.mjs'
 import { createLogger } from './logger.mjs'
-/** @typedef {import('./logger.mjs').Logger} Logger */
 
 const opts = {
   json: true,
@@ -14,6 +13,7 @@ const opts = {
 
 /** @type { import('../schema/bulk.mjs').BulkSaveSchema } */
 export const bulkSave = BulkSave.implement(async (config, docs) => {
+  /** @type {import('./logger.mjs').Logger }  */
   const logger = createLogger(config)
   
   if (!docs) {
