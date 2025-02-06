@@ -5,8 +5,8 @@ export const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
 
 /** @type { import('../schema/patch.mjs').PatchSchema } */
 export const patch = Patch.implement(async (config, id, properties) => {
-  const maxRetries = config.retries || 5
-  const delay = config.delay || 1000
+  const maxRetries = config.maxRetries || 5
+  let delay = config.initialDelay || 1000
   let attempts = 0
 
   while (attempts <= maxRetries) {
@@ -26,6 +26,7 @@ export const patch = Patch.implement(async (config, id, properties) => {
         throw new Error(`Failed to patch after ${maxRetries} attempts`)
       }
       await sleep(delay)
+      delay *= config.backoffFactor
     } catch (err) {
       if (err.message !== 'not_found') return { ok: false, statusCode: 404, error: 'not_found' }
       // Handle other errors (network, etc)

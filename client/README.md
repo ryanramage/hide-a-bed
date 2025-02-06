@@ -194,7 +194,7 @@ const result = await query(config, view, options)
 Bind Config
 ============
 
-Want to not pass around a config object everywhere? Bind the config for smaller api in your app
+Dont want to pass around a config object everywhere? Bind the config for smaller api in your app
 
 ```
 import { bindConfig } from 'hide-a-bed'
