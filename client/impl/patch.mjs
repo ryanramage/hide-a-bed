@@ -1,11 +1,32 @@
 import { get, put } from './crud.mjs'
-import { Patch } from '../schema/patch.mjs'
+import { Patch, PatchDangerously } from '../schema/patch.mjs'
 import { createLogger } from './logger.mjs'
 
 export const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
 
 /** @type { import('../schema/patch.mjs').PatchSchema } */
 export const patch = Patch.implement(async (config, id, properties) => {
+  const logger = createLogger(config)
+
+  logger.info(`Starting patch operation for document ${id}`)
+  logger.debug('Patch properties:', properties)
+  const doc = await get(config, id)
+  if (doc._rev !== properties._rev) {
+    const result = {}
+    result.ok = false
+    result.error = 'conflict'
+    result.statusCode = 409
+    return result
+  }
+  const updatedDoc = { ...doc, ...properties }
+  logger.debug('Merged document:', updatedDoc)
+  const result = await put(config, updatedDoc)
+  logger.info(`Successfully patched document ${id}, rev: ${result.rev}`)
+  return result
+})
+
+/** @type { import('../schema/patch.mjs').PatchDangerouslySchema } */
+export const patchDangerously = PatchDangerously.implement(async (config, id, properties) => {
   const logger = createLogger(config)
   const maxRetries = config.maxRetries || 5
   let delay = config.initialDelay || 1000

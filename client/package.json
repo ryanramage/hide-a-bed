@@ -16,7 +16,8 @@
     "build:cjs": "rm -rf cjs && node build/build.mjs",
     "test": "standard && tape tests/*.mjs",
     "lint:fix": "standard --fix",
-    "prepublish": "npm run build"
+    "prepublish": "npm run build",
+    "full": "npm test && npm run build && npm run clean"
   },
   "repository": {
     "type": "git",
