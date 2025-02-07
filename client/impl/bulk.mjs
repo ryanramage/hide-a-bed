@@ -132,6 +132,77 @@ export const bulkGetDictionary = BulkGetDictionary.implement(async (config, ids)
 })
 
 /** @type { import('../schema/bulk.mjs').BulkSaveTransactionSchema } bulkSaveTransaction */
-export const bulkSaveTransaction = BulkSaveTransaction.implement(async (config, transcationId, docs) => {
+export const bulkSaveTransaction = BulkSaveTransaction.implement(async (config, transactionId, docs) => {
+  const logger = createLogger(config)
+  logger.info(`Starting bulk save transaction ${transactionId} for ${docs.length} documents`)
 
+  // Create transaction document
+  const txnDoc = {
+    _id: `txn:${transactionId}`,
+    type: 'transaction',
+    status: 'pending',
+    changes: docs,
+    timestamp: new Date().toISOString()
+  }
+
+  // Save transaction document
+  const url = `${config.couch}/${txnDoc._id}`
+  let resp = await needle('put', url, txnDoc, opts)
+  if (resp.statusCode !== 201) {
+    throw new Error('Failed to create transaction document')
+  }
+
+  // Get current revisions of all documents
+  const existingDocs = await bulkGet(config, docs.map(d => d._id))
+  const currentDocs = {}
+  existingDocs.rows.forEach(row => {
+    if (row.doc) currentDocs[row.id] = row.doc
+  })
+
+  // Prepare updates with correct revisions
+  const updates = docs.map(doc => {
+    const current = currentDocs[doc._id]
+    if (current) {
+      return { ...doc, _rev: current._rev }
+    }
+    return doc
+  })
+
+  try {
+    // Apply updates
+    const results = await bulkSave(config, updates)
+    
+    // Check for failures
+    const failures = results.filter(r => r.error)
+    if (failures.length > 0) {
+      throw new Error('Some updates failed')
+    }
+
+    // Update transaction status to completed
+    txnDoc.status = 'completed'
+    txnDoc._rev = resp.body.rev
+    resp = await needle('put', url, txnDoc, opts)
+    if (resp.statusCode !== 201) {
+      logger.error('Failed to update transaction status to completed')
+    }
+
+    return results
+
+  } catch (error) {
+    logger.error('Transaction failed, attempting rollback', error)
+    
+    // Rollback changes
+    const rollback = Object.values(currentDocs)
+    await bulkSave(config, rollback)
+
+    // Update transaction status to rolled back
+    txnDoc.status = 'rolled_back'
+    txnDoc._rev = resp.body.rev
+    resp = await needle('put', url, txnDoc, opts)
+    if (resp.statusCode !== 201) {
+      logger.error('Failed to update transaction status to rolled_back')
+    }
+
+    throw new Error('Transaction failed and was rolled back')
+  }
 })
