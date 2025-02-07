@@ -4,6 +4,7 @@ import { get, put } from './impl/crud.mjs'
 import { patch } from './impl/patch.mjs'
 import { query } from './impl/query.mjs'
 import { queryStream } from './impl/stream.mjs'
+import { createQueryBuilder } from './impl/queryBuilder.mjs'
 import { withRetry } from './impl/retry.mjs'
 import { BulkSave, BulkGet, BulkRemove } from './schema/bulk.mjs'
 import { CouchConfig } from './schema/config.mjs'
@@ -53,4 +54,17 @@ const bindConfig = Bind.implement((
   }
 })
 
-export { get, put, patch, bulkGet, bulkSave, bulkRemove, query, queryStream, schema, bindConfig, withRetry }
+export { 
+  get, 
+  put, 
+  patch, 
+  bulkGet, 
+  bulkSave, 
+  bulkRemove, 
+  query, 
+  queryStream, 
+  schema, 
+  bindConfig, 
+  withRetry,
+  createQueryBuilder 
+}
