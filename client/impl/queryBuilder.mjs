@@ -20,7 +20,7 @@ export class QueryBuilder {
    * @param {any} key
    * @returns {QueryBuilder}
    */
-  key(key) {
+  key (key) {
     this.#options.key = key
     return this
   }
@@ -29,7 +29,7 @@ export class QueryBuilder {
    * @param {any} startkey
    * @returns {QueryBuilder}
    */
-  startKey(startkey) {
+  startKey (startkey) {
     this.#options.startkey = startkey
     return this
   }
@@ -38,7 +38,7 @@ export class QueryBuilder {
    * @param {any} endkey
    * @returns {QueryBuilder}
    */
-  endKey(endkey) {
+  endKey (endkey) {
     this.#options.endkey = endkey
     return this
   }
@@ -47,7 +47,7 @@ export class QueryBuilder {
    * @param {boolean} reduce
    * @returns {QueryBuilder}
    */
-  reduce(reduce = true) {
+  reduce (reduce = true) {
     this.#options.reduce = reduce
     return this
   }
@@ -56,7 +56,7 @@ export class QueryBuilder {
    * @param {boolean} group
    * @returns {QueryBuilder}
    */
-  group(group = true) {
+  group (group = true) {
     this.#options.group = group
     return this
   }
@@ -65,7 +65,7 @@ export class QueryBuilder {
    * @param {number} level
    * @returns {QueryBuilder}
    */
-  groupLevel(level) {
+  groupLevel (level) {
     this.#options.group_level = level
     return this
   }
@@ -74,7 +74,7 @@ export class QueryBuilder {
    * @param {string} stale
    * @returns {QueryBuilder}
    */
-  stale(stale) {
+  stale (stale) {
     this.#options.stale = stale
     return this
   }
@@ -83,7 +83,7 @@ export class QueryBuilder {
    * @param {number} limit
    * @returns {QueryBuilder}
    */
-  limit(limit) {
+  limit (limit) {
     this.#options.limit = limit
     return this
   }
@@ -91,9 +91,9 @@ export class QueryBuilder {
   /**
    * @returns {QueryOptions}
    */
-  build() {
+  build () {
     return { ...this.#options }
   }
 }
 
-export const createQueryBuilder = () => new QueryBuilder()
+export const createQuery = () => new QueryBuilder()

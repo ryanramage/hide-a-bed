@@ -92,6 +92,12 @@ export const bulkRemove = BulkRemove.implement(async (config, ids) => {
   const logger = createLogger(config)
   logger.info(`Starting bulk remove for ${ids.length} documents`)
   const docs = await bulkGet(config, ids)
-  docs.forEach(d => { d._deleted = true })
-  return bulkSave(config, docs)
+  /** @type {Array<import('../schema/crud.mjs').CouchDocSchema>} */
+  const toRemove = []
+  docs.forEach(d => {
+    if (!d) return
+    d._deleted = true
+    toRemove.push(d)
+  })
+  return bulkSave(config, toRemove)
 })
