@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { CouchConfig } from './config.mjs'
+import { SimpleViewQueryResponse } from './query.mjs'
 import { CouchDoc } from './crud.mjs'
 
 export const BulkSaveResponseSchema = z.array(z.object({
@@ -13,28 +14,24 @@ export const BulkSaveResponseSchema = z.array(z.object({
 
 export const BulkSave = z.function().args(
   CouchConfig,
-  z.array(z.object({
-    _id: z.string()
-  }).passthrough())
+  z.array(z.object(CouchDoc))
 ).returns(z.promise(BulkSaveResponseSchema))
 /** @typedef { z.infer<typeof BulkSave> } BulkSaveSchema */
 
 export const BulkSaveBound = z.function().args(
-  z.array(z.object({
-    _id: z.string()
-  }).passthrough())
+  z.array(z.object(CouchDoc))
 ).returns(z.promise(BulkSaveResponseSchema))
 /** @typedef { z.infer<typeof BulkSaveBound> } BulkSaveBoundSchema */
 
 export const BulkGet = z.function().args(
   CouchConfig,
   z.array(z.string().describe('the ids to get'))
-).returns(z.promise(z.array(CouchDoc.nullish())))
+).returns(z.promise(SimpleViewQueryResponse))
 /** @typedef { z.infer<typeof BulkGet> } BulkGetSchema */
 
 export const BulkGetBound = z.function().args(
   z.array(z.string().describe('the ids to get'))
-).returns(z.promise(z.array(CouchDoc.nullish())))
+).returns(z.promise(SimpleViewQueryResponse))
 /** @typedef { z.infer<typeof BulkGetBound> } BulkGetBoundSchema */
 
 export const BulkRemove = z.function().args(

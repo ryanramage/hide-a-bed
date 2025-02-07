@@ -3,7 +3,8 @@ import { CouchConfig } from './config.mjs'
 
 export const CouchDoc = z.object({
   _id: z.string().describe('the couch doc id'),
-  _rev: z.string().optional().describe('the doc revision')
+  _rev: z.string().optional().describe('the doc revision'),
+  _deleted: z.boolean().optional().describe('is the doc deleted')
 }).passthrough()
 /** @typedef { z.infer<typeof CouchDoc> } CouchDocSchema */
 

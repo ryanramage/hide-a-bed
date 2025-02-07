@@ -3,6 +3,7 @@ import needle from 'needle'
 import { BulkSave, BulkGet, BulkRemove } from '../schema/bulk.mjs'
 import { RetryableError } from './errors.mjs'
 import { createLogger } from './logger.mjs'
+import { CouchDoc } from '../schema/crud.mjs'
 
 const opts = {
   json: true,
@@ -58,10 +59,10 @@ export const bulkGet = BulkGet.implement(async (config, ids) => {
 
   logger.info(`Starting bulk get for ${keys.length} documents`)
   const url = `${config.couch}/_all_docs?include_docs=true`
-  const body = { keys }
+  const payload = { keys }
   let resp
   try {
-    resp = await needle('post', url, body, opts)
+    resp = await needle('post', url, payload, opts)
   } catch (err) {
     logger.error('Network error during bulk get:', err)
     RetryableError.handleNetworkError(err)
@@ -78,26 +79,27 @@ export const bulkGet = BulkGet.implement(async (config, ids) => {
     logger.error(`Unexpected status code: ${resp.statusCode}`)
     throw new Error('could not fetch')
   }
-  const rows = resp?.body?.rows || []
-  /** @type {Array<import('../schema/crud.mjs').CouchDocSchema>} */
-  const docs = rows.map((
-    /** @type {{ error?: any, key?: string, doc?: import('../schema/crud.mjs').CouchDocSchema }} */ r
-  ) => r.doc)
-  logger.info(`Successfully retrieved ${docs.length} documents`)
-  return docs
+  /** @type { import('../schema/query.mjs').SimpleViewQueryResponseSchema } body */
+  const body = resp.body
+  return body
 })
 
 /** @type { import('../schema/bulk.mjs').BulkRemoveSchema } */
 export const bulkRemove = BulkRemove.implement(async (config, ids) => {
   const logger = createLogger(config)
   logger.info(`Starting bulk remove for ${ids.length} documents`)
-  const docs = await bulkGet(config, ids)
-  /** @type {Array<import('../schema/crud.mjs').CouchDocSchema>} */
+  const resp = await bulkGet(config, ids)
+  /** @type { Array<import('../schema/crud.mjs').CouchDocSchema> } toRemove */
   const toRemove = []
-  docs.forEach(d => {
-    if (!d) return
-    d._deleted = true
-    toRemove.push(d)
+  resp.rows.forEach(row => {
+    if (!row.doc) return
+    try {
+      const d = CouchDoc.parse(row.doc)
+      d._deleted = true
+      toRemove.push(d)
+    } catch (e) {
+      logger.warn(`Invalid document structure in bulk remove: ${row.id}`, e)
+    }
   })
   return bulkSave(config, toRemove)
 })
