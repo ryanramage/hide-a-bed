@@ -116,14 +116,16 @@ export const bulkGetDictionary = BulkGetDictionary.implement(async (config, ids)
   resp.rows.forEach(
     /** @param { import('../schema/query.mjs').ViewRowSchema } row */
     row => {
-      if (!row.id) return
-      if (row.error) results.notFound[row.id] = row
+      if (!row.key) return
+      if (row.error) {
+        return results.notFound[row.key] = row
+      }
       try {
       /** @type { import('../schema/crud.mjs').CouchDocSchema } doc */
         const doc = CouchDoc.parse(row.doc)
         results.found[doc._id] = doc
       } catch (e) {
-        results.notFound[row.id] = row
+        results.notFound[row.key] = row
       }
     })
   return results
