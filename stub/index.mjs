@@ -63,6 +63,13 @@ export const setup = async (designDocs) => {
 
   const patch = Patch.implement(async (_config, id, properties) => {
     const doc = await db.get(id)
+    if (doc._rev !== properties._rev) {
+      const result = {}
+      result.ok = false
+      result.error = 'conflict'
+      result.statusCode = 409
+      return result
+    }
     const updatedDoc = { ...doc, ...properties }
     const results = await db.put(updatedDoc)
     results.statusCode = 200

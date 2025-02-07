@@ -61,11 +61,30 @@ const result = await put(config, doc)
 ```
 
 #### patch(config, id, properties)
-Update specific properties of a document with retry mechanism.
-- `config`: Object with:
-  - `couch`: URL string
-  - `retries`: Optional number of retry attempts (default: 5)
-  - `delay`: Optional milliseconds between retries (default: 1000)
+Update specific properties of a document, you must know the _rev, and passed in with properties 
+- `id`: Document ID string
+- `properties`: Object with properties to update, one _must_ be the current _rev
+- Returns: Promise resolving to response with `ok`, `id`, `rev` properties
+
+```javascript
+const config = { 
+  couch: 'http://localhost:5984/mydb',
+  retries: 3,
+  delay: 500
+}
+const properties = { 
+  _rev: '3-fdskjhfsdkjhfsd',
+  name: 'Alice Smith',
+  updated: true
+}
+const result = await patch(config, 'doc-123', properties)
+// result: { ok: true, id: 'doc-123', rev: '2-xyz789' }
+```
+#### patchDangerously(config, id, properties)
+Update specific properties of a document, no _rev is needed
+
+*warning* - this can clobber data. It will retry even if a conflict happens. There are some use cases for this, but you have been warned, hence the name.
+
 - `id`: Document ID string
 - `properties`: Object with properties to update
 - Returns: Promise resolving to response with `ok`, `id`, `rev` properties
@@ -80,7 +99,7 @@ const properties = {
   name: 'Alice Smith',
   updated: true
 }
-const result = await patch(config, 'doc-123', properties)
+const result = await patchDangerously(config, 'doc-123', properties)
 // result: { ok: true, id: 'doc-123', rev: '2-xyz789' }
 ```
 

@@ -42,10 +42,19 @@ test('patch', async t => {
   const config = { couch: 'http://localhost:5984' }
   const {get, put, patch } = await setup([])
   const doc = { _id: 'test2', test: 'test' }
-  await put(config, doc)
-  await patch(config, 'test2', { test: 'test2' })
+  const putResp = await put(config, doc)
+  await patch(config, 'test2', { test: 'test2', _rev: putResp.rev })
   const result = await get(config, 'test2')
   t.deepEqual(result.test, 'test2')
+})
+
+test('patch conflict', async t => {
+  const config = { couch: 'http://localhost:5984' }
+  const {get, put, patch } = await setup([])
+  const doc = { _id: 'test2-patch', test: 'test' }
+  const putResp = await put(config, doc)
+  const patchResp = await patch(config, 'test2-patch', { test: 'test2', _rev: 'fake_rev'})
+  t.deepEqual(patchResp.statusCode, 409)
 })
 
 test('query', async t => {
