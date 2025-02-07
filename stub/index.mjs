@@ -56,16 +56,12 @@ export const setup = async (designDocs) => {
 
   const get = CouchGet.implement(async (_config, id) => await db.get(id))
 
-  const patch = Patch.implement(async (_config, id, operations) => {
+  const patch = Patch.implement(async (_config, id, properties) => {
     const doc = await db.get(id)
-    operations.forEach(op => {
-      if (op.op === 'add' || op.op === 'replace') {
-        set(doc, op.path, op.value)
-      } else if (op.op === 'remove') {
-        unset(doc, op.path)
-      }
-    })
-    return await db.put(doc)
+    const updatedDoc = { ...doc, ...properties }
+    const results = await db.put(updatedDoc)
+    results.statusCode = 200
+    return results
   })
 
   const bulkRemove = BulkRemove.implement(async (_config, ids) => {
@@ -74,9 +70,7 @@ export const setup = async (designDocs) => {
       ...doc,
       _deleted: true
     }))
-    console.log('doing the delte', deleteDocs)
     const results = await db.bulkDocs(deleteDocs)
-    console.log('results', results)
     return results
   })
 

@@ -34,7 +34,7 @@
   },
   "homepage": "https://github.com/ryanramae/hide-a-bed#readme",
   "dependencies": {
-    "hide-a-bed": "^4.0.1",
+    "hide-a-bed": "^4.0.3",
     "lodash": "^4.17.21",
     "pouchdb": "^9.0.0",
     "pouchdb-adapter-memory": "^9.0.0"
