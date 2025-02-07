@@ -1,5 +1,6 @@
 // @ts-check
 import needle from 'needle'
+import { CouchConfig } from '../schema/config.mjs'
 import { queryString } from './query.mjs'
 import { RetryableError } from './errors.mjs'
 import { createLogger } from './logger.mjs'
@@ -7,8 +8,9 @@ import { createLogger } from './logger.mjs'
 import JSONStream from 'JSONStream'
 
 /** @type { import('../schema/stream.mjs').SimpleViewQueryStreamSchema } queryStream */
-export const queryStream = (config, view, options, onRow) => new Promise((resolve, reject) => {
-
+export const queryStream = (rawConfig, view, options, onRow) => new Promise((resolve, reject) => {
+  const config = CouchConfig.parse(rawConfig)
+  const logger = createLogger(config)
   if (!options) options = {}
 
   const qs = queryString(options, ['key', 'startkey', 'endkey', 'reduce', 'group', 'group_level', 'stale', 'limit'])
