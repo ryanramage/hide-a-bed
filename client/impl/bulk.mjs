@@ -1,6 +1,6 @@
 // @ts-check
 import needle from 'needle'
-import { BulkSave, BulkGet, BulkRemove } from '../schema/bulk.mjs'
+import { BulkSave, BulkGet, BulkRemove, BulkGetDictionary } from '../schema/bulk.mjs'
 import { RetryableError } from './errors.mjs'
 import { createLogger } from './logger.mjs'
 import { CouchDoc } from '../schema/crud.mjs'
@@ -84,6 +84,8 @@ export const bulkGet = BulkGet.implement(async (config, ids) => {
   return body
 })
 
+// sugar methods
+
 /** @type { import('../schema/bulk.mjs').BulkRemoveSchema } */
 export const bulkRemove = BulkRemove.implement(async (config, ids) => {
   const logger = createLogger(config)
@@ -102,4 +104,27 @@ export const bulkRemove = BulkRemove.implement(async (config, ids) => {
     }
   })
   return bulkSave(config, toRemove)
+})
+
+/** @type { import('../schema/bulk.mjs').BulkGetDictionarySchema } */
+export const bulkGetDictionary = BulkGetDictionary.implement(async (config, ids) => {
+  const resp = await bulkGet(config, ids)
+
+  /** @type { import('../schema/bulk.mjs').BulkGetDictionaryResponseSchema } results */
+  const results = { found: {}, notFound: {} }
+
+  resp.rows.forEach(
+    /** @param { import('../schema/query.mjs').ViewRowSchema } row */
+    row => {
+      if (!row.id) return
+      if (row.error) results.notFound[row.id] = row
+      try {
+      /** @type { import('../schema/crud.mjs').CouchDocSchema } doc */
+        const doc = CouchDoc.parse(row.doc)
+        results.found[doc._id] = doc
+      } catch (e) {
+        results.notFound[row.id] = row
+      }
+    })
+  return results
 })

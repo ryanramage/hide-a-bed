@@ -5,8 +5,11 @@ export const ViewRow = z.object({
   id: z.string().optional(),
   key: z.any().nullable(),
   value: z.any().nullable(),
-  doc: z.object({}).passthrough().optional()
+  doc: z.object({}).passthrough().optional(),
+  error: z.string().optional().describe('usually not_found, if something is wrong with this doc')
 })
+/** @typedef { z.infer<typeof ViewRow> } ViewRowSchema */
+
 export const SimpleViewQueryResponse = z.object({
   error: z.string().optional().describe('if something is wrong'),
   rows: z.array(ViewRow)

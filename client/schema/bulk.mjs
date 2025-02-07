@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { CouchConfig } from './config.mjs'
-import { SimpleViewQueryResponse } from './query.mjs'
+import { SimpleViewQueryResponse, ViewRow } from './query.mjs'
 import { CouchDoc } from './crud.mjs'
 
 export const BulkSaveResponseSchema = z.array(z.object({
@@ -44,3 +44,31 @@ export const BulkRemoveBound = z.function().args(
   z.array(z.string().describe('the ids to delete'))
 ).returns(z.promise(BulkSaveResponseSchema))
 /** @typedef { z.infer<typeof BulkRemoveBound> } BulkRemoveBoundSchema */
+
+export const BulkGetDictionaryResponse = z.object({
+  found: z.record(z.string(), CouchDoc),
+  notFound: z.record(z.string(), ViewRow)
+})
+/** @typedef { z.infer<typeof BulkGetDictionaryResponse> } BulkGetDictionaryResponseSchema */
+
+export const BulkGetDictionary = z.function().args(
+  CouchConfig,
+  z.array(z.string().describe('the ids to get'))
+).returns(z.promise(BulkGetDictionaryResponse))
+/** @typedef { z.infer<typeof BulkGetDictionary> } BulkGetDictionarySchema */
+
+export const BulkGetDictionaryBound = z.function().args(
+  z.array(z.string().describe('the ids to get'))
+).returns(z.promise(BulkGetDictionaryResponse))
+/** @typedef { z.infer<typeof BulkGetDictionaryBound> } BulkGetDictionaryBoundSchema */
+
+export const BulkSaveTransaction = z.function().args(
+  CouchConfig,
+  z.array(z.object(CouchDoc))
+).returns(z.promise(BulkSaveResponseSchema))
+/** @typedef { z.infer<typeof BulkSaveTransaction> } BulkSaveTransactionSchema */
+
+export const BulkSaveTransactionBound = z.function().args(
+  z.array(z.object(CouchDoc))
+).returns(z.promise(BulkSaveResponseSchema))
+/** @typedef { z.infer<typeof BulkSaveTransactionBound> } BulkSaveTransactionBoundSchema */
