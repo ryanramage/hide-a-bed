@@ -16,7 +16,7 @@ test('basic', async t => {
 test('bulk', async t => {
   const config = { couch: 'http://localhost:5984' }
   const {bulkGet, bulkSave, bulkRemove} = await setup([])
-  const docs = [{ _id: 'test1', test: 'test1' }, { _id: 'test2', test: 'test2' }]
+  const docs = [{ _id: 'test1', test: 'test1' }, { _id: 'test2', test: 'test2' }, { _id: 'test3', test: 'test3' }]
   const resp = await bulkSave(config, docs)
   t.ok(resp[0].ok)
   t.ok(resp[1].ok)
@@ -27,6 +27,15 @@ test('bulk', async t => {
   t.deepEqual(result2.length, 2)
   t.notOk(result2[0])
   t.notOk(result2[1])
+})
+
+test('bulkGet can have holes of null for missing docs', async t => {
+  const config = { couch: 'http://localhost:5984' }
+  const { bulkGet } = await setup([])
+  const result = await bulkGet(config, ['test1332', 'test3'])
+  t.ok(result)
+  t.notOk(result[0])
+  t.ok(result[1])
 })
 
 test('patch', async t => {

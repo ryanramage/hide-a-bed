@@ -32,8 +32,12 @@ export const setup = async (designDocs) => {
   const bulkGet = BulkGet.implement(async (_config, ids) => {
     const options = { include_docs: true, keys: ids }
     const resp = await db.allDocs(options)
-    const docs = resp.rows.map(row => row.doc)
-    return docs
+    const results = []
+    resp.rows.forEach(row => {
+      if (row.error || !row.doc) results.push(null)
+      else results.push(row.doc)
+    })
+    return results
   })
 
   const put = CouchPut.implement(async (_config, doc) => {
