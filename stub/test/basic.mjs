@@ -21,7 +21,7 @@ test('bulk', async t => {
   t.ok(resp[0].ok)
   t.ok(resp[1].ok)
   const result = await bulkGet(config, ['test1', 'test2'])
-  t.deepEqual(result[0]._id, docs[0]._id)
+  t.deepEqual(result[0]._id, docs[0]._id) 
   await bulkRemove(config, ['test1', 'test2'])
   const result2 = await bulkGet(config, ['test1', 'test2'])
   t.deepEqual(result2.length, 2)
@@ -41,7 +41,18 @@ test('patch', async t => {
 
 test('query', async t => {
   const config = { couch: 'http://localhost:5984' }
-  const {query} = await setup([])
-  
+  const {query, bulkSave} = await setup([viewDoc])
+  // put some docs in
+  const docs = [
+    { _id: 'test6', test: 'test1' }, 
+    { _id: 'test7', test: 'test2', application: { email: 'test@test.com' } },
+    { _id: 'test8', test: 'test3' }
+  ]
+  await bulkSave(config, docs)
+  const view = '_design/submission/_view/by_email'
+  const options = { include_docs: true }
 
+  const results = await query(config, view, options)
+  t.deepEqual(results.rows.length, 1)
+  t.deepEqual(results.rows[0].doc._id, 'test7')
 })

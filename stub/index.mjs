@@ -25,7 +25,8 @@ export const setup = async (designDocs) => {
   }
 
   const bulkSave = BulkSave.implement(async (_config, docs) => {
-    return await db.bulkDocs(docs)
+    const results =  await db.bulkDocs(docs)
+    return results
   })
 
   const bulkGet = BulkGet.implement(async (_config, ids) => {
@@ -41,7 +42,7 @@ export const setup = async (designDocs) => {
     return result
   })
 
-  const simpleViewQuery = SimpleViewQuery.implement(async (_config, view, options) => {
+  const query = SimpleViewQuery.implement(async (_config, view, options) => {
     const query = cloneDeep(options)
     // views com in full couch views, convert to pouch '_design/tick/_view/byDripTS'
     const parts = view.split('/')
@@ -89,7 +90,7 @@ export const setup = async (designDocs) => {
     return results
   })
 
-  return { bulkSave, bulkGet, put, get, patch, bulkRemove, simpleViewQuery, queryStream }
+  return { bulkSave, bulkGet, put, get, patch, bulkRemove, query, queryStream }
 }
 
 function convert (designDocs) {

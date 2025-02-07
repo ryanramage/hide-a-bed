@@ -1,5 +1,5 @@
 var ddoc = {
-  _id: "_design/submission-people",
+  _id: "_design/submission",
   views: {},
 };
 
