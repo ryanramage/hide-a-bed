@@ -91,7 +91,7 @@ export const setup = async (designDocs) => {
     for (const row of results.rows) {
       await onRow(row)
     }
-    return results
+    
   })
 
   return { bulkSave, bulkGet, put, get, patch, bulkRemove, query, queryStream }

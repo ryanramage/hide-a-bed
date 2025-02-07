@@ -65,3 +65,18 @@ test('query', async t => {
   t.deepEqual(results.rows.length, 1)
   t.deepEqual(results.rows[0].doc._id, 'test7')
 })
+
+test('queryStream', async t => {
+  const config = { couch: 'http://localhost:5984' }
+  const {queryStream} = await setup([viewDoc])
+  const view = '_design/submission/_view/by_email'
+  const options = { include_docs: true }
+  let rowCount = 0
+  const onRow = (row) => {
+    rowCount++
+    t.ok(row.doc._id === 'test7')
+  }
+  await queryStream(config, view, options, onRow)
+  t.ok(rowCount === 1)
+
+})
