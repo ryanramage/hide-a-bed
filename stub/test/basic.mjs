@@ -2,7 +2,7 @@ import { test } from 'tape'
 import { setup } from '../index.mjs'
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
-const viewDoc = require('./assets/viewDocs.js');
+const viewDoc = require('./assets/viewDocs.cjs');
 
 test('basic', async t => {
   const config = { couch: 'http://localhost:5984' }
