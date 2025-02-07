@@ -1,6 +1,6 @@
 // @ts-check
 import needle from 'needle'
-import { BulkSave, BulkGet, BulkRemove, BulkGetDictionary } from '../schema/bulk.mjs'
+import { BulkSave, BulkGet, BulkRemove, BulkGetDictionary, BulkSaveTransaction } from '../schema/bulk.mjs'
 import { RetryableError } from './errors.mjs'
 import { createLogger } from './logger.mjs'
 import { CouchDoc } from '../schema/crud.mjs'
@@ -129,4 +129,9 @@ export const bulkGetDictionary = BulkGetDictionary.implement(async (config, ids)
       }
     })
   return results
+})
+
+/** @type { import('../schema/bulk.mjs').BulkSaveTransactionSchema } bulkSaveTransaction */
+export const bulkSaveTransaction = BulkSaveTransaction.implement(async (config, transcationId, docs) => {
+
 })
