@@ -1,6 +1,6 @@
 // @ts-check */
 import { bulkGet, bulkSave, bulkRemove } from './impl/bulk.mjs'
-import { get, put } from './impl/crud.mjs'
+import { get, put, getAtRev } from './impl/crud.mjs'
 import { patch, patchDangerously } from './impl/patch.mjs'
 import { query } from './impl/query.mjs'
 import { queryStream } from './impl/stream.mjs'
@@ -11,7 +11,7 @@ import { CouchConfig } from './schema/config.mjs'
 import { SimpleViewQuery, SimpleViewQueryResponse } from './schema/query.mjs'
 import { SimpleViewQueryStream, OnRow } from './schema/stream.mjs'
 import { Patch, PatchDangerously } from './schema/patch.mjs'
-import { CouchDoc, CouchDocResponse, CouchPut, CouchGet } from './schema/crud.mjs'
+import { CouchDoc, CouchDocResponse, CouchPut, CouchGet, CouchGetAtRev } from './schema/crud.mjs'
 import { Bind } from './schema/bind.mjs'
 
 const schema = {
@@ -28,7 +28,8 @@ const schema = {
   CouchDoc,
   CouchDocResponse,
   Patch,
-  PatchDangerously
+  PatchDangerously,
+  CouchGetAtRev
 }
 
 /** @type { import('./schema/bind.mjs').BindSchema } */
@@ -45,6 +46,7 @@ const bindConfig = Bind.implement((
 
   return {
     get: config.bindWithRetry ? withRetry(get.bind(null, config), retryOptions) : get.bind(null, config),
+    getAtRev: config.bindWithRetry ? withRetry(getAtRev.bind(null, config), retryOptions) : getAtRev.bind(null, config),
     put: config.bindWithRetry ? withRetry(put.bind(null, config), retryOptions) : put.bind(null, config),
     patch: config.bindWithRetry ? withRetry(patch.bind(null, config), retryOptions) : patch.bind(null, config),
     patchDangerously: patchDangerously.bind(null, config), // patchDangerously not included in retry
@@ -58,6 +60,7 @@ const bindConfig = Bind.implement((
 
 export {
   get,
+  getAtRev,
   put,
   patch,
   patchDangerously,
