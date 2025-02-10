@@ -1,6 +1,6 @@
 // @ts-check
 import needle from 'needle'
-import { CouchGet, CouchPut } from '../schema/crud.mjs'
+import { CouchGet, CouchPut, CouchGetWithOptions, CouchGetAtRev } from '../schema/crud.mjs'
 import { RetryableError } from './errors.mjs'
 import { createLogger } from './logger.mjs'
 
@@ -11,11 +11,13 @@ const opts = {
   }
 }
 
-/** @type { import('../schema/crud.mjs').CouchGetSchema } */
-export const get = CouchGet.implement(async (config, id) => {
+/** @type { import('../schema/crud.mjs').CouchGetWithOptionsSchema } */
+const _getWithOptions = CouchGetWithOptions.implement(async (config, id, getOpts) => {
   const logger = createLogger(config)
-  const url = `${config.couch}/${id}`
-  logger.info(`Getting document with id: ${id}`)
+  const rev = getOpts?.rev
+  const path = rev ? `${id}?rev=${rev}` : id
+  const url = `${config.couch}/${path}`
+  logger.info(`Getting document with id: ${id}, rev ${rev || 'latest'}`)
 
   try {
     const resp = await needle('get', url, opts)
@@ -30,10 +32,10 @@ export const get = CouchGet.implement(async (config, id) => {
     const result = resp?.body || {}
     if (resp.statusCode === 404) {
       if (config.throwOnGetNotFound) {
-        logger.warn(`Document not found (throwing error): ${id}`)
+        logger.warn(`Document not found (throwing error): ${id}, rev ${rev || 'latest'}`)
         throw new Error(result.reason || 'not_found')
       } else {
-        logger.debug(`Document not found (returning undefined): ${id}`)
+        logger.debug(`Document not found (returning undefined): ${id}, rev ${rev || 'latest'}`)
         return undefined
       }
     }
@@ -45,12 +47,24 @@ export const get = CouchGet.implement(async (config, id) => {
       logger.error(`Unexpected status code: ${resp.statusCode}`)
       throw new Error(result.reason || 'failed')
     }
-    logger.info(`Successfully retrieved document: ${id}`)
+    logger.info(`Successfully retrieved document: ${id}, rev ${rev || 'latest'}`)
     return result
   } catch (err) {
     logger.error('Error during get operation:', err)
     RetryableError.handleNetworkError(err)
   }
+})
+
+/** @type { import('../schema/crud.mjs').CouchGetSchema } */
+export const get = CouchGet.implement(async (config, id) => {
+  const getOptions = {}
+  return _getWithOptions(config, id, getOptions)
+})
+
+/** @type { import('../schema/crud.mjs').CouchGetAtRevSchema } */
+export const getAtRev = CouchGetAtRev.implement(async (config, id, rev) => {
+  const getOptions = { rev }
+  return _getWithOptions(config, id, getOptions)
 })
 
 /** @type { import('../schema/crud.mjs').CouchPutSchema } */
