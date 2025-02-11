@@ -139,6 +139,7 @@ export const bulkSaveTransaction = BulkSaveTransaction.implement(async (config, 
   // Create transaction document
   const txnDoc = {
     _id: `txn:${transactionId}`,
+    _rev: null,
     type: 'transaction',
     status: 'pending',
     changes: docs,
@@ -147,42 +148,53 @@ export const bulkSaveTransaction = BulkSaveTransaction.implement(async (config, 
 
   // Save transaction document
   const url = `${config.couch}/${txnDoc._id}`
-  let resp = await needle('put', url, txnDoc, opts)
-  if (resp.statusCode !== 201) {
+  let txnresp = await needle('put', url, txnDoc, opts)
+  if (txnresp.statusCode !== 201) {
     throw new Error('Failed to create transaction document')
   }
 
   // Get current revisions of all documents
-  const existingDocs = await bulkGet(config, docs.map(d => d._id))
-  const currentDocs = {}
-  existingDocs.rows.forEach(row => {
-    if (row.doc) currentDocs[row.id] = row.doc
+  const existingDocs = await bulkGetDictionary(config, docs.map(d => d._id))
+
+  const revErrors = []
+  // if any of the existingDocs, and the docs provided dont match on rev, then throw an error
+  docs.forEach(d => {
+    if (existingDocs.found[d._id] && existingDocs.found[d._id]._rev !== d._rev) revErrors.push(d._id)
   })
 
-  // Prepare updates with correct revisions
-  const updates = docs.map(doc => {
-    const current = currentDocs[doc._id]
-    if (current) {
-      return { ...doc, _rev: current._rev }
-    }
-    return doc
-  })
+  if (revErrors.length > 0) {
+    throw new Error(`Revision mismatch for documents: ${revErrors.join(', ')}`)
+  }
+
+  const providedDocsById = {}
+  docs.forEach(d => providedDocsById[d._id] = d)
+  const newDocsToRollback = []
+  const potentialExistingDocsToRollack = []
+  const failedDocs = []
 
   try {
     // Apply updates
-    const results = await bulkSave(config, updates)
+    const results = await bulkSave(config, docs)
     
     // Check for failures
-    const failures = results.filter(r => r.error)
-    if (failures.length > 0) {
-      throw new Error('Some updates failed')
+    results.forEach(r => {
+      if (!r.id) return // not enough info
+      if (!r.error) {
+        if (existingDocs.notFound[r.id]) newDocsToRollback.push(r)
+        if (existingDocs.found[r.id]) potentialExistingDocsToRollack.push(r)
+      } else {
+        failedDocs.push(r)
+      }
+    })
+    if (failedDocs.length > 0) {
+      throw new Error(`Failed to save documents: ${failedDocs.map(d => d.id).join(', ')}`)
     }
 
     // Update transaction status to completed
     txnDoc.status = 'completed'
-    txnDoc._rev = resp.body.rev
-    resp = await needle('put', url, txnDoc, opts)
-    if (resp.statusCode !== 201) {
+    txnDoc._rev = txnresp.body.rev
+    txnresp = await needle('put', url, txnDoc, opts)
+    if (txnresp.statusCode !== 201) {
       logger.error('Failed to update transaction status to completed')
     }
 
@@ -192,14 +204,30 @@ export const bulkSaveTransaction = BulkSaveTransaction.implement(async (config, 
     logger.error('Transaction failed, attempting rollback', error)
     
     // Rollback changes
-    const rollback = Object.values(currentDocs)
-    await bulkSave(config, rollback)
+    const toRollback = potentialExistingDocsToRollack.map(row => {
+      const doc = existingDocs.found[row.id]
+      doc._rev = row.rev
+      return doc
+    })
+    newDocsToRollback.forEach(d => {
+      const before = providedDocsById[d.id]
+      before._rev = d.rev
+      d._deleted = true
+      toRollback.push(d)
+    })
+
+    // rollback all the changes
+    const bulkRollbackResult = await bulkSave(config, toRollback)
+    let status = 'rolled_back'
+    bulkRollbackResult.forEach(r => {
+      if (r.error) status = 'rollback_failed'
+    })
 
     // Update transaction status to rolled back
-    txnDoc.status = 'rolled_back'
-    txnDoc._rev = resp.body.rev
-    resp = await needle('put', url, txnDoc, opts)
-    if (resp.statusCode !== 201) {
+    txnDoc.status = status
+    txnDoc._rev = txnresp.body.rev
+    txnresp = await needle('put', url, txnDoc, opts)
+    if (txnresp.statusCode !== 201) {
       logger.error('Failed to update transaction status to rolled_back')
     }
 
