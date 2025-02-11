@@ -156,6 +156,7 @@ export const bulkSaveTransaction = BulkSaveTransaction.implement(async (config, 
   // Get current revisions of all documents
   const existingDocs = await bulkGetDictionary(config, docs.map(d => d._id))
 
+  /** @type {string[]} */
   const revErrors = []
   // if any of the existingDocs, and the docs provided dont match on rev, then throw an error
   docs.forEach(d => {
@@ -166,10 +167,14 @@ export const bulkSaveTransaction = BulkSaveTransaction.implement(async (config, 
     throw new Error(`Revision mismatch for documents: ${revErrors.join(', ')}`)
   }
 
+  /** @type {Record<string, import('../schema/crud.mjs').CouchDocSchema>} */
   const providedDocsById = {}
   docs.forEach(d => providedDocsById[d._id] = d)
+  /** @type {Array<import('../schema/bulk.mjs').BulkSaveResponseRowSchema>} */
   const newDocsToRollback = []
+  /** @type {Array<import('../schema/bulk.mjs').BulkSaveResponseRowSchema>} */
   const potentialExistingDocsToRollack = []
+  /** @type {Array<import('../schema/bulk.mjs').BulkSaveResponseRowSchema>} */
   const failedDocs = []
 
   try {
