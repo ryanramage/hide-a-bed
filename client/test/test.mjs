@@ -6,7 +6,13 @@ import needle from 'needle'
 
 const PORT = 8985
 const DB_URL = `http://localhost:${PORT}/testdb`
-const config = { couch: DB_URL, bindWithRetry: true }
+const config = { 
+  couch: DB_URL, 
+  bindWithRetry: true,
+  logger: (level, ...args) => {
+    console.log(`[${level.toUpperCase()}]`, ...args)
+  }
+}
 
 let server
 test.test('full db tests', async t => {
