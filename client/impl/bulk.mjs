@@ -215,7 +215,7 @@ export const bulkSaveTransaction = BulkSaveTransaction.implement(async (config, 
     logger.error('Transaction failed, attempting rollback', error)
 
     // Rollback changes
-    /** @type {Array<object>} */
+    /** @type {Array<import('../schema/crud.mjs').CouchDocSchema>} */
     const toRollback = []
     potentialExistingDocsToRollack.forEach(row => {
       if (!row.id || !row.rev) return

@@ -14,10 +14,10 @@
     "clean": "(find . -name \"*.mts\" -type f -delete || true) && (find . -name \"*.map\" -type f -delete || true)",
     "build": "npm run clean && tsc && npm run build:cjs",
     "build:cjs": "rm -rf cjs && node build/build.mjs",
-    "test": "standard && tape tests/*.mjs",
+    "test": "node test/test.mjs",
     "lint:fix": "standard --fix",
     "prepublish": "npm run build",
-    "full": "npm test && npm run build && npm run clean"
+    "full": "npm run lint:fix && npm run build && npm run clean"
   },
   "repository": {
     "type": "git",
@@ -44,7 +44,11 @@
     "@types/needle": "^3.3.0",
     "esbuild": "^0.24.2",
     "glob": "^11.0.0",
+    "install": "^0.13.0",
+    "npm": "^11.1.0",
+    "pouchdb-server": "^4.2.0",
     "standard": "17.1.0",
+    "tap": "^21.0.2",
     "tape": "5.8.1",
     "typescript": "5.6.2"
   },

@@ -1,12 +1,12 @@
 // @ts-check */
-import { bulkGet, bulkSave, bulkRemove, bulkGetDictionary } from './impl/bulk.mjs'
+import { bulkGet, bulkSave, bulkRemove, bulkGetDictionary, bulkSaveTransaction } from './impl/bulk.mjs'
 import { get, put, getAtRev } from './impl/crud.mjs'
 import { patch, patchDangerously } from './impl/patch.mjs'
 import { query } from './impl/query.mjs'
 import { queryStream } from './impl/stream.mjs'
 import { createQuery } from './impl/queryBuilder.mjs'
 import { withRetry } from './impl/retry.mjs'
-import { BulkSave, BulkGet, BulkRemove, BulkGetDictionary } from './schema/bulk.mjs'
+import { BulkSave, BulkGet, BulkRemove, BulkGetDictionary, BulkSaveTransaction } from './schema/bulk.mjs'
 import { CouchConfig } from './schema/config.mjs'
 import { SimpleViewQuery, SimpleViewQueryResponse } from './schema/query.mjs'
 import { SimpleViewQueryStream, OnRow } from './schema/stream.mjs'
@@ -24,6 +24,7 @@ const schema = {
   BulkGet,
   BulkRemove,
   BulkGetDictionary,
+  BulkSaveTransaction,
   CouchGet,
   CouchPut,
   CouchDoc,
@@ -57,7 +58,8 @@ const bindConfig = Bind.implement((
     patch: config.bindWithRetry ? withRetry(patch.bind(null, config), retryOptions) : patch.bind(null, config),
     patchDangerously: patchDangerously.bind(null, config), // patchDangerously not included in retry
     bulkRemove: config.bindWithRetry ? withRetry(bulkRemove.bind(null, config), retryOptions) : bulkRemove.bind(null, config),
-    bulkGetDictionary: config.bindWithRetry ? withRetry(bulkGetDictionary.bind(null, config), retryOptions) : bulkGetDictionary.bind(null, config)
+    bulkGetDictionary: config.bindWithRetry ? withRetry(bulkGetDictionary.bind(null, config), retryOptions) : bulkGetDictionary.bind(null, config),
+    bulkSaveTransaction: config.bindWithRetry ? withRetry(bulkSaveTransaction.bind(null, config), retryOptions) : bulkSaveTransaction.bind(null, config)
   }
 })
 
@@ -76,6 +78,7 @@ export {
   patchDangerously,
   bulkRemove,
   bulkGetDictionary,
+  bulkSaveTransaction,
 
   bindConfig,
   withRetry,

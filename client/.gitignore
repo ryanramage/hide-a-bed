@@ -5,4 +5,6 @@ temp/
 *.mts
 *.mts.map
 .DS_Store
-
+log.txt
+*.tap
+config.json

@@ -1,44 +1,57 @@
-import tap from "tap";
-import { spawn } from "child_process";
-import { bindConfig } from '../index.mjs'
-import needle from 'needle';
+import test from 'tap'
+import { spawn } from 'child_process'
+import { bindConfig, bulkSaveTransaction } from '../index.mjs'
+import needle from 'needle'
 
-const PORT = 8984;
-const DB_URL = `http://localhost:${PORT}/testdb`;
-let server;
+const PORT = 8985
+const DB_URL = `http://localhost:${PORT}/testdb`
+const config = { couch: DB_URL, bindWithRetry: true }
 
-tap.before(async () => {
-  console.log("Starting PouchDB Server...");
+let server
+test.test('full db tests', async t => {
+  console.log('Starting PouchDB Server...')
+  server = spawn('node_modules/.bin/pouchdb-server', ['--in-memory', '--port', PORT.toString()], { stdio: 'inherit' })
+  await new Promise((resolve) => setTimeout(resolve, 1000)) // Give it time to start
+  await needle('put', DB_URL)
+  console.log('PouchDB Server started and database created at', DB_URL)
+  t.teardown(() => { server.kill() })
 
-  server = spawn("pouchdb-server", ["--in-memory", "--port", PORT.toString()], {
-    stdio: "inherit",
-  });
-
-  await new Promise((resolve) => setTimeout(resolve, 6000)); // Give it time to start
-
-  // Create the test database
-  const response = await needle('put', DB_URL);
-  if (response.statusCode !== 201 && response.statusCode !== 200) {
-    throw new Error(`Failed to create database: ${response.statusMessage}`);
-  }
-
-  console.log("PouchDB Server started and database created at", DB_URL);
-});
-
-tap.test("PouchDB can create and fetch a document", async (t) => {
-  const config = { couch: DB_URL, bindWithRetry: true }
   const db = bindConfig(config)
-
-  console.log('calling')
-  const doc = await db.put({ _id: "testdoc", data: "hello world" });
-  console.log(doc)
-  t.ok(doc.ok, "Document created");
-
-  const fetched = await db.get("testdoc");
-  t.equal(fetched.data, "hello world", "Fetched document matches");
-});
-
-tap.after(() => {
-  console.log("Shutting down PouchDB Server...");
-  server.kill();
-});
+  t.test('simple get/put', async t => {
+    const doc = await db.put({ _id: 'testdoc', data: 'hello world' })
+    t.ok(doc.ok, 'Document created')
+    const fetched = await db.get('testdoc')
+    t.equal(fetched.data, 'hello world', 'Fetched document matches')
+    t.end()
+  })
+  let _rev
+  t.test('a transaction', async t => {
+    const docs = [{ _id: 'a', data: 'somethig' }]
+    const resp = await bulkSaveTransaction(config, 'fsda', docs)
+    t.equal(resp.length, 1, 'one response')
+    t.equal(resp[0].ok, true, 'response ok')
+    _rev = resp[0].rev
+    t.ok(resp)
+    t.end()
+  })
+  t.test('a transaction with a bad initial rev', async t => {
+    try {
+      const docs = [{ _id: 'a', data: 'somethig' }, { _id: 'b', data: 'new doc' }]
+      await bulkSaveTransaction(config, 'fsda-1', docs)
+      t.fail('should have thrown')
+    } catch (e) {
+      t.ok(e)
+      t.end()
+    }
+  })
+  t.test('a new and an existing doc', async t => {
+    const docs = [{ _id: 'a', data: 'somethig', _rev }, { _id: 'b', data: 'new doc' }]
+    const resp = await bulkSaveTransaction(config, 'fsda-2', docs)
+    t.ok(resp)
+    t.equal(resp.length, 2, 'one response')
+    t.equal(resp[0].ok, true, 'response ok')
+    t.equal(resp[1].ok, true, 'response ok')
+    t.ok(resp[0].rev.startsWith('2-'), 'second rev saved')
+    t.end()
+  })
+})

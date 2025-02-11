@@ -17,12 +17,12 @@ export const BulkSaveResponseSchema = z.array(BulkSaveRow)
 
 export const BulkSave = z.function().args(
   CouchConfig,
-  z.array(z.object(CouchDoc))
+  z.array(CouchDoc)
 ).returns(z.promise(BulkSaveResponseSchema))
 /** @typedef { z.infer<typeof BulkSave> } BulkSaveSchema */
 
 export const BulkSaveBound = z.function().args(
-  z.array(z.object(CouchDoc))
+  z.array(CouchDoc)
 ).returns(z.promise(BulkSaveResponseSchema))
 /** @typedef { z.infer<typeof BulkSaveBound> } BulkSaveBoundSchema */
 
