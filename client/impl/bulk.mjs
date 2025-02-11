@@ -1,9 +1,11 @@
 // @ts-check
+import { EventEmitter } from 'events'
 import needle from 'needle'
 import { BulkSave, BulkGet, BulkRemove, BulkGetDictionary, BulkSaveTransaction } from '../schema/bulk.mjs'
 import { RetryableError } from './errors.mjs'
 import { createLogger } from './logger.mjs'
 import { CouchDoc } from '../schema/crud.mjs'
+import { setupEmitter } from './trackedEmitter.mjs'
 
 const opts = {
   json: true,
@@ -134,6 +136,8 @@ export const bulkGetDictionary = BulkGetDictionary.implement(async (config, ids)
 
 /** @type { import('../schema/bulk.mjs').BulkSaveTransactionSchema } bulkSaveTransaction */
 export const bulkSaveTransaction = BulkSaveTransaction.implement(async (config, transactionId, docs) => {
+  /** @type {EventEmitter} emitter */
+  const emitter = setupEmitter(config)
   const logger = createLogger(config)
   logger.info(`Starting bulk save transaction ${transactionId} for ${docs.length} documents`)
 
@@ -150,12 +154,14 @@ export const bulkSaveTransaction = BulkSaveTransaction.implement(async (config, 
   // Save transaction document
   const url = `${config.couch}/${txnDoc._id}`
   let txnresp = await needle('put', url, txnDoc, opts)
+  await emitter.emit('transaction-created', { txnresp, txnDoc })
   if (txnresp.statusCode !== 201) {
     throw new Error('Failed to create transaction document')
   }
 
   // Get current revisions of all documents
   const existingDocs = await bulkGetDictionary(config, docs.map(d => d._id))
+  await emitter.emit('transaction-revs-fetched', existingDocs)
 
   /** @type {string[]} */
   const revErrors = []
@@ -167,6 +173,7 @@ export const bulkSaveTransaction = BulkSaveTransaction.implement(async (config, 
   if (revErrors.length > 0) {
     throw new Error(`Revision mismatch for documents: ${revErrors.join(', ')}`)
   }
+  await emitter.emit('transaction-revs-checked', existingDocs)
 
   /** @type {Record<string, import('../schema/crud.mjs').CouchDocSchema>} providedDocsById */
   const providedDocsById = {}
@@ -185,8 +192,10 @@ export const bulkSaveTransaction = BulkSaveTransaction.implement(async (config, 
   const failedDocs = []
 
   try {
+    await emitter.emit('transaction-started', txnDoc)
     // Apply updates
     const results = await bulkSave(config, docs)
+    await emitter.emit('transaction-updates-applied', results)
 
     // Check for failures
     results.forEach(r => {
@@ -206,6 +215,7 @@ export const bulkSaveTransaction = BulkSaveTransaction.implement(async (config, 
     txnDoc.status = 'completed'
     txnDoc._rev = txnresp.body.rev
     txnresp = await needle('put', url, txnDoc, opts)
+    await emitter.emit('transaction-completed', { txnresp, txnDoc })
     if (txnresp.statusCode !== 201) {
       logger.error('Failed to update transaction status to completed')
     }
@@ -237,11 +247,13 @@ export const bulkSaveTransaction = BulkSaveTransaction.implement(async (config, 
     bulkRollbackResult.forEach(r => {
       if (r.error) status = 'rollback_failed'
     })
+    await emitter.emit('transaction-rolled-back', { bulkRollbackResult, status })
 
     // Update transaction status to rolled back
     txnDoc.status = status
     txnDoc._rev = txnresp.body.rev
     txnresp = await needle('put', url, txnDoc, opts)
+    await emitter.emit('transaction-rolled-back-status', { txnresp, txnDoc })
     if (txnresp.statusCode !== 201) {
       logger.error('Failed to update transaction status to rolled_back')
     }
