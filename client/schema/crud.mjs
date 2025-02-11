@@ -15,6 +15,7 @@ export const CouchDocResponse = z.object({
   id: z.string().optional().describe('the couch doc id'),
   rev: z.string().optional().describe('the new rev of the doc')
 })
+/** @typedef { z.infer<typeof CouchDocResponse> } CouchDocResponseSchema */
 
 export const CouchPut = z.function().args(
   CouchConfig,

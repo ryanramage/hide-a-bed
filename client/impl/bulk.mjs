@@ -118,7 +118,8 @@ export const bulkGetDictionary = BulkGetDictionary.implement(async (config, ids)
     row => {
       if (!row.key) return
       if (row.error) {
-        return results.notFound[row.key] = row
+        results.notFound[row.key] = row
+        return
       }
       try {
       /** @type { import('../schema/crud.mjs').CouchDocSchema } doc */
@@ -167,20 +168,26 @@ export const bulkSaveTransaction = BulkSaveTransaction.implement(async (config, 
     throw new Error(`Revision mismatch for documents: ${revErrors.join(', ')}`)
   }
 
-  /** @type {Record<string, import('../schema/crud.mjs').CouchDocSchema>} */
+  /** @type {Record<string, import('../schema/crud.mjs').CouchDocSchema>} providedDocsById */
   const providedDocsById = {}
-  docs.forEach(d => providedDocsById[d._id] = d)
-  /** @type {Array<import('../schema/bulk.mjs').BulkSaveResponseRowSchema>} */
+  docs.forEach((
+    /** @type {import('../schema/crud.mjs').CouchDocSchema} */ d
+  ) => {
+    if (!d._id) return
+    providedDocsById[d._id] = d
+  })
+
+  /** @type {import('../schema/bulk.mjs').Response} */
   const newDocsToRollback = []
-  /** @type {Array<import('../schema/bulk.mjs').BulkSaveResponseRowSchema>} */
+  /** @type {import('../schema/bulk.mjs').Response} */
   const potentialExistingDocsToRollack = []
-  /** @type {Array<import('../schema/bulk.mjs').BulkSaveResponseRowSchema>} */
+  /** @type {import('../schema/bulk.mjs').Response} */
   const failedDocs = []
 
   try {
     // Apply updates
     const results = await bulkSave(config, docs)
-    
+
     // Check for failures
     results.forEach(r => {
       if (!r.id) return // not enough info
@@ -204,21 +211,24 @@ export const bulkSaveTransaction = BulkSaveTransaction.implement(async (config, 
     }
 
     return results
-
   } catch (error) {
     logger.error('Transaction failed, attempting rollback', error)
-    
+
     // Rollback changes
-    const toRollback = potentialExistingDocsToRollack.map(row => {
+    /** @type {Array<object>} */
+    const toRollback = []
+    potentialExistingDocsToRollack.forEach(row => {
+      if (!row.id || !row.rev) return
       const doc = existingDocs.found[row.id]
       doc._rev = row.rev
-      return doc
+      toRollback.push(doc)
     })
     newDocsToRollback.forEach(d => {
-      const before = providedDocsById[d.id]
+      if (!d.id || !d.rev) return
+      const before = structuredClone(providedDocsById[d.id])
       before._rev = d.rev
-      d._deleted = true
-      toRollback.push(d)
+      before._deleted = true
+      toRollback.push(before)
     })
 
     // rollback all the changes

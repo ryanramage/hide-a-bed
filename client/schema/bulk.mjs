@@ -3,13 +3,16 @@ import { CouchConfig } from './config.mjs'
 import { SimpleViewQueryResponse, ViewRow } from './query.mjs'
 import { CouchDoc } from './crud.mjs'
 
-export const BulkSaveResponseSchema = z.array(z.object({
+export const BulkSaveRow = z.object({
   ok: z.boolean().nullish(),
   id: z.string().nullish(),
   rev: z.string().nullish(),
   error: z.string().nullish().describe('if an error occured, one word reason, eg conflict'),
   reason: z.string().nullish().describe('a full error message')
-}))
+})
+/** @typedef { z.infer<typeof BulkSaveRow> } BulkSaveRowSchema */
+
+export const BulkSaveResponseSchema = z.array(BulkSaveRow)
 /** @typedef { z.infer<typeof BulkSaveResponseSchema> } Response */
 
 export const BulkSave = z.function().args(
@@ -64,11 +67,13 @@ export const BulkGetDictionaryBound = z.function().args(
 
 export const BulkSaveTransaction = z.function().args(
   CouchConfig,
-  z.array(z.object(CouchDoc))
+  z.string().describe('transaction id'),
+  z.array(CouchDoc)
 ).returns(z.promise(BulkSaveResponseSchema))
 /** @typedef { z.infer<typeof BulkSaveTransaction> } BulkSaveTransactionSchema */
 
 export const BulkSaveTransactionBound = z.function().args(
-  z.array(z.object(CouchDoc))
+  z.string().describe('transaction id'),
+  z.array(CouchDoc)
 ).returns(z.promise(BulkSaveResponseSchema))
 /** @typedef { z.infer<typeof BulkSaveTransactionBound> } BulkSaveTransactionBoundSchema */
