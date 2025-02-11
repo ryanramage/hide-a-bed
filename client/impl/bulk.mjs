@@ -1,5 +1,4 @@
 // @ts-check
-import { EventEmitter } from 'events'
 import needle from 'needle'
 import { BulkSave, BulkGet, BulkRemove, BulkGetDictionary, BulkSaveTransaction } from '../schema/bulk.mjs'
 import { RetryableError } from './errors.mjs'
@@ -136,7 +135,6 @@ export const bulkGetDictionary = BulkGetDictionary.implement(async (config, ids)
 
 /** @type { import('../schema/bulk.mjs').BulkSaveTransactionSchema } bulkSaveTransaction */
 export const bulkSaveTransaction = BulkSaveTransaction.implement(async (config, transactionId, docs) => {
-  /** @type {EventEmitter} emitter */
   const emitter = setupEmitter(config)
   const logger = createLogger(config)
   logger.info(`Starting bulk save transaction ${transactionId} for ${docs.length} documents`)

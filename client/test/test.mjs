@@ -45,7 +45,7 @@ test.test('full db tests', async t => {
       t.end()
     }
   })
-  let b_rev = null
+  let brev = null
   t.test('a new and an existing doc', async t => {
     const docs = [{ _id: 'a', data: 'somethig', _rev }, { _id: 'b', data: 'new doc' }]
     const resp = await bulkSaveTransaction(config, 'fsda-2', docs)
@@ -53,7 +53,7 @@ test.test('full db tests', async t => {
     t.equal(resp.length, 2, 'one response')
     t.equal(resp[0].ok, true, 'response ok')
     _rev = resp[0].rev
-    b_rev = resp[1].rev
+    brev = resp[1].rev
     t.equal(resp[1].ok, true, 'response ok')
     t.ok(resp[0].rev.startsWith('2-'), 'second rev saved')
     t.end()
@@ -65,9 +65,9 @@ test.test('full db tests', async t => {
     const emitter = new TrackedEmitter({ delay: 300 })
     config._emitter = emitter
     const docs = [
-      { _id: 'a', data: 'before-rollback', _rev },  // this doc gets interfered with in-between commit - so will be 'interfered'
+      { _id: 'a', data: 'before-rollback', _rev }, // this doc gets interfered with in-between commit - so will be 'interfered'
       { _id: 'rollback2', data: 'new doc' }, // this doc will get removed
-      { _id: 'b', _rev: b_rev , data: 'should-not-be' } // this will not be committed. result will be from b doc above 'new doc'
+      { _id: 'b', _rev: brev, data: 'should-not-be' } // this will not be committed. result will be from b doc above 'new doc'
     ]
     emitter.on('transaction-started', async txnDoc => {
       t.equal(txnDoc._id, 'txn:fsda-3', 'transaction id matches')
@@ -82,7 +82,7 @@ test.test('full db tests', async t => {
     } catch (e) {
       t.ok(e)
 
-      // lets make sure doc a has data from before, and 
+      // lets make sure doc a has data from before, and
       const finalDocs = await db.bulkGet(['a', 'rollback2', 'b'])
       t.equal(finalDocs.rows.length, 3, 'two rows returned')
       t.equal(finalDocs.rows[0].doc.data, 'interfered', 'doc has the intereferd data')
