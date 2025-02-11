@@ -13,8 +13,7 @@ export class TrackedEmitter extends EventEmitter {
 
     return new Promise((resolve) => {
       if (!listeners || listeners.length === 0) {
-        if (!this.delay) resolve()
-        setTimeout(resolve, this.delay)
+        return resolve() // no listeners? no delay
       }
       listeners.forEach((listener) => {
         listener(...args)
