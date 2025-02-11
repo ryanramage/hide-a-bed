@@ -1,6 +1,7 @@
 import tap from "tap";
 import { spawn } from "child_process";
 import { bindConfig } from '../index.mjs'
+import needle from 'needle';
 
 const PORT = 8984;
 const DB_URL = `http://localhost:${PORT}/testdb`;
@@ -15,7 +16,13 @@ tap.before(async () => {
 
   await new Promise((resolve) => setTimeout(resolve, 6000)); // Give it time to start
 
-  console.log("PouchDB Server started on", DB_URL);
+  // Create the test database
+  const response = await needle('put', DB_URL);
+  if (response.statusCode !== 201 && response.statusCode !== 200) {
+    throw new Error(`Failed to create database: ${response.statusMessage}`);
+  }
+
+  console.log("PouchDB Server started and database created at", DB_URL);
 });
 
 tap.test("PouchDB can create and fetch a document", async (t) => {
