@@ -34,7 +34,7 @@ Get a single document by ID.
    * `couch` URL string
    * `throwOnGetNotFound` default false. If true, 404 docs throw
 - `id`: Document ID string
-- Returns: Promise resolving to document object or undefined if not found
+- Returns: Promise resolving to document object or null if not found
 
 ```javascript
 const config = { couch: 'http://localhost:5984/mydb' }
@@ -68,6 +68,11 @@ const doc = {
 }
 const result = await put(config, doc)
 // result: { ok: true, id: 'doc-123', rev: '1-abc123' }
+
+// imaginary rev returns a conflict
+const doc = { _id: 'notThereDoc', _rev: '32-does-not-compute'}
+const result2 = await db.put(doc)
+console.log(result2) // { ok: false, error: 'conflict', statusCode: 409 }
 ```
 
 #### patch(config, id, properties)
@@ -152,13 +157,16 @@ Get multiple documents by ID.
 - `ids`: Array of document ID strings
 - Returns: Promise resolving to array of documents
 
+Not found documents will still have a row in the results, but the doc will be null, and the error property will be set
+
 ```javascript
 const config = { couch: 'http://localhost:5984/mydb' }
-const ids = ['doc1', 'doc2']
+const ids = ['doc1', 'doc2', 'doesNotExist']
 const docs = await bulkGet(config, ids)
 // docs: [
 //   { _id: 'doc1', _rev: '1-abc123', type: 'user', name: 'Alice' },
-//   { _id: 'doc2', _rev: '1-def456', type: 'user', name: 'Bob' }
+//   { _id: 'doc2', _rev: '1-def456', type: 'user', name: 'Bob' },
+//   { key: 'notThereDoc', error: 'not_found' }
 // ]
 ```
 

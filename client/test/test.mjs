@@ -47,6 +47,23 @@ test.test('full db tests', async t => {
       t.end()
     }
   })
+  t.test('put with bad rev', async t => {
+    const doc = { _id: 'notThereDoc', _rev: '32-does-not-compute'}
+    const notThereDoc = await db.put(doc)
+    t.notOk(notThereDoc.ok)
+    t.equal(notThereDoc.error, 'conflict')
+    console.log(notThereDoc)
+    t.end()
+  })
+  t.test('bulk get, including one doc that does not exist', async t => {
+    const results = await db.bulkGet(['testdoc', 'notThereDoc'])
+    t.equal(results.rows.length, 2, 'two rows returned')
+    t.equal(results.rows[0].id, 'testdoc')
+    t.equal(results.rows[1].error, 'not_found')
+    console.log(results)
+    t.end()
+
+  })
   let _rev
   t.test('a transaction', async t => {
     const docs = [{ _id: 'a', data: 'somethig' }]
