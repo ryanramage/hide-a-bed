@@ -47,7 +47,11 @@ The key to writing testable database code is to use dependency injection. Here's
 // userService.js
 export async function getUserActivity(services, userId) {
   const user = await services.db.get(userId)
-  const query = { startkey: 0, endkey: Date.now() }
+  const query = { 
+        startkey: [userId, 0], 
+        endkey: [userId, Date.now()], 
+        include_docs: true 
+    }
   const activity = await services.db.query('_design/userThings/_view/byTime', query)
   return { user, activity: activity.rows }
 }
