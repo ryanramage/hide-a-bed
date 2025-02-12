@@ -298,8 +298,7 @@ Each operation logs appropriate information at these levels:
 - debug: Detailed operation information
 
 
-Streaming Support
-=================
+Use Cases
 
 Want to stream data from couch? You can with queryStream. It looks identical to query, except you add an extra 'onRow' function
 
