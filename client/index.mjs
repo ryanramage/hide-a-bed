@@ -59,7 +59,7 @@ const bindConfig = Bind.implement((
     patchDangerously: patchDangerously.bind(null, config), // patchDangerously not included in retry
     bulkRemove: config.bindWithRetry ? withRetry(bulkRemove.bind(null, config), retryOptions) : bulkRemove.bind(null, config),
     bulkGetDictionary: config.bindWithRetry ? withRetry(bulkGetDictionary.bind(null, config), retryOptions) : bulkGetDictionary.bind(null, config),
-    bulkSaveTransaction: config.bindWithRetry ? withRetry(bulkSaveTransaction.bind(null, config), retryOptions) : bulkSaveTransaction.bind(null, config)
+    bulkSaveTransaction: bulkSaveTransaction.bind(null, config)
   }
 })
 

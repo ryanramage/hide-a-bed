@@ -1,6 +1,8 @@
 // @ts-check
 import needle from 'needle'
 import { BulkSave, BulkGet, BulkRemove, BulkGetDictionary, BulkSaveTransaction } from '../schema/bulk.mjs'
+import { withRetry } from './retry.mjs'
+import { put } from './crud.mjs'
 import { RetryableError } from './errors.mjs'
 import { createLogger } from './logger.mjs'
 import { CouchDoc } from '../schema/crud.mjs'
@@ -137,6 +139,12 @@ export const bulkGetDictionary = BulkGetDictionary.implement(async (config, ids)
 export const bulkSaveTransaction = BulkSaveTransaction.implement(async (config, transactionId, docs) => {
   const emitter = setupEmitter(config)
   const logger = createLogger(config)
+  const retryOptions = {
+    maxRetries: config.maxRetries ?? 10,
+    initialDelay: config.initialDelay ?? 1000,
+    backoffFactor: config.backoffFactor ?? 2
+  }
+  const _put = config.bindWithRetry ? withRetry(put.bind(null, config), retryOptions) : put.bind(null, config)
   logger.info(`Starting bulk save transaction ${transactionId} for ${docs.length} documents`)
 
   // Create transaction document
@@ -150,9 +158,8 @@ export const bulkSaveTransaction = BulkSaveTransaction.implement(async (config, 
   }
 
   // Save transaction document
-  const url = `${config.couch}/${txnDoc._id}`
-  let txnresp = await needle('put', url, txnDoc, opts)
-  logger.debug('Transaction document created:', txnDoc)
+  let txnresp = await _put(txnDoc)
+  logger.debug('Transaction document created:', txnDoc, txnresp)
   await emitter.emit('transaction-created', { txnresp, txnDoc })
   if (txnresp.statusCode !== 201) {
     throw new Error('Failed to create transaction document')
@@ -216,8 +223,8 @@ export const bulkSaveTransaction = BulkSaveTransaction.implement(async (config, 
 
     // Update transaction status to completed
     txnDoc.status = 'completed'
-    txnDoc._rev = txnresp.body.rev
-    txnresp = await needle('put', url, txnDoc, opts)
+    txnDoc._rev = txnresp.rev
+    txnresp = await _put(txnDoc)
     logger.info('Transaction completed:', txnDoc)
     await emitter.emit('transaction-completed', { txnresp, txnDoc })
     if (txnresp.statusCode !== 201) {
@@ -257,7 +264,7 @@ export const bulkSaveTransaction = BulkSaveTransaction.implement(async (config, 
     // Update transaction status to rolled back
     txnDoc.status = status
     txnDoc._rev = txnresp.body.rev
-    txnresp = await needle('put', url, txnDoc, opts)
+    txnresp = await _put(txnDoc)
     logger.warn('Transaction rollback status updated:', txnDoc)
     await emitter.emit('transaction-rolled-back-status', { txnresp, txnDoc })
     if (txnresp.statusCode !== 201) {
