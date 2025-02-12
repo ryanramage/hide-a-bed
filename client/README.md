@@ -336,9 +336,6 @@ try {
 Query a view with options.
 
 **Parameters:**
-- `config`: Object with couch URL string
-- `view`: View path string (e.g. '_design/doc/_view/name')
-- `options`: Optional object with query parameters
 - `config`: Object with `couch` URL string
 - `view`: View path string (e.g. '_design/doc/_view/name')
 - `options`: Optional object with query parameters:
