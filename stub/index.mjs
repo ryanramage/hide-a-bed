@@ -10,6 +10,7 @@ const {
   BulkGet,
   BulkRemove,
   BulkGetDictionary,
+  BulkSaveTransaction,
   CouchPut,
   CouchGet,
   SimpleViewQuery,
@@ -75,7 +76,7 @@ export const setup = async (designDocs) => {
 
   const bulkRemove = BulkRemove.implement(async (_config, ids) => {
     const resp = await bulkGet(_config, ids)
-    const rows = resp.rows || [] 
+    const rows = resp.rows || []
     const deleteDocs = rows.map(row => ({
       ...row.doc,
       _deleted: true
@@ -105,7 +106,7 @@ export const setup = async (designDocs) => {
   const bulkGetDictionary = BulkGetDictionary.implement(async (_config, ids) => {
     const resp = await bulkGet(_config, ids)
     const results = { found: {}, notFound: {} }
-    
+
     resp.rows.forEach(row => {
       if (!row.key) return
       if (row.error) {
@@ -118,23 +119,35 @@ export const setup = async (designDocs) => {
         results.notFound[row.key] = row
       }
     })
-    
+
     return results
   })
 
-  return { 
-    bulkSave, 
-    bulkGet, 
+  const bulkSaveTransaction = BulkSaveTransaction.implement(async (_config, docs) => {
+    const results = await bulkSave(_config, docs)
+    const errors = results.filter(result => !result.ok)
+    if (errors.length) {
+      const error = new Error('bulkSaveTransaction failed')
+      error.errors = errors
+      throw error
+    }
+    return results
+  })
+
+  return {
+    bulkSave,
+    bulkGet,
     bulkGetDictionary,
-    put, 
-    get, 
-    patch, 
+    bulkSaveTransaction,
+    put,
+    get,
+    patch,
     patchDangerously: patch,
     getAtRev,
     createQuery,
-    bulkRemove, 
-    query, 
-    queryStream 
+    bulkRemove,
+    query,
+    queryStream
   }
 }
 
