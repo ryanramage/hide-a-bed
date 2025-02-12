@@ -5,7 +5,7 @@ import { RewriteImportsPlugin } from './build.rewrite-imports.mjs'
 esbuild
   .build({
     entryPoints: globSync('./**/*.mjs', {
-      ignore: ['./node_modules/**/*', './tests/**/*', './build/**/*']
+      ignore: ['./node_modules/**/*', './test/**/*', './build/**/*']
     }),
     outdir: 'cjs',
     format: 'cjs',
