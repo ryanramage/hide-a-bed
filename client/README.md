@@ -272,6 +272,58 @@ const result = await query(config, view, options)
 // }
 ```
 
+#### queryStream(config, view, options, onRow)
+
+Use Cases *Streaming Data*
+
+Want to stream data from couch? You can with queryStream. It looks identical to query, except you add an extra 'onRow' function
+
+Here is a small hapi example of streaming data from couch to the client as ndjson. 
+We do a small transform by only streaming the doc. you can do a lot of things in the onrow function.
+
+```
+import Hapi from '@hapi/hapi';
+import { Readable } from 'stream';
+import { queryStream } from bindConfig(process.env)
+const view = '_design/users/_view/by_name'
+
+const init = async () => {
+  const server = Hapi.server({ port: 3000 })
+  server.route({
+    method: 'GET',
+    path: '/stream',
+    handler: async (request, h) => {
+      const stream = new Readable({ read() {} });
+      const onRow = ({id, key, value, doc}) => stream.push(JSON.stringify(doc) + '\n')
+      const options = { startkey: req.query.startLetter, endkey: req.query.startLetter + '|', include_docs: true}
+      await queryStream(view, options, onRow)
+      stream.push(null) // end stream
+      return h.response(stream).type('application/x-ndjson');
+    }
+  })
+
+  await server.start();
+  console.log(`Server running on ${server.info.uri}`);
+}
+init()
+```
+advanced config options
+=======================
+
+here are the properties of the config object
+
+```
+  couch: z.string().describe('the url of the couch db'),
+  throwOnGetNotFound: z.boolean().optional().default(false).describe('if a get is 404 should we throw or return undefined'),
+  bindWithRetry: z.boolean().optional().default(true).describe('on bindConfig - add the withRetry to make add retry logic'),
+  maxRetries: z.number().optional().default(3).describe('maximum number of retry attempts'),
+  initialDelay: z.number().optional().default(1000).describe('initial retry delay in milliseconds'),
+  backoffFactor: z.number().optional().default(2).describe('multiplier for exponential backoff'),
+  useConsoleLogger: z.boolean().optional().default(false).describe('turn on console as a fallback logger'),
+  logger: LoggerSchema.optional().describe('logging interface supporting winston-like or simple function interface'),
+```
+
+
 Logging Support
 ==============
 
@@ -315,38 +367,4 @@ Each operation logs appropriate information at these levels:
 - info: Operation start/completion
 - debug: Detailed operation information
 
-
-Use Cases
-
-Want to stream data from couch? You can with queryStream. It looks identical to query, except you add an extra 'onRow' function
-
-Here is a small hapi example of streaming data from couch to the client as ndjson. 
-We do a small transform by only streaming the doc. you can do a lot of things in the onrow function.
-
-```
-import Hapi from '@hapi/hapi';
-import { Readable } from 'stream';
-import { queryStream } from bindConfig(process.env)
-const view = '_design/users/_view/by_name'
-
-const init = async () => {
-  const server = Hapi.server({ port: 3000 })
-  server.route({
-    method: 'GET',
-    path: '/stream',
-    handler: async (request, h) => {
-      const stream = new Readable({ read() {} });
-      const onRow = ({id, key, value, doc}) => stream.push(JSON.stringify(doc) + '\n')
-      const options = { startkey: req.query.startLetter, endkey: req.query.startLetter + '|', include_docs: true}
-      await queryStream(view, options, onRow)
-      stream.push(null) // end stream
-      return h.response(stream).type('application/x-ndjson');
-    }
-  })
-
-  await server.start();
-  console.log(`Server running on ${server.info.uri}`);
-}
-init()
-```
 
