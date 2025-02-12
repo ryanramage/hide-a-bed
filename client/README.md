@@ -61,9 +61,9 @@ console.log(notThereIsNull) // null
 
 try {
   const config = { couch: '', throwOnGetNotFound: true }
-  const notThereIsUndefined = await get(config, 'does-not-exist')
+  await get(config, 'does-not-exist')
 } catch (err) {
-
+  if (err.name === 'NotFoundError') console.log('Document not found')
 }
 
 ```
@@ -73,8 +73,6 @@ try {
 Save a document.
 
 **Parameters:**
-- `config`: Object with couch URL string
-- `doc`: Document object with `_id` property
 - `config`: Object with `couch` URL string
 - `doc`: Document object with `_id` property
 - Returns: Promise resolving to response with `ok`, `id`, `rev` properties
@@ -101,8 +99,6 @@ Update specific properties of a document, you must know the _rev, and passed in 
 
 **Parameters:**
 - `config`: Object with couch URL string
-- `id`: Document ID string  
-- `properties`: Object with properties to update, one _must_ be the current _rev
 - `id`: Document ID string
 - `properties`: Object with properties to update, one _must_ be the current _rev
 - Returns: Promise resolving to response with `ok`, `id`, `rev` properties
@@ -174,8 +170,6 @@ console.log(doc._id, doc._rev)
 Save multiple documents in one request.
 
 **Parameters:**
-- `config`: Object with couch URL string
-- `docs`: Array of document objects, each with `_id`
 - `config`: Object with `couch` URL string
 - `docs`: Array of document objects, each with `_id`
 - Returns: Promise resolving to array of results with `ok`, `id`, `rev` for each doc
@@ -198,8 +192,6 @@ const results = await bulkSave(config, docs)
 Get multiple documents by ID.
 
 **Parameters:**
-- `config`: Object with couch URL string
-- `ids`: Array of document ID strings
 - `config`: Object with `couch` URL string
 - `ids`: Array of document ID strings
 - Returns: Promise resolving to array of documents
@@ -222,8 +214,6 @@ const docs = await bulkGet(config, ids)
 Delete multiple documents in one request.
 
 **Parameters:**
-- `config`: Object with couch URL string
-- `ids`: Array of document ID strings to delete
 - `config`: Object with `couch` URL string
 - `ids`: Array of document ID strings to delete
 - Returns: Promise resolving to array of results with `ok`, `id`, `rev` for each deletion
@@ -243,8 +233,6 @@ const results = await bulkRemove(config, ids)
 Adds some convenience to bulkGet. Found and notFound documents are separated. Both properties are records of id to result. This makes it easy to deal with the results.
 
 **Parameters:**
-- `config`: Object with couch URL string
-- `ids`: Array of document ID strings
 - `config`: Object with `couch` URL string
 - `ids`: Array of document ID strings to delete
 - Returns: Promise resolving to an object with found and notFound properties.
@@ -284,9 +272,6 @@ const results = await bulkGetDictionary(config, ids)
 Perform a bulk save operation with all-or-nothing semantics.
 
 **Parameters:**
-- `config`: Object with couch URL string
-- `transactionId`: Unique identifier for the transaction
-- `docs`: Array of document objects to save
 - `config`: Object with `couch` URL string
 - `transactionId`: Unique identifier for the transaction
 - `docs`: Array of document objects to save
