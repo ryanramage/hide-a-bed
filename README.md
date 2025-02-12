@@ -78,6 +78,15 @@ const services = { db }
 
 describe('getUserActivity', () => {
   it('retrieves user data and activity', async () => {
+    // add some docs here that match/dont match the view 
+    const docs = [
+        { _id: 'test-user-id', name: 'bob'},
+        { _id: 'act1', ts: 1, value: 'clicked', user: 'test-user-id' },
+        { _id: 'act2', ts: 2, value: 'submit', user: 'test-user-id'},
+        { _id: 'should-not', ts: 3, value: 'clicked', user: 'no-user' }
+    ]
+    await db.bulkSave(docs)
+
     // Run your test
     const result = await getUserActivity(services, 'test-user-id')
     assert(result.user)
