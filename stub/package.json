@@ -14,7 +14,7 @@
     "clean": "(find . -name \"*.mts\" -type f -delete || true) && (find . -name \"*.map\" -type f -delete || true)",
     "build": "npm run clean && tsc && npm run build:cjs",
     "build:cjs": "rm -rf cjs && node build/build.mjs",
-    "test": "standard && tape tests/*.mjs",
+    "test": "standard && tape test/*.mjs",
     "lint:fix": "standard --fix",
     "prepublish": "npm run build"
   },
@@ -40,7 +40,10 @@
     "pouchdb-adapter-memory": "^9.0.0"
   },
   "devDependencies": {
+    "esbuild": "^0.25.0",
+    "glob": "^11.0.1",
     "standard": "^17.1.2",
-    "tape": "^5.9.0"
+    "tape": "^5.9.0",
+    "typescript": "^5.7.3"
   }
 }

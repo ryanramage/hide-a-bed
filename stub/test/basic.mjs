@@ -86,8 +86,7 @@ test('bind', async t => {
   const { bindConfig } = await setup([])
   const config = { couch: 'http://localhost:5984' }
   const db = bindConfig(config)
-  const resp = await db.put({ _id: 'this-is-bound'})
+  const resp = await db.put({ _id: 'this-is-bound' })
   t.ok(resp.ok)
   t.end()
-
 })
