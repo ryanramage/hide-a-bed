@@ -161,7 +161,7 @@ export const bulkSaveTransaction = BulkSaveTransaction.implement(async (config, 
   let txnresp = await _put(txnDoc)
   logger.debug('Transaction document created:', txnDoc, txnresp)
   await emitter.emit('transaction-created', { txnresp, txnDoc })
-  if (txnresp.statusCode !== 201) {
+  if (txnresp.error) {
     throw new Error('Failed to create transaction document')
   }
 
