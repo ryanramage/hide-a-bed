@@ -1,9 +1,9 @@
 import PouchDB from 'pouchdb'
 import PouchMemoryAdaptor from 'pouchdb-adapter-memory'
 import lodash from 'lodash'
-import { schema } from 'hide-a-bed'
+import { schema, createQuery } from 'hide-a-bed'
 PouchDB.plugin(PouchMemoryAdaptor)
-const { cloneDeep, set, unset } = lodash
+const { cloneDeep } = lodash
 
 const {
   BulkSave,
@@ -13,7 +13,8 @@ const {
   CouchGet,
   SimpleViewQuery,
   SimpleViewQueryStream,
-  Patch
+  Patch,
+  CouchGetAtRev
 } = schema
 
 export const setup = async (designDocs) => {
@@ -25,19 +26,14 @@ export const setup = async (designDocs) => {
   }
 
   const bulkSave = BulkSave.implement(async (_config, docs) => {
-    const results =  await db.bulkDocs(docs)
+    const results = await db.bulkDocs(docs)
     return results
   })
 
   const bulkGet = BulkGet.implement(async (_config, ids) => {
     const options = { include_docs: true, keys: ids }
     const resp = await db.allDocs(options)
-    const results = []
-    resp.rows.forEach(row => {
-      if (row.error || !row.doc) results.push(null)
-      else results.push(row.doc)
-    })
-    return results
+    return resp
   })
 
   const put = CouchPut.implement(async (_config, doc) => {
@@ -77,9 +73,10 @@ export const setup = async (designDocs) => {
   })
 
   const bulkRemove = BulkRemove.implement(async (_config, ids) => {
-    const docs = await bulkGet(_config, ids)
-    const deleteDocs = docs.map(doc => ({
-      ...doc,
+    const resp = await bulkGet(_config, ids)
+    const rows = resp.rows || [] 
+    const deleteDocs = rows.map(row => ({
+      ...row.doc,
       _deleted: true
     }))
     const results = await db.bulkDocs(deleteDocs)
@@ -98,10 +95,19 @@ export const setup = async (designDocs) => {
     for (const row of results.rows) {
       await onRow(row)
     }
-    
   })
 
-  return { bulkSave, bulkGet, put, get, patch, bulkRemove, query, queryStream }
+  const getAtRev = CouchGetAtRev.implement(async (_config, id, rev) => {
+    return db.get(id, { rev })
+  })
+
+  return { bulkSave, bulkGet, put, get, patch, 
+    patchDangerously: patch,
+    getAtRev,
+    // bulkGetDictionary,
+    // bulkSaveTransaction,
+    createQuery,
+    bulkRemove, query, queryStream }
 }
 
 function convert (designDocs) {
