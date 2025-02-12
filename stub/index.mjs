@@ -1,7 +1,7 @@
 import PouchDB from 'pouchdb'
 import PouchMemoryAdaptor from 'pouchdb-adapter-memory'
 import lodash from 'lodash'
-import { schema, createQuery, Bind } from 'hide-a-bed'
+import { schema, createQuery } from 'hide-a-bed'
 PouchDB.plugin(PouchMemoryAdaptor)
 const { cloneDeep } = lodash
 
@@ -16,7 +16,8 @@ const {
   SimpleViewQuery,
   SimpleViewQueryStream,
   Patch,
-  CouchGetAtRev
+  CouchGetAtRev,
+  Bind
 } = schema
 
 export const setup = async (designDocs) => {

@@ -81,3 +81,13 @@ test('queryStream', async t => {
   await queryStream(config, view, options, onRow)
   t.ok(rowCount === 1)
 })
+
+test('bind', async t => {
+  const { bindConfig } = await setup([])
+  const config = { couch: 'http://localhost:5984' }
+  const db = bindConfig(config)
+  const resp = await db.put({ _id: 'this-is-bound'})
+  t.ok(resp.ok)
+  t.end()
+
+})
