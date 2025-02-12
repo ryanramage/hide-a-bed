@@ -38,8 +38,13 @@ const doc = db.get('doc-123')
 
 ### Document Operations
 
-#### get(config, id)
+#### get
+
 Get a single document by ID.
+
+**Parameters:**
+- `config`: Object with couch URL string and optional throwOnGetNotFound flag
+- `id`: Document ID string
 - `config`: Object with 
    * `couch` URL string
    * `throwOnGetNotFound` default false. If true, 404 docs throw
@@ -63,8 +68,13 @@ try {
 
 ```
 
-#### put(config, doc) 
+#### put
+
 Save a document.
+
+**Parameters:**
+- `config`: Object with couch URL string
+- `doc`: Document object with `_id` property
 - `config`: Object with `couch` URL string
 - `doc`: Document object with `_id` property
 - Returns: Promise resolving to response with `ok`, `id`, `rev` properties
@@ -85,8 +95,14 @@ const result2 = await db.put(doc)
 console.log(result2) // { ok: false, error: 'conflict', statusCode: 409 }
 ```
 
-#### patch(config, id, properties)
-Update specific properties of a document, you must know the _rev, and passed in with properties 
+#### patch
+
+Update specific properties of a document, you must know the _rev, and passed in with properties.
+
+**Parameters:**
+- `config`: Object with couch URL string
+- `id`: Document ID string  
+- `properties`: Object with properties to update, one _must_ be the current _rev
 - `id`: Document ID string
 - `properties`: Object with properties to update, one _must_ be the current _rev
 - Returns: Promise resolving to response with `ok`, `id`, `rev` properties
@@ -105,8 +121,14 @@ const properties = {
 const result = await patch(config, 'doc-123', properties)
 // result: { ok: true, id: 'doc-123', rev: '2-xyz789' }
 ```
-#### patchDangerously(config, id, properties)
-Update specific properties of a document, no _rev is needed
+#### patchDangerously
+
+Update specific properties of a document, no _rev is needed.
+
+**Parameters:**
+- `config`: Object with couch URL string
+- `id`: Document ID string
+- `properties`: Object with properties to update
 
 *warning* - this can clobber data. It will retry even if a conflict happens. There are some use cases for this, but you have been warned, hence the name.
 
@@ -128,8 +150,14 @@ const result = await patchDangerously(config, 'doc-123', properties)
 // result: { ok: true, id: 'doc-123', rev: '2-xyz789' }
 ```
 
-#### getAtRev(config, id, rev)
-Return a document at the rev specified
+#### getAtRev
+
+Return a document at the rev specified.
+
+**Parameters:**
+- `config`: Object with couch URL string
+- `id`: Document ID string
+- `rev`: Revision string to retrieve
 
 *CouchDB* is not a version control db. This is a special function for unique situations. The _rev might not be around as couch cleans up old revs.
 
@@ -141,8 +169,13 @@ console.log(doc._id, doc._rev)
 
 ### Bulk Operations
 
-#### bulkSave(config, docs)
+#### bulkSave
+
 Save multiple documents in one request.
+
+**Parameters:**
+- `config`: Object with couch URL string
+- `docs`: Array of document objects, each with `_id`
 - `config`: Object with `couch` URL string
 - `docs`: Array of document objects, each with `_id`
 - Returns: Promise resolving to array of results with `ok`, `id`, `rev` for each doc
@@ -160,8 +193,13 @@ const results = await bulkSave(config, docs)
 // ]
 ```
 
-#### bulkGet(config, ids)
+#### bulkGet
+
 Get multiple documents by ID.
+
+**Parameters:**
+- `config`: Object with couch URL string
+- `ids`: Array of document ID strings
 - `config`: Object with `couch` URL string
 - `ids`: Array of document ID strings
 - Returns: Promise resolving to array of documents
@@ -179,8 +217,13 @@ const docs = await bulkGet(config, ids)
 // ]
 ```
 
-#### bulkRemove(config, ids)
+#### bulkRemove
+
 Delete multiple documents in one request.
+
+**Parameters:**
+- `config`: Object with couch URL string
+- `ids`: Array of document ID strings to delete
 - `config`: Object with `couch` URL string
 - `ids`: Array of document ID strings to delete
 - Returns: Promise resolving to array of results with `ok`, `id`, `rev` for each deletion
@@ -195,8 +238,13 @@ const results = await bulkRemove(config, ids)
 // ]
 ```
 
-#### bulkGetDictionary(config, ids)
-Adds some convience to bulkGet. found and notFound documents are seperated. Both properties are records of id to result. this makes it easy to deal with the results.
+#### bulkGetDictionary
+
+Adds some convenience to bulkGet. Found and notFound documents are separated. Both properties are records of id to result. This makes it easy to deal with the results.
+
+**Parameters:**
+- `config`: Object with couch URL string
+- `ids`: Array of document ID strings
 - `config`: Object with `couch` URL string
 - `ids`: Array of document ID strings to delete
 - Returns: Promise resolving to an object with found and notFound properties.
@@ -231,8 +279,14 @@ const results = await bulkGetDictionary(config, ids)
 // }
 ```
 
-#### bulkSaveTransaction(config, transactionId, docs)
+#### bulkSaveTransaction
+
 Perform a bulk save operation with all-or-nothing semantics.
+
+**Parameters:**
+- `config`: Object with couch URL string
+- `transactionId`: Unique identifier for the transaction
+- `docs`: Array of document objects to save
 - `config`: Object with `couch` URL string
 - `transactionId`: Unique identifier for the transaction
 - `docs`: Array of document objects to save
@@ -277,8 +331,14 @@ try {
 
 ### View Queries
 
-#### query(config, view, options)
+#### query
+
 Query a view with options.
+
+**Parameters:**
+- `config`: Object with couch URL string
+- `view`: View path string (e.g. '_design/doc/_view/name')
+- `options`: Optional object with query parameters
 - `config`: Object with `couch` URL string
 - `view`: View path string (e.g. '_design/doc/_view/name')
 - `options`: Optional object with query parameters:
@@ -343,9 +403,15 @@ const options = createQuery()
 const result = await query(config, view, options)
 ```
 
-#### queryStream(config, view, options, onRow)
+#### queryStream
 
 Use Cases *Streaming Data*
+
+**Parameters:**
+- `config`: Object with couch URL string
+- `view`: View path string
+- `options`: Query options object
+- `onRow`: Function called for each row in the results
 
 Want to stream data from couch? You can with queryStream. It looks identical to query, except you add an extra 'onRow' function
 
