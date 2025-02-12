@@ -353,7 +353,7 @@ const init = async () => {
   server.route({
     method: 'GET',
     path: '/stream',
-    handler: async (request, h) => {
+    handler: async (req, h) => {
       const stream = new Readable({ read() {} });
       const onRow = ({id, key, value, doc}) => stream.push(JSON.stringify(doc) + '\n')
       const options = { startkey: req.query.startLetter, endkey: req.query.startLetter + '|', include_docs: true}
