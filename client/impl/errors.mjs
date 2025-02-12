@@ -6,6 +6,18 @@
  * @property {string} [message] - Optional error message
  */
 
+export class NotFoundError extends Error {
+  /**
+   * @param {string} docId - The ID of the document that wasn't found
+   * @param {string} [message] - Optional error message
+   */
+  constructor(docId, message = 'Document not found') {
+    super(message)
+    this.name = 'NotFoundError'
+    this.docId = docId
+  }
+}
+
 export class RetryableError extends Error {
   /**
    * @param {string} message - The error message
