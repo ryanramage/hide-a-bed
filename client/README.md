@@ -168,6 +168,47 @@ const results = await bulkRemove(config, ids)
 // ]
 ```
 
+#### bulkSaveTransaction(config, transactionId, docs)
+Perform a bulk save operation with all-or-nothing semantics.
+- `config`: Object with `couch` URL string
+- `transactionId`: Unique identifier for the transaction
+- `docs`: Array of document objects to save
+- Returns: Promise resolving to array of results with `ok`, `id`, `rev` for each doc
+
+This operation ensures that either all documents are saved successfully, or none are, maintaining data consistency. If any document fails to save, the operation will attempt to roll back all changes.
+
+Exceptions to handle:
+- `TransactionSetupError`: Thrown if the transaction document cannot be created.
+- `TransactionVersionConflictError`: Thrown if there are version conflicts with existing documents.
+- `TransactionBulkOperationError`: Thrown if the bulk save operation fails for some documents.
+- `TransactionRollbackError`: Thrown if the rollback operation fails after a transaction failure.
+
+```javascript
+const config = { couch: 'http://localhost:5984/mydb' }
+const transactionId = 'txn-123'
+const docs = [
+  { _id: 'doc1', type: 'user', name: 'Alice', _rev: '1-abc123' },
+  { _id: 'doc2', type: 'user', name: 'Bob', _rev: '1-def456' }
+]
+
+try {
+  const results = await bulkSaveTransaction(config, transactionId, docs)
+  console.log('Transaction successful:', results)
+} catch (error) {
+  if (error instanceof TransactionSetupError) {
+    console.error('Transaction setup failed:', error)
+  } else if (error instanceof TransactionVersionConflictError) {
+    console.error('Version conflict error:', error)
+  } else if (error instanceof TransactionBulkOperationError) {
+    console.error('Bulk operation error:', error)
+  } else if (error instanceof TransactionRollbackError) {
+    console.error('Rollback error:', error)
+  } else {
+    console.error('Unexpected error:', error)
+  }
+}
+```
+
 ### View Queries
 
 #### query(config, view, options)
