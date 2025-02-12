@@ -368,20 +368,34 @@ const init = async () => {
 }
 init()
 ```
-advanced config options
+Advanced Config Options
 =======================
 
-here are the properties of the config object
+The config object supports the following properties:
 
-```
-  couch: z.string().describe('the url of the couch db'),
-  throwOnGetNotFound: z.boolean().optional().default(false).describe('if a get is 404 should we throw or return undefined'),
-  bindWithRetry: z.boolean().optional().default(true).describe('on bindConfig - add the withRetry to make add retry logic'),
-  maxRetries: z.number().optional().default(3).describe('maximum number of retry attempts'),
-  initialDelay: z.number().optional().default(1000).describe('initial retry delay in milliseconds'),
-  backoffFactor: z.number().optional().default(2).describe('multiplier for exponential backoff'),
-  useConsoleLogger: z.boolean().optional().default(false).describe('turn on console as a fallback logger'),
-  logger: LoggerSchema.optional().describe('logging interface supporting winston-like or simple function interface'),
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| couch | string | required | The URL of the CouchDB database |
+| throwOnGetNotFound | boolean | false | If true, throws an error when get() returns 404. If false, returns undefined |
+| bindWithRetry | boolean | true | When using bindConfig(), adds retry logic to bound methods |
+| maxRetries | number | 3 | Maximum number of retry attempts for retryable operations |
+| initialDelay | number | 1000 | Initial delay in milliseconds before first retry |
+| backoffFactor | number | 2 | Multiplier for exponential backoff between retries |
+| useConsoleLogger | boolean | false | If true, enables console logging when no logger is provided |
+| logger | object/function | undefined | Custom logging interface (winston-style object or function) |
+
+Example configuration with all options:
+```javascript
+const config = {
+  couch: 'http://localhost:5984/mydb',
+  throwOnGetNotFound: true,
+  bindWithRetry: true,
+  maxRetries: 5,
+  initialDelay: 2000,
+  backoffFactor: 1.5,
+  useConsoleLogger: true,
+  logger: (level, ...args) => console.log(level, ...args)
+}
 ```
 
 
