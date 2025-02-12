@@ -25,10 +25,6 @@ const _getWithOptions = CouchGetWithOptions.implement(async (config, id, getOpts
       logger.error('No response received from get request')
       throw new RetryableError('no response', 503)
     }
-    if (resp.statusCode === 404) {
-      logger.debug(`Document not found: ${id}`)
-      return null
-    }
     const result = resp?.body || {}
     if (resp.statusCode === 404) {
       if (config.throwOnGetNotFound) {
@@ -36,7 +32,7 @@ const _getWithOptions = CouchGetWithOptions.implement(async (config, id, getOpts
         throw new NotFoundError(id, result.reason || 'not_found')
       } else {
         logger.debug(`Document not found (returning undefined): ${id}, rev ${rev || 'latest'}`)
-        return undefined
+        return null
       }
     }
     if (RetryableError.isRetryableStatusCode(resp.statusCode)) {

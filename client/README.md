@@ -4,43 +4,53 @@ API
 ### Setup
 
 Depending on your environment, use import or require
-
-```
-import { get, put, patch, remove, bulkSave, bulkGet, bulkRemove, query } from 'hide-a-bed'
-```
-```
-const { get, put, patch, remove, bulkSave, bulkGet, bulkRemove, query } = require('hide-a-bed')
-```
+```import { get, put, query } from 'hide-a-bed'```
+or
+```const { get, put, query } = require('hide-a-bed')```
 
 ### Config
 
 Anywhere you see a config, it is an object with the following setup
+```{ couch: 'https://username:pass@the.couch.url.com:5984' }```
+And it is passed in as the first argument of all the functions
+```const doc = await get(config, 'doc-123')```
 
-```
-{ couch: 'https://username:pass@the.couch.url.com:5984' }
-```
-Couch get is weird. We have chosen to return ```undefined``` if the doc is not found. All other things throw. If you want 
-not_found to also throw an exception, add the following to your config:
+See [Advanced Config Options](#advanced-config-options) for more advanced settings.
 
+#### bindConfig 
+
+A convience method to bind the config, so you dont need to pass it in.
 ```
-{ throwOnGetNotFound: true, couch: '...' }
+import { bindConfig } from 'hide-a-bed'
+const db = bindConfig(process.env)
+const doc = db.get('doc-123')
 ```
 
 ### Document Operations
 
-
 #### get(config, id)
 Get a single document by ID.
-- `config`: Object with `couch` URL string
+- `config`: Object with 
+   * `couch` URL string
+   * `throwOnGetNotFound` default false. If true, 404 docs throw
 - `id`: Document ID string
-- Returns: Promise resolving to document object or null if not found
+- Returns: Promise resolving to document object or undefined if not found
 
 ```javascript
 const config = { couch: 'http://localhost:5984/mydb' }
 const doc = await get(config, 'doc-123')
-if (doc) {
-  console.log(doc._id, doc._rev)
+console.log(doc._id, doc._rev)
+
+const notThereIsNull = await get(config, 'does-not-exist')
+console.log(notThereIsNull) // null 
+
+try {
+  const config = { couch: '', throwOnGetNotFound: true }
+  const notThereIsUndefined = await get(config, 'does-not-exist')
+} catch (err) {
+
 }
+
 ```
 
 #### put(config, doc) 

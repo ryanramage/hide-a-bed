@@ -1,7 +1,7 @@
 import { TrackedEmitter } from '../impl/trackedEmitter.mjs'
 import test from 'tap'
 import { spawn } from 'child_process'
-import { bindConfig, bulkSaveTransaction } from '../index.mjs'
+import { bindConfig, bulkSaveTransaction, get } from '../index.mjs'
 import needle from 'needle'
 
 const PORT = 8985
@@ -30,6 +30,22 @@ test.test('full db tests', async t => {
     const fetched = await db.get('testdoc')
     t.equal(fetched.data, 'hello world', 'Fetched document matches')
     t.end()
+  })
+  t.test('get with no document', async t => {
+    const notThereDoc = await get(config, 'testdoc-not-there')
+    t.equal(notThereDoc, null)
+    t.end()
+  })
+  t.test('get with no document and throwOnGetNotFound', async t => {
+    const _config = { couch: DB_URL, throwOnGetNotFound: true }
+    try {
+      await get(_config, 'testdoc-not-there')
+      t.fail('should have thrown')
+    } catch (e) {
+      console.log(e.message)
+      t.equal(e.name, 'NotFoundError')
+      t.end()
+    }
   })
   let _rev
   t.test('a transaction', async t => {
