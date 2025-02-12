@@ -26,6 +26,16 @@ const db = bindConfig(process.env)
 const doc = db.get('doc-123')
 ```
 
+### API Quick Reference
+
+| Document Operations | Bulk Operations | View Operations |
+|-------------------|-----------------|-----------------|
+| [`get()`](#get) | [`bulkGet()`](#bulkget) | [`query()`](#query) |
+| [`put()`](#put) | [`bulkSave()`](#bulksave) | [`queryStream()`](#querystream) |
+| [`patch()`](#patch) | [`bulkRemove()`](#bulkremove) | [`createQuery()`](#createquery) |
+| [`patchDangerously()`](#patchdangerously) | [`bulkGetDictionary()`](#bulkgetdictionary) | |
+| [`getAtRev()`](#getatrev) | [`bulkSaveTransaction()`](#bulksavetransaction) | |
+
 ### Document Operations
 
 #### get(config, id)
