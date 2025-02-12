@@ -31,7 +31,8 @@ const schema = {
   CouchDocResponse,
   Patch,
   PatchDangerously,
-  CouchGetAtRev
+  CouchGetAtRev,
+  Bind
 }
 
 /** @type { import('./schema/bind.mjs').BindSchema } */
