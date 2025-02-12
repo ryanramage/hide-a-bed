@@ -1,7 +1,7 @@
 import PouchDB from 'pouchdb'
 import PouchMemoryAdaptor from 'pouchdb-adapter-memory'
 import lodash from 'lodash'
-import { schema, createQuery } from 'hide-a-bed'
+import { schema, createQuery, Bind } from 'hide-a-bed'
 PouchDB.plugin(PouchMemoryAdaptor)
 const { cloneDeep } = lodash
 
@@ -134,6 +134,23 @@ export const setup = async (designDocs) => {
     return results
   })
 
+  const bindConfig = Bind.implement((config) => {
+    return {
+      get: get.bind(null, config),
+      getAtRev: getAtRev.bind(null, config),
+      put: put.bind(null, config),
+      bulkGet: bulkGet.bind(null, config),
+      bulkSave: bulkSave.bind(null, config),
+      query: query.bind(null, config),
+      queryStream: queryStream.bind(null, config),
+      patch: patch.bind(null, config),
+      patchDangerously: patch.bind(null, config),
+      bulkRemove: bulkRemove.bind(null, config),
+      bulkGetDictionary: bulkGetDictionary.bind(null, config),
+      bulkSaveTransaction: bulkSaveTransaction.bind(null, config)
+    }
+  })
+
   return {
     bulkSave,
     bulkGet,
@@ -147,7 +164,8 @@ export const setup = async (designDocs) => {
     createQuery,
     bulkRemove,
     query,
-    queryStream
+    queryStream,
+    bindConfig
   }
 }
 
