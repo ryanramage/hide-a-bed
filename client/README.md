@@ -118,18 +118,6 @@ const result = await patchDangerously(config, 'doc-123', properties)
 // result: { ok: true, id: 'doc-123', rev: '2-xyz789' }
 ```
 
-#### remove(config, id)
-Delete a document by ID.
-- `config`: Object with `couch` URL string
-- `id`: Document ID string to delete
-- Returns: Promise resolving to response with `ok` and `rev` properties
-
-```javascript
-const config = { couch: 'http://localhost:5984/mydb' }
-const result = await remove(config, 'doc-123')
-// result: { ok: true, id: 'doc-123', rev: '2-def456' }
-```
-
 ### Bulk Operations
 
 #### bulkSave(config, docs)
