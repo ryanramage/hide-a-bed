@@ -177,8 +177,10 @@ Perform a bulk save operation with all-or-nothing semantics.
 
 This operation ensures that either all documents are saved successfully, or none are, maintaining data consistency. If any document fails to save, the operation will attempt to roll back all changes.
 
+Note: The transactionId has to be unique for the lifetime of the app. It is used to prevent two processes from executing the same transaction. It is up to you to craft a transactionId that uniquely represents this transaction, and that also is the same if another process tries to generate it.
+
 Exceptions to handle:
-- `TransactionSetupError`: Thrown if the transaction document cannot be created.
+- `TransactionSetupError`: Thrown if the transaction document cannot be created. Usually because it already exists
 - `TransactionVersionConflictError`: Thrown if there are version conflicts with existing documents.
 - `TransactionBulkOperationError`: Thrown if the bulk save operation fails for some documents.
 - `TransactionRollbackError`: Thrown if the rollback operation fails after a transaction failure.
@@ -196,12 +198,13 @@ try {
   console.log('Transaction successful:', results)
 } catch (error) {
   if (error instanceof TransactionSetupError) {
+    // the transaction could not start - usually an existing transaction with the same id
     console.error('Transaction setup failed:', error)
   } else if (error instanceof TransactionVersionConflictError) {
+    // one or more of the versions of the docs provided dont match with what is currently in the db
     console.error('Version conflict error:', error)
-  } else if (error instanceof TransactionBulkOperationError) {
-    console.error('Bulk operation error:', error)
   } else if (error instanceof TransactionRollbackError) {
+    // the transaction was rolled back - so the 'or none' condition occured
     console.error('Rollback error:', error)
   } else {
     console.error('Unexpected error:', error)
