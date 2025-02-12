@@ -118,6 +118,17 @@ const result = await patchDangerously(config, 'doc-123', properties)
 // result: { ok: true, id: 'doc-123', rev: '2-xyz789' }
 ```
 
+#### getAtRev(config, id, rev)
+Return a document at the rev specified
+
+*CouchDB* is not a version control db. This is a special function for unique situations. The _rev might not be around as couch cleans up old revs.
+
+```javascript
+const config = { couch: 'http://localhost:5984/mydb' }
+const doc = await getAtRev(config, 'doc-123', '2-fsdjfsdakljfsajlksd')
+console.log(doc._id, doc._rev)
+```
+
 ### Bulk Operations
 
 #### bulkSave(config, docs)
@@ -172,6 +183,42 @@ const results = await bulkRemove(config, ids)
 //   { ok: true, id: 'doc1', rev: '2-ghi789' },
 //   { ok: true, id: 'doc2', rev: '2-jkl012' }
 // ]
+```
+
+#### bulkGetDictionary(config, ids)
+Adds some convience to bulkGet. found and notFound documents are seperated. Both properties are records of id to result. this makes it easy to deal with the results.
+- `config`: Object with `couch` URL string
+- `ids`: Array of document ID strings to delete
+- Returns: Promise resolving to an object with found and notFound properties.
+
+*found* looks like 
+```
+{ 
+  id1: { _id: 'id1', _rev: '1-221', data: {} },
+  id2: { _id: 'id2', _rev: '4-421', data: {} },
+}
+```
+
+*notFound* looks like 
+```
+{
+  id3: { key: 'id1', error: 'not_found' }
+}
+```
+
+```javascript
+const config = { couch: 'http://localhost:5984/mydb' }
+const ids = ['doc1', 'doc2']
+const results = await bulkGetDictionary(config, ids)
+// results: {
+//   found: {
+//     id1: { _id: 'id1', _rev: '1-221', data: {} },
+//     id2: { _id: 'id2', _rev: '4-421', data: {} },
+//   },
+//   notFound: {
+//      id3: { key: 'id1', error: 'not_found' }
+//   }
+// }
 ```
 
 #### bulkSaveTransaction(config, transactionId, docs)
