@@ -9,6 +9,7 @@ const {
   BulkSave,
   BulkGet,
   BulkRemove,
+  BulkGetDictionary,
   CouchPut,
   CouchGet,
   SimpleViewQuery,
@@ -101,13 +102,40 @@ export const setup = async (designDocs) => {
     return db.get(id, { rev })
   })
 
-  return { bulkSave, bulkGet, put, get, patch, 
+  const bulkGetDictionary = BulkGetDictionary.implement(async (_config, ids) => {
+    const resp = await bulkGet(_config, ids)
+    const results = { found: {}, notFound: {} }
+    
+    resp.rows.forEach(row => {
+      if (!row.key) return
+      if (row.error) {
+        results.notFound[row.key] = row
+        return
+      }
+      if (row.doc) {
+        results.found[row.id] = row.doc
+      } else {
+        results.notFound[row.key] = row
+      }
+    })
+    
+    return results
+  })
+
+  return { 
+    bulkSave, 
+    bulkGet, 
+    bulkGetDictionary,
+    put, 
+    get, 
+    patch, 
     patchDangerously: patch,
     getAtRev,
-    // bulkGetDictionary,
-    // bulkSaveTransaction,
     createQuery,
-    bulkRemove, query, queryStream }
+    bulkRemove, 
+    query, 
+    queryStream 
+  }
 }
 
 function convert (designDocs) {
