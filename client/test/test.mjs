@@ -87,6 +87,8 @@ test.test('full db tests', async t => {
       t.fail('should have thrown')
     } catch (e) {
       t.ok(e)
+      console.log(e)
+      t.equal(e.name, 'TransactionRollbackError', 'correct error type thrown')
 
       // lets make sure doc a has data from before, and
       const finalDocs = await db.bulkGet(['a', 'rollback2', 'b'])
@@ -94,6 +96,33 @@ test.test('full db tests', async t => {
       t.equal(finalDocs.rows[0].doc.data, 'interfered', 'doc has the intereferd data')
       t.notOk(finalDocs.rows[1].doc, 'doc b was deleted, and not saved')
       t.equal(finalDocs.rows[2].doc.data, 'new doc', 'doc b was rolled back')
+      t.end()
+    }
+  })
+  t.test('TransactionVersionConflictError test', async t => {
+    // First create a doc
+    await db.put({ _id: 'conflict-test', data: 'original' })
+    // Then try to update it with wrong rev
+    try {
+      await bulkSaveTransaction(config, 'conflict-error', [
+        { _id: 'conflict-test', _rev: 'wrong-rev', data: 'new' }
+      ])
+      t.fail('should have thrown TransactionVersionConflictError')
+    } catch (e) {
+      t.equal(e.name, 'TransactionVersionConflictError', 'correct error type thrown')
+      t.same(e.conflictingIds, ['conflict-test'], 'includes conflicting doc ids')
+      t.end()
+    }
+  })
+  t.test('TransactionVersionConflictError test 2, new doc with _rev', async t => {
+    try {
+      // Try to update a doc that doesn't exist with a rev
+      await bulkSaveTransaction(config, 'bulk-error', [
+        { _id: 'nonexistent', _rev: '1-abc', data: 'test' }
+      ])
+      t.fail('should have thrown TransactionVersionConflictError')
+    } catch (e) {
+      t.equal(e.name, 'TransactionVersionConflictError', 'correct error type thrown')
       t.end()
     }
   })
