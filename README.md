@@ -29,14 +29,14 @@ npm install hide-a-bed-stub --save-dev
 Here's a simple example of how to use hide-a-bed in your application:
 
 ```javascript
-import db from 'hide-a-bed'
+import { bindConfig } from 'hide-a-bed'
 
 // Configure your database connection
-const config = { 
-  couch: 'http://localhost:5984/mydb'
-}
+const config = { couch: 'http://localhost:5984/mydb' }
+const db = bindConfig(config)
+const services = { db }
 
-const doc = await db.get(config, userId)
+const doc = await db.get(userId)
 ```
 
 ### Writing Testable Code
@@ -45,33 +45,15 @@ The key to writing testable database code is to use dependency injection. Here's
 
 ```javascript
 // userService.js
-export async function getUserActivity(config, services, userId) {
-  const user = await services.db.get(config, userId)
-  const activity = await services.db.query(
-    config,
-    '_design/userThings/_view/byTime',
-    {
-      startkey: 0,
-      endkey: Date.now()
-    }
-  )
+export async function getUserActivity(services, userId) {
+  const user = await services.db.get(userId)
+  const query = { startkey: 0, endkey: Date.now() }
+  const activity = await services.db.query('_design/userThings/_view/byTime', query)
   return { user, activity: activity.rows }
 }
-```
-
-### Production Usage
-
-```javascript
-import db from 'hide-a-bed'
-import { getUserActivity } from './userService.js'
-
-const config = { 
-  couch: 'http://localhost:5984/mydb' 
-}
-const services = { db }
 
 // Use in your application
-const userData = await getUserActivity(config, services, 'user-123')
+const userData = await getUserActivity(services, 'user-123')
 ```
 
 ### Testing
@@ -81,21 +63,23 @@ Using the stub package makes testing your database code easy and reliable:
 ```javascript
 import { setup } from 'hide-a-bed-stub'
 import { getUserActivity } from './userService.js'
-import userDesignDoc from './ddocs/userThings.js'
+
+// NOTE - depending on your module system, these lines vary. This shows loading a cjs file
+//        which is the most convoluted. 
+import { createRequire } from 'module'
+const require = createRequire(import.meta.url)
+const viewDoc = require('./assets/viewDocs.cjs')
+
+const config = { couch: 'http://fake:5984' } 
+const { bindConfig } = await setup([viewDoc]) // this setups up the view to be available in your testing
+const db = bindConfig(config)
+const services = { db }
+
 
 describe('getUserActivity', () => {
   it('retrieves user data and activity', async () => {
-    // Setup mock database with design docs
-    const db = await setup([userDesignDoc])
-    
-    // Test configuration
-    const config = { 
-      couch: 'http://test:5984/testdb' 
-    }
-    const services = { db }
-
     // Run your test
-    const result = await getUserActivity(config, services, 'test-user-id')
+    const result = await getUserActivity(services, 'test-user-id')
     assert(result.user)
     assert(Array.isArray(result.activity))
   })
