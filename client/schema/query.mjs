@@ -23,6 +23,7 @@ export const SimpleViewOptions = z.object({
   skip: z.number().positive().optional().describe('skip this many rows'),
   limit: z.number().positive().optional().describe('limit the results to this many rows'),
   key: z.any().optional(),
+  keys: z.array(z.any()),
   include_docs: z.boolean().optional().describe('join the id to the doc and return it'),
   reduce: z.boolean().optional().describe('reduce the results'),
   group: z.boolean().optional().describe('group the results'),

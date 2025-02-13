@@ -181,7 +181,7 @@ const docs = [
   { _id: 'doc2', type: 'user', name: 'Bob' }
 ]
 const results = await bulkSave(config, docs)
-// results: [
+// [
 //   { ok: true, id: 'doc1', rev: '1-abc123' },
 //   { ok: true, id: 'doc2', rev: '1-def456' }
 // ]
@@ -202,7 +202,7 @@ Not found documents will still have a row in the results, but the doc will be nu
 const config = { couch: 'http://localhost:5984/mydb' }
 const ids = ['doc1', 'doc2', 'doesNotExist']
 const docs = await bulkGet(config, ids)
-// docs: [
+// rows: [
 //   { _id: 'doc1', _rev: '1-abc123', type: 'user', name: 'Alice' },
 //   { _id: 'doc2', _rev: '1-def456', type: 'user', name: 'Bob' },
 //   { key: 'notThereDoc', error: 'not_found' }
