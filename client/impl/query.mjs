@@ -9,8 +9,13 @@ import { createLogger } from './logger.mjs'
 import pkg from 'lodash'
 const { includes } = pkg
 
-/** @type { z.infer<SimpleViewQuery> } query */
-export const query = SimpleViewQuery.implement(async (config, view, options) => {
+/**
+ * @type { z.infer<SimpleViewQuery> }
+ * @param {import('../schema/config.mjs').CouchConfigSchema} config
+ * @param {string} view
+ * @param {import('../schema/query.mjs').SimpleViewOptionsSchema} [options]
+ */
+export const query = SimpleViewQuery.implement(async (config, view, options = {}) => {
   const logger = createLogger(config)
   logger.info(`Starting view query: ${view}`)
   logger.debug('Query options:', options)
@@ -83,7 +88,12 @@ export const query = SimpleViewQuery.implement(async (config, view, options) => 
  * @param {{ [key: string]: any }} options - The options object containing query parameters.
  * @param {string[]} params - The list of parameter names to include in the query string.
  */
-export function queryString (options, params) {
+/**
+ * @param {{ [key: string]: any }} options
+ * @param {string[]} params
+ * @returns {string}
+ */
+export function queryString (options = {}, params) {
   const parts = Object.keys(options).map(key => {
     let value = options[key]
     if (includes(params, key)) {
