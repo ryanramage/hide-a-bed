@@ -11,7 +11,7 @@
     "default": "./cjs/index.cjs"
   },
   "scripts": {
-    "clean": "(find . -name \"*.mts\" -type f -delete || true) && (find . -name \"*.map\" -type f -delete || true) && (find . -name \"log.txt\" -type f -delete || true)",
+    "clean": "rm -rf cjs && (find . -name \"*.mts\" -type f -delete || true) && (find . -name \"*.map\" -type f -delete || true) && (find . -name \"log.txt\" -type f -delete || true)",
     "build": "npm run clean && tsc && npx -p dualmode@latest build",
     "build:cjs": "rm -rf cjs && node build/build.mjs",
     "test": "node tests/test.mjs",
