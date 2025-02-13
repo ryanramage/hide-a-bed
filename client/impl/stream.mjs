@@ -18,7 +18,7 @@ export const queryStream = (rawConfig, view, options, onRow) => new Promise((res
 
   let method = 'GET'
   let payload = null
-  const qs = queryString(options, ['key', 'startkey', 'endkey', 'reduce', 'group', 'group_level', 'stale', 'limit'])
+  let qs = queryString(options, ['key', 'startkey', 'endkey', 'reduce', 'group', 'group_level', 'stale', 'limit'])
   logger.debug('Generated query string:', qs)
 
   // If keys are supplied, issue a POST to circumvent GET query string limits
