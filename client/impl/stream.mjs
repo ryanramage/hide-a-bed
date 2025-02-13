@@ -16,8 +16,25 @@ export const queryStream = (rawConfig, view, options, onRow) => new Promise((res
 
   if (!options) options = {}
 
+  let method = 'GET'
+  let payload = null
   const qs = queryString(options, ['key', 'startkey', 'endkey', 'reduce', 'group', 'group_level', 'stale', 'limit'])
   logger.debug('Generated query string:', qs)
+
+  // If keys are supplied, issue a POST to circumvent GET query string limits
+  if (typeof options.keys !== 'undefined') {
+    const MAX_URL_LENGTH = 2000
+    const keysAsString = `keys=${encodeURIComponent(JSON.stringify(options.keys))}`
+    
+    if (keysAsString.length + qs.length + 1 <= MAX_URL_LENGTH) {
+      // If the keys are short enough, do a GET
+      qs += (qs[0] === '?' ? '&' : '?') + keysAsString
+    } else {
+      method = 'POST'
+      payload = { keys: options.keys }
+    }
+  }
+
   const url = `${config.couch}/${view}?${qs.toString()}`
   const opts = {
     json: true,
@@ -53,7 +70,9 @@ export const queryStream = (rawConfig, view, options, onRow) => new Promise((res
     resolve(undefined) // all work should be done in the stream
   })
 
-  const req = needle.get(url, opts)
+  const req = method === 'GET' 
+    ? needle.get(url, opts)
+    : needle.post(url, payload, opts)
 
   req.on('response', response => {
     logger.debug(`Received response with status code: ${response.statusCode}`)
