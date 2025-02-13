@@ -1,8 +1,7 @@
-import PouchDB from 'pouchdb'
-import PouchMemoryAdaptor from 'pouchdb-adapter-memory'
+import PouchDB from 'pouchdb-memory'
 import lodash from 'lodash'
 import { schema, createQuery } from 'hide-a-bed'
-PouchDB.plugin(PouchMemoryAdaptor)
+// PouchDB.plugin(PouchMemoryAdaptor)
 const { cloneDeep } = lodash
 
 const {

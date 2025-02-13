@@ -35,8 +35,7 @@
   "dependencies": {
     "hide-a-bed": "^4.1.2",
     "lodash": "^4.17.21",
-    "pouchdb": "^9.0.0",
-    "pouchdb-adapter-memory": "^9.0.0"
+    "pouchdb-memory": "^6.0.0"
   },
   "devDependencies": {
     "esbuild": "^0.25.0",
