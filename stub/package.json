@@ -6,15 +6,14 @@
   "main": "cjs/index.cjs",
   "type": "module",
   "exports": {
-    "import": "./index.mjs",
     "require": "./cjs/index.cjs",
+    "import": "./index.mjs",
     "default": "./cjs/index.cjs"
   },
   "scripts": {
-    "clean": "(find . -name \"*.mts\" -type f -delete || true) && (find . -name \"*.map\" -type f -delete || true)",
-    "build": "npm run clean && tsc && npm run build:cjs",
-    "build:cjs": "rm -rf cjs && node build/build.mjs",
-    "test": "standard && tape test/*.mjs",
+    "clean": "rm -rf cjs && (find . -name \"*.mts\" -type f -delete || true) && (find . -name \"*.map\" -type f -delete || true) && (find . -name \"log.txt\" -type f -delete || true)",
+    "build": "npm run clean && tsc && npx -p dualmode@latest build",
+    "test": "standard && tape tests/*.mjs",
     "lint:fix": "standard --fix",
     "prepublish": "npm run build"
   },

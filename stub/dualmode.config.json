@@ -1,0 +1,11 @@
+{
+  "esbuild": { 
+    "entryPoints": { 
+     "ignore": [ 
+       "./node_modules/**/*",
+       "./tests/**/*",
+       "./temp/**"
+      ] 
+    } 
+  }
+}
