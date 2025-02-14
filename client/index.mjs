@@ -2,6 +2,7 @@
 import { bulkGet, bulkSave, bulkRemove, bulkGetDictionary, bulkSaveTransaction } from './impl/bulk.mjs'
 import { get, put, getAtRev } from './impl/crud.mjs'
 import { patch, patchDangerously } from './impl/patch.mjs'
+import { createLock, removeLock } from './impl/sugar/lock.mjs'
 import { query } from './impl/query.mjs'
 import { queryStream } from './impl/stream.mjs'
 import { createQuery } from './impl/queryBuilder.mjs'
@@ -11,6 +12,7 @@ import { CouchConfig } from './schema/config.mjs'
 import { SimpleViewQuery, SimpleViewQueryResponse } from './schema/query.mjs'
 import { SimpleViewQueryStream, OnRow } from './schema/stream.mjs'
 import { Patch, PatchDangerously } from './schema/patch.mjs'
+import { Lock, LockOptions, CreateLock, RemoveLock } from './schema/sugar/lock.mjs'
 import { CouchDoc, CouchDocResponse, CouchPut, CouchGet, CouchGetAtRev } from './schema/crud.mjs'
 import { Bind } from './schema/bind.mjs'
 
@@ -32,7 +34,11 @@ const schema = {
   Patch,
   PatchDangerously,
   CouchGetAtRev,
-  Bind
+  Bind,
+  Lock,
+  LockOptions,
+  CreateLock,
+  RemoveLock
 }
 
 /** @type { import('./schema/bind.mjs').BindSchema } */
@@ -83,5 +89,7 @@ export {
 
   bindConfig,
   withRetry,
-  createQuery
+  createQuery,
+  createLock,
+  removeLock
 }
