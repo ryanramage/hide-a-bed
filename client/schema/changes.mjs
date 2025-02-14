@@ -6,6 +6,7 @@ export const ChangesOptions = z.object({
   feed: z.enum(['continuous']).default('continuous'),
   filter: z.string().optional(),
   inactivity_ms: z.number().default(60 * 60 * 1000),
+  /** @type {number} */
   timeout: z.number().optional(),
   requestTimeout: z.number().default(2 * 60 * 1000),
   since: z.union([z.number(), z.literal('now')]).default(0),

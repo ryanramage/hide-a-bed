@@ -13,6 +13,7 @@ export const changes = Changes.implement((config, options = {}) => {
   const emitter = new EventEmitter()
   const logger = createLogger(config)
   let active = true
+  /** @type {import('needle').NeedleResponse|null} */
   let currentRequest = null
 
   const opts = {
@@ -25,17 +26,15 @@ export const changes = Changes.implement((config, options = {}) => {
     timeout: options.requestTimeout || 2 * 60 * 1000
   }
 
+  /** @type {Record<string, any>} */
   const params = {
     feed: 'continuous',
     heartbeat: options.heartbeat || 30000,
     style: options.style || 'main_only',
     since: options.since || 0,
     include_docs: options.include_docs || false,
+    ...(options.filter && { filter: options.filter }),
     ...options.query_params
-  }
-
-  if (options.filter) {
-    params.filter = options.filter
   }
 
   async function startFeed(retryCount = 0) {
