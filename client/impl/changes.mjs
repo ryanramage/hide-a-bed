@@ -41,17 +41,31 @@ export const changes = Changes.implement((config, options = {}) => {
   async function startFeed(retryCount = 0) {
     if (!active) return
 
-    const url = `${config.couch}/_changes`
+    let url = `${config.couch}/_changes`
     const method = options.use_post ? 'post' : 'get'
     const payload = options.use_post ? params : null
-    const queryParams = options.use_post ? {} : params
+
+    // Manually construct query string for GET requests
+    if (!options.use_post) {
+      const queryParts = Object.entries(params)
+        .map(([key, value]) => {
+          if (value === undefined || value === null) return null
+          if (typeof value === 'boolean') return `${key}=${value}`
+          return `${key}=${encodeURIComponent(value)}`
+        })
+        .filter(part => part !== null)
+      
+      if (queryParts.length > 0) {
+        url += '?' + queryParts.join('&')
+      }
+    }
     
     try {
       currentRequest = needle.request(
         method,
         url,
         payload,
-        { ...opts, query: queryParams }
+        opts
       )
 
       currentRequest
