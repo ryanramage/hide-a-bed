@@ -44,15 +44,14 @@ export const changes = Changes.implement((config, options = {}) => {
     const url = `${config.couch}/_changes`
     const method = options.use_post ? 'post' : 'get'
     const payload = options.use_post ? params : null
-    const query = options.use_post ? {} : params
-    console.log(query)
-
+    const queryParams = options.use_post ? {} : params
+    
     try {
       currentRequest = needle.request(
         method,
         url,
         payload,
-        { ...opts }
+        { ...opts, query: queryParams }
       )
 
       currentRequest
