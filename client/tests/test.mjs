@@ -159,4 +159,73 @@ test.test('full db tests', async t => {
       t.end()
     }
   })
+
+  t.test('locking tests', async t => {
+    const lockOptions = {
+      enableLocking: true,
+      username: 'testUser'
+    }
+
+    // Test successful lock creation
+    t.test('create lock', async t => {
+      const locked = await db.createLock('doc-to-lock', lockOptions)
+      t.ok(locked, 'Lock was created successfully')
+      
+      // Verify lock document exists
+      const lockDoc = await db.get('lock-doc-to-lock')
+      t.ok(lockDoc, 'Lock document exists')
+      t.equal(lockDoc.type, 'lock', 'Document is a lock')
+      t.equal(lockDoc.locks, 'doc-to-lock', 'Correct document is locked')
+      t.equal(lockDoc.lockedBy, 'testUser', 'Lock owned by correct user')
+      t.end()
+    })
+
+    // Test lock conflict
+    t.test('lock conflict', async t => {
+      const locked = await db.createLock('doc-to-lock', lockOptions)
+      t.notOk(locked, 'Second lock attempt failed')
+      t.end()
+    })
+
+    // Test unlock
+    t.test('unlock document', async t => {
+      await db.removeLock('doc-to-lock', lockOptions)
+      const lockDoc = await db.get('lock-doc-to-lock')
+      t.notOk(lockDoc, 'Lock document was removed')
+      t.end()
+    })
+
+    // Test unlock by different user
+    t.test('unlock by different user', async t => {
+      // Create lock as testUser
+      await db.createLock('doc-to-lock', lockOptions)
+      
+      // Try to unlock as different user
+      const differentUserOptions = {
+        ...lockOptions,
+        username: 'differentUser'
+      }
+      await db.removeLock('doc-to-lock', differentUserOptions)
+      
+      // Verify lock still exists
+      const lockDoc = await db.get('lock-doc-to-lock')
+      t.ok(lockDoc, 'Lock still exists')
+      t.equal(lockDoc.lockedBy, 'testUser', 'Lock still owned by original user')
+      t.end()
+    })
+
+    // Test with locking disabled
+    t.test('disabled locking', async t => {
+      const disabledOptions = {
+        ...lockOptions,
+        enableLocking: false
+      }
+      const locked = await db.createLock('doc-to-lock-2', disabledOptions)
+      t.ok(locked, 'Lock creation returns true when disabled')
+      
+      const lockDoc = await db.get('lock-doc-to-lock-2')
+      t.notOk(lockDoc, 'No lock document created when disabled')
+      t.end()
+    })
+  })
 })
