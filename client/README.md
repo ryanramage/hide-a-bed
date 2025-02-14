@@ -163,6 +163,57 @@ const doc = await getAtRev(config, 'doc-123', '2-fsdjfsdakljfsajlksd')
 console.log(doc._id, doc._rev)
 ```
 
+#### createLock
+
+Create a lock for a document to prevent concurrent modifications.
+
+**Parameters:**
+- `config`: Object with `couch` URL string
+- `docId`: Document ID string to lock
+- `options`: Lock options object:
+  - `enableLocking`: Boolean to enable/disable locking (default: true)
+  - `username`: String identifying who created the lock
+
+Returns a Promise resolving to boolean indicating if lock was created successfully.
+
+```javascript
+const config = { couch: 'http://localhost:5984/mydb' }
+const options = {
+  enableLocking: true,
+  username: 'alice'
+}
+
+const locked = await createLock(config, 'doc-123', options)
+if (locked) {
+  // Document is now locked for exclusive access
+  // Perform your updates here
+}
+```
+
+#### removeLock
+
+Remove a lock from a document.
+
+**Parameters:**
+- `config`: Object with `couch` URL string
+- `docId`: Document ID string to unlock
+- `options`: Lock options object:
+  - `enableLocking`: Boolean to enable/disable locking (default: true)
+  - `username`: String identifying who is removing the lock
+
+Only the user who created the lock can remove it.
+
+```javascript
+const config = { couch: 'http://localhost:5984/mydb' }
+const options = {
+  enableLocking: true,
+  username: 'alice'
+}
+
+await removeLock(config, 'doc-123', options)
+// Lock is now removed if it existed and was owned by 'alice'
+```
+
 ### Bulk Operations
 
 #### bulkSave
