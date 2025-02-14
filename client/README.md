@@ -36,6 +36,12 @@ const doc = db.get('doc-123')
 | [`patchDangerously()`](#patchdangerously) | [`bulkGetDictionary()`](#bulkgetdictionary) | |
 | [`getAtRev()`](#getatrev) | [`bulkSaveTransaction()`](#bulksavetransaction) | |
 
+
+Some *Sugar* API helpers
+
+ - [`createLock()`](#createLock)
+ - [`removeLock()`](#removeLock)
+
 ### Document Operations
 
 #### get
