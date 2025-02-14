@@ -16,6 +16,7 @@ export const ChangesOptions = z.object({
   query_params: z.record(z.any()).default({}),
   use_post: z.boolean().default(false)
 }).partial()
+/** @typedef { z.infer<typeof ChangesOptions> } ChangesOptionsSchema */
 
 export const ChangesResponse = z.object({
   id: z.string(),
@@ -39,7 +40,13 @@ export const ChangesEmitter = z.object({
 
 export const Changes = z.function()
   .args(CouchConfig, ChangesOptions)
-  .returns(ChangesEmitter)
+  .returns(z.promise(ChangesEmitter))
 
 /** @typedef { z.infer<typeof Changes> } ChangesSchema */
 /** @typedef { z.infer<typeof ChangesEmitter> } ChangesEmitterSchema */
+
+export const ChangesBound = z.function()
+  .args(ChangesOptions)
+  .returns(z.promise(ChangesEmitter))
+
+/** @typedef { z.infer<typeof ChangesBound> } ChangesBoundSchema */
