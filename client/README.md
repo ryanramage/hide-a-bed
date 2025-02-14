@@ -165,7 +165,11 @@ console.log(doc._id, doc._rev)
 
 #### createLock
 
-Create a lock for a document to prevent concurrent modifications.
+Create a lock document to try and prevent concurrent modifications.
+
+Note this does not internally lock the document that is referenced by the id. People can still mutate it with 
+all the other document mutation functions. This should just be used at an app level to coordinate access 
+on long running document editing.
 
 **Parameters:**
 - `config`: Object with `couch` URL string
@@ -175,20 +179,6 @@ Create a lock for a document to prevent concurrent modifications.
   - `username`: String identifying who created the lock
 
 Returns a Promise resolving to boolean indicating if lock was created successfully.
-
-```javascript
-const config = { couch: 'http://localhost:5984/mydb' }
-const options = {
-  enableLocking: true,
-  username: 'alice'
-}
-
-const locked = await createLock(config, 'doc-123', options)
-if (locked) {
-  // Document is now locked for exclusive access
-  // Perform your updates here
-}
-```
 
 #### removeLock
 
@@ -210,7 +200,12 @@ const options = {
   username: 'alice'
 }
 
-await removeLock(config, 'doc-123', options)
+const locked = await createLock(config, 'doc-123', options)
+if (locked) {
+  // Document is now locked for exclusive access
+  // Perform your updates here
+  await removeLock(config, 'doc-123', options)
+}
 // Lock is now removed if it existed and was owned by 'alice'
 ```
 
