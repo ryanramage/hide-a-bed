@@ -27,6 +27,19 @@ export const ChangesResponse = z.object({
   deleted: z.boolean().optional()
 })
 
+export const ChangesEmitter = z.object({
+  on: z.function()
+    .args(z.string(), z.function().args(z.any()).returns(z.void()))
+    .returns(z.any()),
+  removeListener: z.function()
+    .args(z.string(), z.function().args(z.any()).returns(z.void()))
+    .returns(z.any()),
+  stop: z.function().returns(z.void())
+})
+
 export const Changes = z.function()
   .args(CouchConfig, ChangesOptions)
+  .returns(ChangesEmitter)
+
 /** @typedef { z.infer<typeof Changes> } ChangesSchema */
+/** @typedef { z.infer<typeof ChangesEmitter> } ChangesEmitterSchema */

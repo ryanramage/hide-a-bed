@@ -50,7 +50,7 @@ export const changes = Changes.implement((config, options = {}) => {
         method,
         url,
         payload,
-        { ...opts, query: queryString }
+        { ...opts, query_params: queryString }
       )
 
       currentRequest
@@ -88,10 +88,12 @@ export const changes = Changes.implement((config, options = {}) => {
       }
     }
   }
+  return changesEmitter
 
   startFeed()
 
-  return {
+  /** @type {import('../schema/changes.mjs').ChangesEmitterSchema} */
+  const changesEmitter = {
     on: (event, listener) => emitter.on(event, listener),
     removeListener: (event, listener) => emitter.removeListener(event, listener),
     stop: () => {
