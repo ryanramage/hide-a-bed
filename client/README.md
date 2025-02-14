@@ -41,6 +41,7 @@ Some *Sugar* API helpers
 
  - [`createLock()`](#createLock)
  - [`removeLock()`](#removeLock)
+ - [`changes()`](#changes)
 
 ### Document Operations
 
@@ -551,5 +552,50 @@ Each operation logs appropriate information at these levels:
 - warn: Retryable errors, conflicts
 - info: Operation start/completion
 - debug: Detailed operation information
+
+
+Changes Feed
+===========
+
+#### changes
+
+Subscribe to the CouchDB changes feed to receive real-time updates.
+
+**Parameters:**
+- `config`: Object with `couch` URL string
+- `options`: Optional object with parameters:
+  - `since`: String or number indicating where to start from ('now' or update sequence number)
+  - `include_docs`: Boolean to include full documents
+  - `filter`: String name of design document filter function
+  - Other standard CouchDB changes feed parameters
+
+Returns an EventEmitter that emits 'change' events with change objects.
+
+```javascript
+const config = { couch: 'http://localhost:5984/mydb' }
+const options = { 
+  since: 'now',
+  include_docs: true
+}
+
+const feed = await changes(config, options)
+
+feed.on('change', change => {
+  console.log('Document changed:', change.id)
+  console.log('New revision:', change.changes[0].rev)
+  if (change.doc) {
+    console.log('Document contents:', change.doc)
+  }
+})
+
+// Stop listening to changes
+feed.stop()
+```
+
+The changes feed is useful for:
+- Building real-time applications
+- Keeping local data in sync with CouchDB
+- Triggering actions when documents change
+- Implementing replication
 
 
