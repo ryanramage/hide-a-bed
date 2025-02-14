@@ -2,6 +2,7 @@
 import needle from 'needle'
 import { EventEmitter } from 'events'
 import { Changes } from '../schema/changes.mjs'
+// @ts-ignore
 import ChangesStream from 'changes-stream'
 import { createLogger } from './logger.mjs'
 import { sleep } from './patch.mjs'
