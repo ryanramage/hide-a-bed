@@ -1,6 +1,7 @@
 // @ts-check */
 import { bulkGet, bulkSave, bulkRemove, bulkGetDictionary, bulkSaveTransaction } from './impl/bulk.mjs'
 import { get, put, getAtRev } from './impl/crud.mjs'
+import { changes } from './impl/changes.mjs'
 import { patch, patchDangerously } from './impl/patch.mjs'
 import { createLock, removeLock } from './impl/sugar/lock.mjs'
 import { query } from './impl/query.mjs'
@@ -10,6 +11,7 @@ import { withRetry } from './impl/retry.mjs'
 import { BulkSave, BulkGet, BulkRemove, BulkGetDictionary, BulkSaveTransaction } from './schema/bulk.mjs'
 import { CouchConfig } from './schema/config.mjs'
 import { SimpleViewQuery, SimpleViewQueryResponse } from './schema/query.mjs'
+import { Changes, ChangesOptions, ChangesResponse } from './schema/changes.mjs'
 import { SimpleViewQueryStream, OnRow } from './schema/stream.mjs'
 import { Patch, PatchDangerously } from './schema/patch.mjs'
 import { Lock, LockOptions, CreateLock, RemoveLock } from './schema/sugar/lock.mjs'
@@ -38,7 +40,10 @@ const schema = {
   Lock,
   LockOptions,
   CreateLock,
-  RemoveLock
+  RemoveLock,
+  Changes,
+  ChangesOptions,
+  ChangesResponse
 }
 
 /** @type { import('./schema/bind.mjs').BindSchema } */
@@ -68,7 +73,8 @@ const bindConfig = Bind.implement((
     bulkGetDictionary: config.bindWithRetry ? withRetry(bulkGetDictionary.bind(null, config), retryOptions) : bulkGetDictionary.bind(null, config),
     bulkSaveTransaction: bulkSaveTransaction.bind(null, config),
     createLock: createLock.bind(null, config),
-    removeLock: removeLock.bind(null, config)
+    removeLock: removeLock.bind(null, config),
+    changes: changes.bind(null, config)
   }
 })
 
