@@ -8,7 +8,7 @@ import { sleep } from './patch.mjs'
 
 const MAX_RETRY_DELAY = 30000 // 30 seconds
 
-/** @type { import('../schema/changes.mjs').Changes } */
+/** @type { import('../schema/changes.mjs').ChangesSchema } */
 export const changes = Changes.implement((config, options = {}) => {
   const emitter = new EventEmitter()
   const logger = createLogger(config)

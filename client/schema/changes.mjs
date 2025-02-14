@@ -14,7 +14,7 @@ export const ChangesOptions = z.object({
   include_docs: z.boolean().default(false),
   query_params: z.record(z.any()).default({}),
   use_post: z.boolean().default(false)
-})
+}).partial()
 
 export const ChangesResponse = z.object({
   id: z.string(),
@@ -22,10 +22,10 @@ export const ChangesResponse = z.object({
   changes: z.array(z.object({
     rev: z.string()
   })),
-  doc: CouchDoc.optional(),
+  doc: CouchDoc.nullish().optional(),
   deleted: z.boolean().optional()
 })
 
 export const Changes = z.function()
-  .args(CouchConfig, ChangesOptions.partial())
-  .returns(z.any())
+  .args(CouchConfig, ChangesOptions)
+/** @typedef { z.infer<typeof Changes> } ChangesSchema */
