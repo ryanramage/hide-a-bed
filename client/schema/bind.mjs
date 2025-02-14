@@ -6,6 +6,7 @@ import { CouchGetBound, CouchPutBound, CouchGetAtRevBound } from './crud.mjs'
 import { PatchBound } from './patch.mjs'
 import { SimpleViewQueryBound } from './query.mjs'
 import { SimpleViewQueryStreamBound } from './stream.mjs'
+import { CreateLockBound, RemoveLockBound } from './sugar/lock.mjs'
 
 const BindReturns = z.object({
   bulkGet: BulkGetBound,
@@ -18,7 +19,9 @@ const BindReturns = z.object({
   put: CouchPutBound,
   patch: PatchBound,
   query: SimpleViewQueryBound,
-  queryStream: SimpleViewQueryStreamBound
+  queryStream: SimpleViewQueryStreamBound,
+  createLock: CreateLockBound,
+  removeLock: RemoveLockBound
 })
 
 export const Bind = z.function().args(CouchConfig).returns(BindReturns)

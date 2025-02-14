@@ -24,6 +24,13 @@ export const CreateLock = z.function()
   )
   .returns(z.promise(z.boolean()))
 /** @typedef { z.infer<typeof CreateLock> } CreateLockSchema */
+export const CreateLockBound = z.function()
+  .args(
+    z.string().describe('document ID to lock'),
+    LockOptions
+  )
+  .returns(z.promise(z.boolean()))
+/** @typedef { z.infer<typeof CreateLockBound> } CreateLockBoundSchema */
 
 export const RemoveLock = z.function()
   .args(
@@ -33,3 +40,11 @@ export const RemoveLock = z.function()
   )
   .returns(z.promise(z.void()))
 /** @typedef { z.infer<typeof RemoveLock> } RemoveLockSchema */
+
+export const RemoveLockBound = z.function()
+  .args(
+    z.string().describe('document ID to unlock'),
+    LockOptions
+  )
+  .returns(z.promise(z.void()))
+/** @typedef { z.infer<typeof RemoveLockBound> } RemoveLockBoundSchema */
