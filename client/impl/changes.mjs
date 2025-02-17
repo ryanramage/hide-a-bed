@@ -26,7 +26,7 @@ export const changes = Changes.implement(async (config, options = {}) => {
     options.since = resp.body.update_seq
   }
 
-  const changes = new ChangesStream(options)
+  const changes = ChangesStream(options)
 
   changes.on('readable', () => {
     const change = changes.read();
