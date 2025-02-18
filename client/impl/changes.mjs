@@ -30,8 +30,10 @@ export const changes = Changes.implement(async (config, options = {}) => {
 
   changes.on('readable', () => {
     const change = changes.read();
-    console.log('got a change', change)
-    emitter.emit('change', change)
+    if (change.results && Array.isArray(change.results)) {
+      // emit each one seperate
+      change.results.forEach(c => emitter.emit('change', c))
+    } else emitter.emit('change', change)
   });
 
   return {

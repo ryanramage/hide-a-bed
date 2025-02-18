@@ -4,8 +4,9 @@ import { spawn } from 'child_process'
 import { bindConfig, bulkSaveTransaction, get } from '../index.mjs'
 import needle from 'needle'
 
-const PORT = 8985
-const DB_URL = `http://localhost:${PORT}/testdb`
+let PORT = 8985
+let DB_URL = `http://localhost:${PORT}/testdb`
+
 const config = {
   couch: DB_URL,
   bindWithRetry: true,
@@ -21,12 +22,15 @@ test.test('changes tests', async t => {
   await new Promise((resolve) => setTimeout(resolve, 1000)) // Give it time to start
   await needle('put', DB_URL)
   console.log('PouchDB Server started and database created at', DB_URL)
-  t.teardown(() => { server.kill() })
+  t.teardown(async () => { 
+    await needle('delete', DB_URL)
+    server.kill()
+  })
 
   const db = bindConfig(config)
 
   t.test('basic changes feed', t => new Promise(async (resolve) => {
-    const changesEmitter = await db.changes({ since: 'now' })
+    const changesEmitter = await db.changes({ since: 'now', feed: 'longpoll' })
     t.ok(changesEmitter.on, 'changes emitter has on method')
     t.ok(changesEmitter.removeListener, 'changes emitter has removeListener method')
     t.ok(changesEmitter.stop, 'changes emitter has stop method')
@@ -36,29 +40,28 @@ test.test('changes tests', async t => {
       t.end()
       resolve()
     })
+    await new Promise((resolve) => setTimeout(resolve, 1000)) // Give it time to start
     // Create a document to trigger a change
     await db.put({ _id: 'test-changes-doc', data: 'test' })
   }))
 
-  // t.test('document id', t => new Promise(async (resolve) => {
-  //   const opts = { 
-  //     since: 'now', 
-  //     filter: ['test-a'], 
-  //     include_docs: true 
-  //   }
-  //   const changesEmitter = await db.changes(opts)
-  //   t.ok(changesEmitter.on, 'changes emitter has on method')
-  //   t.ok(changesEmitter.removeListener, 'changes emitter has removeListener method')
-  //   t.ok(changesEmitter.stop, 'changes emitter has stop method')
-  //   changesEmitter.on('change', change => {
-  //     console.log(change)
-  //     // t.equal(change.id, 'test-a', 'change notification received')
-  //     // changesEmitter.stop()
-  //     // t.end()
-  //     resolve()
-  //   })
-  //   // Create a document to trigger a change
-  //   await db.put({ _id: 'test-changes-doc-2', data: 'test' })
-  //   await db.put({ _id: 'test-a', data: 'test' })
-  // }))
+  t.test('document id', t => new Promise(async (resolve) => {
+    const opts = { 
+      since: 'now', 
+      include_docs: true,
+      feed: 'longpoll'
+    }
+    const changesEmitter = await db.changes(opts)
+    changesEmitter.on('change', change => {
+      if (change.id === 'test-a') {
+        setTimeout(() => {
+          resolve()
+        }, 1000)
+      }
+    })
+    await new Promise((resolve) => setTimeout(resolve, 4000)) // Give it time to start
+    // Create a document to trigger a change
+    await db.put({ _id: 'test-changes-doc-2', data: 'test' })
+    await db.put({ _id: 'test-a', data: 'test' })
+  }))
 })
