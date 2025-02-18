@@ -2,6 +2,14 @@
 import needle from 'needle'
 import { EventEmitter } from 'events'
 import { Changes } from '../schema/changes.mjs'
+
+/** @typedef {{
+ *   seq: string|number,
+ *   id: string,
+ *   changes: Array<{rev: string}>,
+ *   deleted?: boolean,
+ *   doc?: any
+ * }} ChangeInfo */
 // @ts-ignore
 import ChangesStream from 'changes-stream'
 import { createLogger } from './logger.mjs'
@@ -32,7 +40,7 @@ export const changes = Changes.implement(async (config, options = {}) => {
     const change = changes.read();
     if (change.results && Array.isArray(change.results)) {
       // emit each one seperate
-      change.results.forEach(c => emitter.emit('change', c))
+      change.results.forEach((/** @type {ChangeInfo} */ c) => emitter.emit('change', c))
     } else emitter.emit('change', change)
   });
 
