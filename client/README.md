@@ -28,21 +28,17 @@ const doc = db.get('doc-123')
 
 ### API Quick Reference
 
-| Document Operations | Bulk Operations | View Operations |
+🍭 denotes a *Sugar* API helper - makes some tasks easier
+
+| Document Operations | Bulk Operations | View Operations | Changes Feed |
 |-------------------|-----------------|-----------------|
-| [`get()`](#get) | [`bulkGet()`](#bulkget) | [`query()`](#query) |
-| [`put()`](#put) | [`bulkSave()`](#bulksave) | [`queryStream()`](#querystream) |
-| [`patch()`](#patch) | [`bulkRemove()`](#bulkremove) | [`createQuery()`](#createquery) |
-| [`patchDangerously()`](#patchdangerously) | [`bulkGetDictionary()`](#bulkgetdictionary) | |
-| [`getAtRev()`](#getatrev) | [`bulkSaveTransaction()`](#bulksavetransaction) | |
-
-
-Some *Sugar* API helpers
-
- - [`createLock()`](#createLock)
- - [`removeLock()`](#removeLock)
- - [`changes()`](#changes)
- - [`watchDocs()`](#watchDocs)
+| [`get()`](#get) | [`bulkGet()`](#bulkget) | [`query()`](#query) | [`changes()`](#changes) |
+| [`put()`](#put) | [`bulkSave()`](#bulksave) | [`queryStream()`](#querystream) | [`watchDocs()`](#watchDocs) 🍭 |
+| [`patch()`](#patch) 🍭 | [`bulkRemove()`](#bulkremove) | [`createQuery()`](#createquery) 🍭 | |
+| [`patchDangerously()`](#patchdangerously) 🍭 | [`bulkGetDictionary()`](#bulkgetdictionary) 🍭 | | |
+| [`getAtRev()`](#getatrev) 🍭 | [`bulkSaveTransaction()`](#bulksavetransaction) 🍭 | | |
+| [`createLock()`](#createLock) 🍭 | | | |
+| [`removeLock()`](#removeLock) 🍭 | | | |
 
 ### Document Operations
 
