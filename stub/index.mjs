@@ -1,6 +1,7 @@
 import PouchDB from 'pouchdb-memory'
 import lodash from 'lodash'
 import { schema, createQuery } from 'hide-a-bed'
+import { CreateLock, RemoveLock } from './schema/sugar/lock.mjs'
 // PouchDB.plugin(PouchMemoryAdaptor)
 const { cloneDeep } = lodash
 
@@ -151,6 +152,25 @@ export const setup = async (designDocs) => {
     }
   })
 
+  const createLock = CreateLock.implement(async (_config, docId, options) => {
+    // Read mock behavior from config
+    if (_config._mockLockSuccess === false) {
+      return false
+    }
+    if (_config._mockLockError) {
+      throw _config._mockLockError
+    }
+    return true
+  })
+
+  const removeLock = RemoveLock.implement(async (_config, docId, options) => {
+    // Read mock behavior from config
+    if (_config._mockUnlockError) {
+      throw _config._mockUnlockError
+    }
+    // Success case just returns undefined
+  })
+
   return {
     bulkSave,
     bulkGet,
@@ -165,7 +185,9 @@ export const setup = async (designDocs) => {
     bulkRemove,
     query,
     queryStream,
-    bindConfig
+    bindConfig,
+    createLock,
+    removeLock
   }
 }
 
