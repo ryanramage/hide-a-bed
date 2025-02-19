@@ -42,6 +42,7 @@ Some *Sugar* API helpers
  - [`createLock()`](#createLock)
  - [`removeLock()`](#removeLock)
  - [`changes()`](#changes)
+ - [`watchDocs()`](#watchDocs)
 
 ### Document Operations
 
@@ -554,7 +555,7 @@ Each operation logs appropriate information at these levels:
 - debug: Detailed operation information
 
 
-Changes Feed
+watchDocs
 ===========
 
 #### changes
