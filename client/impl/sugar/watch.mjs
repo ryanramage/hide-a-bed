@@ -22,6 +22,8 @@ export const watchDocs = WatchDocs.implement((config, docIds, onChange, options 
   let buffer = ''
   const req = needle.get(url, opts)
 
+  let lastSeq = null
+
   req.on('data', chunk => {
     buffer += chunk.toString()
     const lines = buffer.split('\n')
@@ -37,6 +39,7 @@ export const watchDocs = WatchDocs.implement((config, docIds, onChange, options 
           if (!change.id) return null // ignore just last_seq
           logger.debug('Change detected:', change)
           onChange(change)
+          lastSeq = change.seq || change.last_seq
         } catch (err) {
           logger.error('Error parsing change:', err, 'Line:', line)
         }
@@ -57,10 +60,8 @@ export const watchDocs = WatchDocs.implement((config, docIds, onChange, options 
     try {
       RetryableError.handleNetworkError(err)
     } catch (retryErr) {
-      reject(retryErr)
       return
     }
-    reject(err)
   })
 
   req.on('end', () => {
@@ -74,6 +75,6 @@ export const watchDocs = WatchDocs.implement((config, docIds, onChange, options 
         logger.error('Error parsing final change:', err)
       }
     }
-    logger.info('Stream completed')
+    logger.info('Stream completed. Last seen seq: ', lastSeq)
   })
-}
+})
