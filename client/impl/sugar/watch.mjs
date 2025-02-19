@@ -3,12 +3,15 @@ import { RetryableError } from '../errors.mjs'
 import { createLogger } from '../logger.mjs'
 
 // watch the doc for any changes
-export const watchDoc = (config, docId, onChange, options = {}) => new Promise((resolve, reject) => {
+export const watchDocs = (config, docIds, onChange, options = {}) => {
   const logger = createLogger(config)
   const feed = options.feed ? options.feed : 'continuous'
   const includeDocs = options.include_docs ? options.include_docs : false
-
-  const url = `${config.couch}/_changes?feed=${feed}&since=now&include_docs=${includeDocs}&filter=_doc_ids&doc_ids=["${docId}"]`
+  const _docIds = Array.isArray(docIds) ? docIds : [docIds]
+  if (_docIds.length === 0) throw new Error('docIds must be a non-empty array')
+  if (_docIds.length > 100) throw new Error('docIds must be an array of 100 or fewer elements')
+  const ids = _docIds.join('","')
+  const url = `${config.couch}/_changes?feed=${feed}&since=now&include_docs=${includeDocs}&filter=_doc_ids&doc_ids=["${ids}"]`
 
   const opts = {
     headers: { 'Content-Type': 'application/json' },
@@ -30,6 +33,7 @@ export const watchDoc = (config, docId, onChange, options = {}) => new Promise((
       if (line.trim()) {
         try {
           const change = JSON.parse(line)
+          if (!change.id) return null // ignore just last_seq
           logger.debug('Change detected:', change)
           onChange(change)
         } catch (err) {
@@ -43,7 +47,6 @@ export const watchDoc = (config, docId, onChange, options = {}) => new Promise((
     logger.debug(`Received response with status code: ${response.statusCode}`)
     if (RetryableError.isRetryableStatusCode(response.statusCode)) {
       logger.warn(`Retryable status code received: ${response.statusCode}`)
-      reject(new RetryableError('retryable error during stream query', response.statusCode))
       req.abort()
     }
   })
@@ -71,6 +74,5 @@ export const watchDoc = (config, docId, onChange, options = {}) => new Promise((
       }
     }
     logger.info('Stream completed')
-    resolve(undefined)
   })
-})
+}
