@@ -31,7 +31,7 @@ const doc = db.get('doc-123')
 🍭 denotes a *Sugar* API helper - makes some tasks easier
 
 | Document Operations | Bulk Operations | View Operations | Changes Feed |
-|-------------------|-----------------|-----------------|
+|-------------------|-----------------|-----------------|-----------------|
 | [`get()`](#get) | [`bulkGet()`](#bulkget) | [`query()`](#query) | [`changes()`](#changes) |
 | [`put()`](#put) | [`bulkSave()`](#bulksave) | [`queryStream()`](#querystream) | [`watchDocs()`](#watchDocs) 🍭 |
 | [`patch()`](#patch) 🍭 | [`bulkRemove()`](#bulkremove) | [`createQuery()`](#createquery) 🍭 | |
