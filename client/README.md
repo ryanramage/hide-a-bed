@@ -1,5 +1,16 @@
-API 
--------------
+### API Quick Reference
+
+🍭 denotes a *Sugar* api - helps makes some tasks sweet and easy, but may hide some complexities you might want to deal with. 
+
+| Document Operations | Bulk Operations | View Operations | Changes Feed |
+|-------------------|-----------------|-----------------|-----------------|
+| [`get()`](#get) | [`bulkGet()`](#bulkget) | [`query()`](#query) | [`changes()`](#changes) |
+| [`put()`](#put) | [`bulkSave()`](#bulksave) | [`queryStream()`](#querystream) | [`watchDocs()`](#watchDocs) 🍭 |
+| [`patch()`](#patch) 🍭 | [`bulkRemove()`](#bulkremove) | [`createQuery()`](#createquery) 🍭 | |
+| [`patchDangerously()`](#patchdangerously) 🍭 | [`bulkGetDictionary()`](#bulkgetdictionary) 🍭 | | |
+| [`getAtRev()`](#getatrev) 🍭 | [`bulkSaveTransaction()`](#bulksavetransaction) 🍭 | | |
+| [`createLock()`](#createLock) 🍭 | | | |
+| [`removeLock()`](#removeLock) 🍭 | | | |
 
 ### Setup
 
@@ -26,19 +37,6 @@ const db = bindConfig(process.env)
 const doc = db.get('doc-123')
 ```
 
-### API Quick Reference
-
-🍭 denotes a *Sugar* api - helps makes some tasks sweet and easy, but may hide some complexities you might want to deal with. 
-
-| Document Operations | Bulk Operations | View Operations | Changes Feed |
-|-------------------|-----------------|-----------------|-----------------|
-| [`get()`](#get) | [`bulkGet()`](#bulkget) | [`query()`](#query) | [`changes()`](#changes) |
-| [`put()`](#put) | [`bulkSave()`](#bulksave) | [`queryStream()`](#querystream) | [`watchDocs()`](#watchDocs) 🍭 |
-| [`patch()`](#patch) 🍭 | [`bulkRemove()`](#bulkremove) | [`createQuery()`](#createquery) 🍭 | |
-| [`patchDangerously()`](#patchdangerously) 🍭 | [`bulkGetDictionary()`](#bulkgetdictionary) 🍭 | | |
-| [`getAtRev()`](#getatrev) 🍭 | [`bulkSaveTransaction()`](#bulksavetransaction) 🍭 | | |
-| [`createLock()`](#createLock) 🍭 | | | |
-| [`removeLock()`](#removeLock) 🍭 | | | |
 
 ### Document Operations
 
