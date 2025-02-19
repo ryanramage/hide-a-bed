@@ -3,6 +3,7 @@ import lodash from 'lodash'
 import { schema, createQuery } from 'hide-a-bed'
 import { CreateLock, RemoveLock } from './schema/sugar/lock.mjs'
 import { WatchDocs } from './schema/sugar/watch.mjs'
+import { Changes } from './schema/changes.mjs'
 import { EventEmitter } from 'events'
 // PouchDB.plugin(PouchMemoryAdaptor)
 const { cloneDeep } = lodash
@@ -191,6 +192,31 @@ export const setup = async (designDocs) => {
     }
   })
 
+  const changes = Changes.implement(async (_config, onChange, options = {}) => {
+    const emitter = new EventEmitter()
+    
+    // Set up PouchDB changes feed
+    const feed = db.changes({
+      since: options.since || 'now',
+      live: true,
+      include_docs: options.include_docs || false
+    })
+
+    // Forward all PouchDB events to our emitter
+    feed.on('change', change => emitter.emit('change', change))
+    feed.on('error', error => emitter.emit('error', error))
+    feed.on('complete', () => emitter.emit('end'))
+
+    return {
+      on: (event, listener) => emitter.on(event, listener),
+      removeListener: (event, listener) => emitter.removeListener(event, listener),
+      stop: () => {
+        feed.cancel()
+        emitter.removeAllListeners()
+      }
+    }
+  })
+
   return {
     bulkSave,
     bulkGet,
@@ -208,7 +234,8 @@ export const setup = async (designDocs) => {
     bindConfig,
     createLock,
     removeLock,
-    watchDocs
+    watchDocs,
+    changes
   }
 }
 
