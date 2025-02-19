@@ -8,3 +8,4 @@ temp/
 log.txt
 *.tap
 config.json
+integration/
