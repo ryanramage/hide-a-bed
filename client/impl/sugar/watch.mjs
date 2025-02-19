@@ -1,12 +1,13 @@
 import needle from 'needle'
 import { RetryableError } from '../errors.mjs'
 import { createLogger } from '../logger.mjs'
+import { WatchDocs } from '../../schema/sugar/watch.mjs'
 
 // watch the doc for any changes
-export const watchDocs = (config, docIds, onChange, options = {}) => {
+export const watchDocs = WatchDocs.implement((config, docIds, onChange, options = {}) => {
   const logger = createLogger(config)
-  const feed = options.feed ? options.feed : 'continuous'
-  const includeDocs = options.include_docs ? options.include_docs : false
+  const feed = 'continuous'
+  const includeDocs = options.include_docs ?? false
   const _docIds = Array.isArray(docIds) ? docIds : [docIds]
   if (_docIds.length === 0) throw new Error('docIds must be a non-empty array')
   if (_docIds.length > 100) throw new Error('docIds must be an array of 100 or fewer elements')
