@@ -1,4 +1,5 @@
 import needle from 'needle'
+import JSONStream from 'JSONStream'
 import { RetryableError } from '../errors.mjs'
 import { createLogger } from '../logger.mjs'
 
@@ -16,11 +17,10 @@ export const watchDoc = (config, docId, onChange, options = {}) => new Promise((
     parse_response: false // Keep as stream
   }
 
-  const streamer = null // need help here
+  const streamer = JSONStream.parse()
 
   streamer.on('data', /** @param {object} row */ row => {
-    console.log('on change')
-    // do we have to parse the data here into json
+    logger.debug('Change detected:', row)
     onChange(row)
   })
 
