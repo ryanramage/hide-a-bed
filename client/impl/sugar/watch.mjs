@@ -2,31 +2,42 @@ import needle from 'needle'
 import { EventEmitter } from 'events'
 import { RetryableError } from '../errors.mjs'
 import { createLogger } from '../logger.mjs'
+import { sleep } from '../patch.mjs'
 import { WatchDocs } from '../../schema/sugar/watch.mjs'
 
 // watch the doc for any changes
 export const watchDocs = WatchDocs.implement((config, docIds, onChange, options = {}) => {
-  let lastSeq = null || 'now'
   const logger = createLogger(config)
-  const feed = 'continuous'
-  const includeDocs = options.include_docs ?? false
+  const emitter = new EventEmitter()
+  let lastSeq = null || 'now'
+  let stopping = false
+  let retryCount = 0
+  let currentRequest = null
+  const maxRetries = options.maxRetries || 10
+  const initialDelay = options.initialDelay || 1000
+  const maxDelay = options.maxDelay || 30000
+
   const _docIds = Array.isArray(docIds) ? docIds : [docIds]
   if (_docIds.length === 0) throw new Error('docIds must be a non-empty array')
   if (_docIds.length > 100) throw new Error('docIds must be an array of 100 or fewer elements')
-  const ids = _docIds.join('","')
-  const url = `${config.couch}/_changes?feed=${feed}&since=${lastSeq}&include_docs=${includeDocs}&filter=_doc_ids&doc_ids=["${ids}"]`
 
-  const opts = {
-    headers: { 'Content-Type': 'application/json' },
-    parse_response: false
-  }
+  const connect = async () => {
+    if (stopping) return
 
-  const emitter = new EventEmitter()
-  let buffer = ''
-  const req = needle.get(url, opts)
-  let stopping = false
+    const feed = 'continuous'
+    const includeDocs = options.include_docs ?? false
+    const ids = _docIds.join('","')
+    const url = `${config.couch}/_changes?feed=${feed}&since=${lastSeq}&include_docs=${includeDocs}&filter=_doc_ids&doc_ids=["${ids}"]`
+    
+    const opts = {
+      headers: { 'Content-Type': 'application/json' },
+      parse_response: false
+    }
 
-  req.on('data', chunk => {
+    let buffer = ''
+    currentRequest = needle.get(url, opts)
+
+  currentRequest.on('data', chunk => {
     buffer += chunk.toString()
     const lines = buffer.split('\n')
     
@@ -49,15 +60,19 @@ export const watchDocs = WatchDocs.implement((config, docIds, onChange, options 
     }
   })
 
-  req.on('response', response => {
+  currentRequest.on('response', response => {
     logger.debug(`Received response with status code: ${response.statusCode}`)
     if (RetryableError.isRetryableStatusCode(response.statusCode)) {
       logger.warn(`Retryable status code received: ${response.statusCode}`)
-      req.abort()
+      currentRequest.abort()
+      handleReconnect()
+    } else {
+      // Reset retry count on successful connection
+      retryCount = 0
     }
   })
 
-  req.on('error', err => {
+  currentRequest.on('error', async err => {
     if (stopping) {
       logger.info('stopping in progress, ignore stream error')
       return
@@ -65,12 +80,14 @@ export const watchDocs = WatchDocs.implement((config, docIds, onChange, options 
     logger.error('Network error during stream query:', err)
     try {
       RetryableError.handleNetworkError(err)
-    } catch (retryErr) {
-      return
+      handleReconnect()
+    } catch (nonRetryErr) {
+      logger.error('Non-retryable error:', nonRetryErr)
+      emitter.emit('error', nonRetryErr)
     }
   })
 
-  req.on('end', () => {
+  currentRequest.on('end', () => {
     // Process any remaining data in buffer
     if (buffer.trim()) {
       try {
@@ -83,7 +100,39 @@ export const watchDocs = WatchDocs.implement((config, docIds, onChange, options 
     }
     logger.info('Stream completed. Last seen seq: ', lastSeq)
     emitter.emit('end', { lastSeq })
+    
+    // If the stream ends and we're not stopping, attempt to reconnect
+    if (!stopping) {
+      handleReconnect()
+    }
   })
+  }
+
+  const handleReconnect = async () => {
+    if (stopping || retryCount >= maxRetries) {
+      if (retryCount >= maxRetries) {
+        logger.error(`Max retries (${maxRetries}) reached, giving up`)
+        emitter.emit('error', new Error('Max retries reached'))
+      }
+      return
+    }
+
+    const delay = Math.min(initialDelay * Math.pow(2, retryCount), maxDelay)
+    retryCount++
+    
+    logger.info(`Attempting to reconnect in ${delay}ms (attempt ${retryCount} of ${maxRetries})`)
+    await sleep(delay)
+    
+    try {
+      connect()
+    } catch (err) {
+      logger.error('Error during reconnection:', err)
+      handleReconnect()
+    }
+  }
+
+  // Start initial connection
+  connect()
 
   // Bind the provided change listener
   emitter.on('change', onChange)
@@ -93,7 +142,7 @@ export const watchDocs = WatchDocs.implement((config, docIds, onChange, options 
     removeListener: (event, listener) => emitter.removeListener(event, listener),
     stop: () => {
       stopping = true
-      req.abort()
+      if (currentRequest) currentRequest.abort()
       emitter.removeAllListeners()
     }
   }
