@@ -655,8 +655,7 @@ Watch specific documents for changes in real-time.
  ```
 
  The watchDocs feed is useful for:
- - Building real-time applications focused on specific documen
+ - Building real-time applications focused on specific documents
  - Triggering actions when particular documents change
- - Implementing selective replication
  - Maintaining cached copies of frequently accessed documents
 
