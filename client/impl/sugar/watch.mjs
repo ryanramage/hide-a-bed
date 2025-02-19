@@ -51,8 +51,8 @@ export const watchDocs = WatchDocs.implement((config, docIds, onChange, options 
           const change = JSON.parse(line)
           if (!change.id) return null // ignore just last_seq
           logger.debug(`Change detected, watching [${_docIds}]`, change)
-          emitter.emit('change', change)
           lastSeq = change.seq || change.last_seq
+          emitter.emit('change', change)
         } catch (err) {
           logger.error('Error parsing change:', err, 'Line:', line)
         }
@@ -147,6 +147,7 @@ export const watchDocs = WatchDocs.implement((config, docIds, onChange, options 
     stop: () => {
       stopping = true
       if (currentRequest) currentRequest.abort()
+      emitter.emit('end', { lastSeq })
       emitter.removeAllListeners()
     }
   }
