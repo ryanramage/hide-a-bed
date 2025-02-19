@@ -50,7 +50,7 @@ export const watchDocs = WatchDocs.implement((config, docIds, onChange, options 
         try {
           const change = JSON.parse(line)
           if (!change.id) return null // ignore just last_seq
-          logger.debug('Change detected:', change)
+          logger.debug(`Change detected, watching [${_docIds}]`, change)
           emitter.emit('change', change)
           lastSeq = change.seq || change.last_seq
         } catch (err) {
@@ -61,7 +61,7 @@ export const watchDocs = WatchDocs.implement((config, docIds, onChange, options 
   })
 
   currentRequest.on('response', response => {
-    logger.debug(`Received response with status code: ${response.statusCode}`)
+    logger.debug(`Received response with status code, watching [${_docIds}]: ${response.statusCode}`)
     if (RetryableError.isRetryableStatusCode(response.statusCode)) {
       logger.warn(`Retryable status code received: ${response.statusCode}`)
       currentRequest.abort()
@@ -77,13 +77,17 @@ export const watchDocs = WatchDocs.implement((config, docIds, onChange, options 
       logger.info('stopping in progress, ignore stream error')
       return
     }
-    logger.error('Network error during stream query:', err)
+    logger.error(`Network error during stream, watching [${_docIds}]:`, err.toString())
     try {
       RetryableError.handleNetworkError(err)
-      handleReconnect()
-    } catch (nonRetryErr) {
-      logger.error('Non-retryable error:', nonRetryErr)
-      emitter.emit('error', nonRetryErr)
+    } catch (filteredError) {
+      if (filteredError instanceof RetryableError) {
+        logger.info(`Retryable error, watching [${_docIds}]:`, filteredError.toString())
+        handleReconnect()
+      } else {
+        logger.error(`Non-retryable error, watching [${_docIds}]`, nonRetryErr)
+        emitter.emit('error', nonRetryErr)
+      }
     }
   })
 
