@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { CouchConfig } from '../config.mjs'
+import { ChangesEmitter } from '../changes.mjs'
 
 export const WatchOptions = z.object({
   include_docs: z.boolean().default(false)
@@ -12,7 +13,7 @@ export const WatchDocs = z.function()
     z.function().args(z.any()).returns(z.void()),
     WatchOptions
   )
-  .returns(z.void())
+  .returns(ChangesEmitter)
 
 /** @typedef { z.infer<typeof WatchOptions> } WatchOptionsSchema */
 /** @typedef { z.infer<typeof WatchDocs> } WatchDocsSchema */
@@ -23,6 +24,6 @@ export const WatchDocsBound = z.function()
     z.function().args(z.any()).returns(z.void()),
     WatchOptions
   )
-  .returns(z.void())
+  .returns(ChangesEmitter)
 
 /** @typedef { z.infer<typeof WatchDocsBound> } WatchDocsBoundSchema */
