@@ -1,10 +1,11 @@
 import needle from 'needle'
+import { EventEmitter } from 'events'
 import { RetryableError } from '../errors.mjs'
 import { createLogger } from '../logger.mjs'
 import { WatchDocs } from '../../schema/sugar/watch.mjs'
 
 // watch the doc for any changes
-export const watchDocs = WatchDocs.implement((config, docIds, onChange, options = {}) => {
+export const watchDocs = WatchDocs.implement((config, docIds, options = {}) => {
   const logger = createLogger(config)
   const feed = 'continuous'
   const includeDocs = options.include_docs ?? false
@@ -19,9 +20,9 @@ export const watchDocs = WatchDocs.implement((config, docIds, onChange, options 
     parse_response: false
   }
 
+  const emitter = new EventEmitter()
   let buffer = ''
   const req = needle.get(url, opts)
-
   let lastSeq = null
 
   req.on('data', chunk => {
@@ -38,7 +39,7 @@ export const watchDocs = WatchDocs.implement((config, docIds, onChange, options 
           const change = JSON.parse(line)
           if (!change.id) return null // ignore just last_seq
           logger.debug('Change detected:', change)
-          onChange(change)
+          emitter.emit('change', change)
           lastSeq = change.seq || change.last_seq
         } catch (err) {
           logger.error('Error parsing change:', err, 'Line:', line)
@@ -70,11 +71,21 @@ export const watchDocs = WatchDocs.implement((config, docIds, onChange, options 
       try {
         const change = JSON.parse(buffer)
         logger.debug('Final change detected:', change)
-        onChange(change)
+        emitter.emit('change', change)
       } catch (err) {
         logger.error('Error parsing final change:', err)
       }
     }
     logger.info('Stream completed. Last seen seq: ', lastSeq)
+    emitter.emit('end', { lastSeq })
   })
+
+  return {
+    on: (event, listener) => emitter.on(event, listener),
+    removeListener: (event, listener) => emitter.removeListener(event, listener),
+    stop: () => {
+      req.abort()
+      emitter.removeAllListeners()
+    }
+  }
 })
