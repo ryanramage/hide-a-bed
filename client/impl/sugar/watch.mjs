@@ -24,6 +24,7 @@ export const watchDocs = WatchDocs.implement((config, docIds, onChange, options 
   let buffer = ''
   const req = needle.get(url, opts)
   let lastSeq = null
+  let stopping = false
 
   req.on('data', chunk => {
     buffer += chunk.toString()
@@ -57,6 +58,10 @@ export const watchDocs = WatchDocs.implement((config, docIds, onChange, options 
   })
 
   req.on('error', err => {
+    if (stopping) {
+      logger.info('stopping in progress, ignore stream error')
+      return
+    }
     logger.error('Network error during stream query:', err)
     try {
       RetryableError.handleNetworkError(err)
@@ -87,6 +92,7 @@ export const watchDocs = WatchDocs.implement((config, docIds, onChange, options 
     on: (event, listener) => emitter.on(event, listener),
     removeListener: (event, listener) => emitter.removeListener(event, listener),
     stop: () => {
+      stopping = true
       req.abort()
       emitter.removeAllListeners()
     }
