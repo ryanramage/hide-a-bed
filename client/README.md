@@ -554,16 +554,13 @@ Each operation logs appropriate information at these levels:
 - info: Operation start/completion
 - debug: Detailed operation information
 
-
-watchDocs
-===========
-
-#### changes
+#### changes()
 
 Subscribe to the CouchDB changes feed to receive real-time updates.
 
 **Parameters:**
 - `config`: Object with `couch` URL string
+- 'onChange': function called for each change
 - `options`: Optional object with parameters:
   - `since`: String or number indicating where to start from ('now' or update sequence number)
   - `include_docs`: Boolean to include full documents
@@ -579,15 +576,15 @@ const options = {
   include_docs: true
 }
 
-const feed = await changes(config, options)
-
-feed.on('change', change => {
+const onChange = change => {
   console.log('Document changed:', change.id)
   console.log('New revision:', change.changes[0].rev)
   if (change.doc) {
     console.log('Document contents:', change.doc)
   }
-})
+}
+const feed = await changes(config, onChange, options)
+
 
 // Stop listening to changes
 feed.stop()
@@ -599,4 +596,67 @@ The changes feed is useful for:
 - Triggering actions when documents change
 - Implementing replication
 
+
+#### watchDocs()
+
+Watch specific documents for changes in real-time.
+
+ **Parameters:**
+ - `config`: Object with `couch` URL string
+ - `docIds`: String or array of document IDs to watch (max 100
+ - `onChange`: Function called for each change
+ - `options`: Optional object with parameters:
+   - `include_docs`: Boolean to include full documents (defaul
+ false)
+   - `maxRetries`: Maximum reconnection attempts (default: 10)
+   - `initialDelay`: Initial reconnection delay in ms (default
+ 1000)
+   - `maxDelay`: Maximum reconnection delay in ms (default:
+ 30000)
+
+ Returns an EventEmitter that emits:
+ - 'change' events with change objects
+ - 'error' events when max retries reached
+ - 'end' events with last sequence number
+
+ ```javascript
+ const config = { couch: 'http://localhost:5984/mydb' }
+
+ // Watch a single document
+ const feed = await watchDocs(config, 'doc123', change => {
+   console.log('Document changed:', change.id)
+   console.log('New revision:', change.changes[0].rev)
+ })
+
+ // Watch multiple documents with full doc content
+ const feed = await watchDocs(
+   config,
+   ['doc1', 'doc2', 'doc3'],
+   change => {
+     if (change.doc) {
+       console.log('Updated document:', change.doc)
+     }
+   },
+   { include_docs: true }
+ )
+
+ // Handle errors
+ feed.on('error', error => {
+   console.error('Watch error:', error)
+ })
+
+ // Handle end of feed
+ feed.on('end', ({ lastSeq }) => {
+   console.log('Feed ended at sequence:', lastSeq)
+ })
+
+ // Stop watching
+ feed.stop()
+ ```
+
+ The watchDocs feed is useful for:
+ - Building real-time applications focused on specific documen
+ - Triggering actions when particular documents change
+ - Implementing selective replication
+ - Maintaining cached copies of frequently accessed documents
 
