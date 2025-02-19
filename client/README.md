@@ -28,7 +28,7 @@ const doc = db.get('doc-123')
 
 ### API Quick Reference
 
-🍭 denotes a *Sugar* API helper - makes some tasks easier
+🍭 denotes a *Sugar* api - helps makes some tasks sweet and easy, but may hide some complexities you might want to deal with. 
 
 | Document Operations | Bulk Operations | View Operations | Changes Feed |
 |-------------------|-----------------|-----------------|-----------------|
