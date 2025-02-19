@@ -1,5 +1,4 @@
 import needle from 'needle'
-import JSONStream from 'JSONStream'
 import { RetryableError } from '../errors.mjs'
 import { createLogger } from '../logger.mjs'
 
@@ -12,44 +11,40 @@ export const watchDoc = (config, docId, onChange, options = {}) => new Promise((
   const url = `${config.couch}/_changes?feed=${feed}&since=now&include_docs=${includeDocs}&filter=_doc_ids&doc_ids=["${docId}"]`
 
   const opts = {
-    json: true,
     headers: { 'Content-Type': 'application/json' },
-    parse_response: false // Keep as stream
+    parse_response: false
   }
 
-  const streamer = JSONStream.parse()
+  let buffer = ''
+  const req = needle.get(url, opts)
 
-  streamer.on('data', /** @param {object} row */ row => {
-    logger.debug('Change detected:', row)
-    onChange(row)
-  })
+  req.on('data', chunk => {
+    buffer += chunk.toString()
+    const lines = buffer.split('\n')
+    
+    // Keep the last partial line in the buffer
+    buffer = lines.pop() || ''
 
-  streamer.on('error', /** @param {Error} err */ err => {
-    logger.error('Stream parsing error:', err)
-    reject(new Error(`Stream parsing error: ${err.message}`))
-  })
-
-  streamer.on('done', /** @param {Error|null} err */ err => {
-    try {
-      RetryableError.handleNetworkError(err)
-    } catch (e) {
-      reject(e)
+    // Process complete lines
+    for (const line of lines) {
+      if (line.trim()) {
+        try {
+          const change = JSON.parse(line)
+          logger.debug('Change detected:', change)
+          onChange(change)
+        } catch (err) {
+          logger.error('Error parsing change:', err, 'Line:', line)
+        }
+      }
     }
   })
-
-  streamer.on('end', () => {
-    logger.info(`Stream completed, processed rows`)
-    resolve(undefined) // all work should be done in the stream
-  })
-
-  const req = needle.get(url, opts)
 
   req.on('response', response => {
     logger.debug(`Received response with status code: ${response.statusCode}`)
     if (RetryableError.isRetryableStatusCode(response.statusCode)) {
       logger.warn(`Retryable status code received: ${response.statusCode}`)
       reject(new RetryableError('retryable error during stream query', response.statusCode))
-      // req.abort()
+      req.abort()
     }
   })
 
@@ -64,5 +59,18 @@ export const watchDoc = (config, docId, onChange, options = {}) => new Promise((
     reject(err)
   })
 
-  req.pipe(streamer)
+  req.on('end', () => {
+    // Process any remaining data in buffer
+    if (buffer.trim()) {
+      try {
+        const change = JSON.parse(buffer)
+        logger.debug('Final change detected:', change)
+        onChange(change)
+      } catch (err) {
+        logger.error('Error parsing final change:', err)
+      }
+    }
+    logger.info('Stream completed')
+    resolve(undefined)
+  })
 })
