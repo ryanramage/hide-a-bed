@@ -5,7 +5,7 @@ import { createLogger } from '../logger.mjs'
 import { WatchDocs } from '../../schema/sugar/watch.mjs'
 
 // watch the doc for any changes
-export const watchDocs = WatchDocs.implement((config, docIds, options = {}) => {
+export const watchDocs = WatchDocs.implement((config, docIds, onChange, options = {}) => {
   const logger = createLogger(config)
   const feed = 'continuous'
   const includeDocs = options.include_docs ?? false
@@ -79,6 +79,9 @@ export const watchDocs = WatchDocs.implement((config, docIds, options = {}) => {
     logger.info('Stream completed. Last seen seq: ', lastSeq)
     emitter.emit('end', { lastSeq })
   })
+
+  // Bind the provided change listener
+  emitter.on('change', onChange)
 
   return {
     on: (event, listener) => emitter.on(event, listener),

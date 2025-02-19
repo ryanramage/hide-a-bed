@@ -18,7 +18,7 @@ import { sleep } from './patch.mjs'
 const MAX_RETRY_DELAY = 30000 // 30 seconds
 
 /** @type { import('../schema/changes.mjs').ChangesSchema } */
-export const changes = Changes.implement(async (config, options = {}) => {
+export const changes = Changes.implement(async (config, onChange, options = {}) => {
   const emitter = new EventEmitter()
   const logger = createLogger(config)
   options.db = config.couch
@@ -43,6 +43,9 @@ export const changes = Changes.implement(async (config, options = {}) => {
       change.results.forEach((/** @type {ChangeInfo} */ c) => emitter.emit('change', c))
     } else emitter.emit('change', change)
   });
+
+  // Bind the provided change listener
+  emitter.on('change', onChange)
 
   return {
     on: (event, listener) => emitter.on(event, listener),
