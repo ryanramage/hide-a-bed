@@ -6,11 +6,17 @@
 |-------------------|-----------------|-----------------|-----------------|
 | [`get()`](#get) | [`bulkGet()`](#bulkget) | [`query()`](#query) | [`changes()`](#changes) |
 | [`put()`](#put) | [`bulkSave()`](#bulksave) | [`queryStream()`](#querystream) | [`watchDocs()`](#watchDocs) 🍭 |
-| [`patch()`](#patch) 🍭 | [`bulkRemove()`](#bulkremove) | [`createQuery()`](#createquery) 🍭 | |
+| [`patch()`](#patch) 🍭 | [`bulkRemove()`](#bulkremove) |  | |
 | [`patchDangerously()`](#patchdangerously) 🍭 | [`bulkGetDictionary()`](#bulkgetdictionary) 🍭 | | |
 | [`getAtRev()`](#getatrev) 🍭 | [`bulkSaveTransaction()`](#bulksavetransaction) 🍭 | | |
 | [`createLock()`](#createLock) 🍭 | | | |
 | [`removeLock()`](#removeLock) 🍭 | | | |
+
+And some utility apis
+
+ - [`createQuery()`](#createquery) 🍭
+ - [`withRetry()`](#withretry)
+ 
 
 ### Setup
 
@@ -36,7 +42,6 @@ import { bindConfig } from 'hide-a-bed'
 const db = bindConfig(process.env)
 const doc = db.get('doc-123')
 ```
-
 
 ### Document Operations
 
@@ -278,7 +283,7 @@ const results = await bulkRemove(config, ids)
 
 #### bulkGetDictionary
 
-Adds some convenience to bulkGet. Found and notFound documents are separated. Both properties are records of id to result. This makes it easy to deal with the results.
+Adds some convenience to bulkGet. Organizes found and notFound documents into properties that are {id:result}. This makes it easy to deal with the results.
 
 **Parameters:**
 - `config`: Object with `couch` URL string
@@ -474,79 +479,9 @@ const init = async () => {
 }
 init()
 ```
-Advanced Config Options
-=======================
 
-The config object supports the following properties:
-
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| couch | string | required | The URL of the CouchDB database |
-| throwOnGetNotFound | boolean | false | If true, throws an error when get() returns 404. If false, returns undefined |
-| bindWithRetry | boolean | true | When using bindConfig(), adds retry logic to bound methods |
-| maxRetries | number | 3 | Maximum number of retry attempts for retryable operations |
-| initialDelay | number | 1000 | Initial delay in milliseconds before first retry |
-| backoffFactor | number | 2 | Multiplier for exponential backoff between retries |
-| useConsoleLogger | boolean | false | If true, enables console logging when no logger is provided |
-| logger | object/function | undefined | Custom logging interface (winston-style object or function) |
-
-Example configuration with all options:
-```javascript
-const config = {
-  couch: 'http://localhost:5984/mydb',
-  throwOnGetNotFound: true,
-  bindWithRetry: true,
-  maxRetries: 5,
-  initialDelay: 2000,
-  backoffFactor: 1.5,
-  useConsoleLogger: true,
-  logger: (level, ...args) => console.log(level, ...args)
-}
-```
-
-
-Logging Support
-==============
-
-The library supports flexible logging options that can be configured through the config object:
-
-```javascript
-// Enable console logging (error, warn, info, debug)
-const config = { 
-  couch: 'http://localhost:5984/mydb',
-  useConsoleLogger: true
-}
-
-// Use a custom logger object (winston-style)
-const config = {
-  couch: 'http://localhost:5984/mydb',
-  logger: {
-    error: (msg) => console.error(msg),
-    warn: (msg) => console.warn(msg),
-    info: (msg) => console.info(msg),
-    debug: (msg) => console.debug(msg)
-  }
-}
-
-// Use a simple function logger
-const config = {
-  couch: 'http://localhost:5984/mydb',
-  logger: (level, ...args) => console.log(level, ...args)
-}
-```
-
-The logger will track operations including:
-- Document operations (get, put, patch)
-- Bulk operations
-- View queries
-- Streaming operations
-- Retries and error handling
-
-Each operation logs appropriate information at these levels:
-- error: Fatal/unrecoverable errors
-- warn: Retryable errors, conflicts
-- info: Operation start/completion
-- debug: Detailed operation information
+Want to consume this in the browser? I'd recomment https://www.npmjs.com/package/ndjson-readablestream 
+here is a react component that consumes it https://github.com/Azure-Samples/azure-search-openai-demo/pull/532/files#diff-506debba46b93087dc46a916384e56392808bcc02a99d9291557f3e674d4ad6c
 
 #### changes()
 
@@ -652,4 +587,78 @@ Watch specific documents for changes in real-time.
  - Building real-time applications focused on specific documents
  - Triggering actions when particular documents change
  - Maintaining cached copies of frequently accessed documents
+
+Advanced Config Options
+=======================
+
+The config object supports the following properties:
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| couch | string | required | The URL of the CouchDB database |
+| throwOnGetNotFound | boolean | false | If true, throws an error when get() returns 404. If false, returns undefined |
+| bindWithRetry | boolean | true | When using bindConfig(), adds retry logic to bound methods |
+| maxRetries | number | 3 | Maximum number of retry attempts for retryable operations |
+| initialDelay | number | 1000 | Initial delay in milliseconds before first retry |
+| backoffFactor | number | 2 | Multiplier for exponential backoff between retries |
+| useConsoleLogger | boolean | false | If true, enables console logging when no logger is provided |
+| logger | object/function | undefined | Custom logging interface (winston-style object or function) |
+
+Example configuration with all options:
+```javascript
+const config = {
+  couch: 'http://localhost:5984/mydb',
+  throwOnGetNotFound: true,
+  bindWithRetry: true,
+  maxRetries: 5,
+  initialDelay: 2000,
+  backoffFactor: 1.5,
+  useConsoleLogger: true,
+  logger: (level, ...args) => console.log(level, ...args)
+}
+```
+
+
+Logging Support
+==============
+
+The library supports flexible logging options that can be configured through the config object:
+
+```javascript
+// Enable console logging (error, warn, info, debug)
+const config = { 
+  couch: 'http://localhost:5984/mydb',
+  useConsoleLogger: true
+}
+
+// Use a custom logger object (winston-style)
+const config = {
+  couch: 'http://localhost:5984/mydb',
+  logger: {
+    error: (msg) => console.error(msg),
+    warn: (msg) => console.warn(msg),
+    info: (msg) => console.info(msg),
+    debug: (msg) => console.debug(msg)
+  }
+}
+
+// Use a simple function logger
+const config = {
+  couch: 'http://localhost:5984/mydb',
+  logger: (level, ...args) => console.log(level, ...args)
+}
+```
+
+The logger will track operations including:
+- Document operations (get, put, patch)
+- Bulk operations
+- View queries
+- Streaming operations
+- Retries and error handling
+
+Each operation logs appropriate information at these levels:
+- error: Fatal/unrecoverable errors
+- warn: Retryable errors, conflicts
+- info: Operation start/completion
+- debug: Detailed operation information
 
