@@ -4,7 +4,7 @@ import { CouchDoc } from './crud.mjs'
 
 export const ChangesOptions = z.object({
   feed: z.enum(['continuous', 'longpoll']).default('continuous'),
-  filter: z.any(), //z.union([z.string(), z.array()]).optional(),
+  filter: z.any(), // z.union([z.string(), z.array()]).optional(),
   inactivity_ms: z.number().default(60 * 60 * 1000),
   /** @type {number} */
   timeout: z.number().optional(),

@@ -5,7 +5,7 @@ import { createLogger } from '../logger.mjs'
 /** @type {import('../../schema/sugar/lock.mjs').CreateLockSchema} */
 export const createLock = CreateLock.implement(async (config, docId, options) => {
   const logger = createLogger(config)
-  
+
   if (!options.enableLocking) {
     logger.debug('Locking disabled, returning true')
     return true
@@ -37,7 +37,7 @@ export const createLock = CreateLock.implement(async (config, docId, options) =>
 /** @type {import('../../schema/sugar/lock.mjs').RemoveLockSchema} */
 export const removeLock = RemoveLock.implement(async (config, docId, options) => {
   const logger = createLogger(config)
-  
+
   if (!options.enableLocking) {
     logger.debug('Locking disabled, skipping unlock')
     return
@@ -50,7 +50,7 @@ export const removeLock = RemoveLock.implement(async (config, docId, options) =>
 
   const _id = `lock-${docId}`
   const existingLock = await get(config, _id)
-  
+
   if (!existingLock) {
     logger.debug(`No lock found for ${docId}`)
     return

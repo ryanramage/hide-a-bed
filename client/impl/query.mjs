@@ -34,7 +34,7 @@ export const query = SimpleViewQuery.implement(async (config, view, options = {}
   // If keys are supplied, issue a POST to circumvent GET query string limits
   // see http://wiki.apache.org/couchdb/HTTP_view_API#Querying_Options
   if (typeof options.keys !== 'undefined') {
-    const MAX_URL_LENGTH = 2000;
+    const MAX_URL_LENGTH = 2000
     // according to http://stackoverflow.com/a/417184/680742,
     // the de facto URL length limit is 2000 characters
 
@@ -52,8 +52,8 @@ export const query = SimpleViewQuery.implement(async (config, view, options = {}
       else qs = '?'
       qs += keysAsString
     } else {
-      method = 'POST';
-      payload = {keys: options.keys};
+      method = 'POST'
+      payload = { keys: options.keys }
     }
   }
 

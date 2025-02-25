@@ -12,15 +12,10 @@ import { Changes } from '../schema/changes.mjs'
  * }} ChangeInfo */
 // @ts-ignore
 import ChangesStream from 'changes-stream'
-import { createLogger } from './logger.mjs'
-import { sleep } from './patch.mjs'
-
-const MAX_RETRY_DELAY = 30000 // 30 seconds
 
 /** @type { import('../schema/changes.mjs').ChangesSchema } */
 export const changes = Changes.implement(async (config, onChange, options = {}) => {
   const emitter = new EventEmitter()
-  const logger = createLogger(config)
   options.db = config.couch
   if (options.since && options.since === 'now') {
     const opts = {
@@ -37,12 +32,12 @@ export const changes = Changes.implement(async (config, onChange, options = {}) 
   const changes = ChangesStream(options)
 
   changes.on('readable', () => {
-    const change = changes.read();
+    const change = changes.read()
     if (change.results && Array.isArray(change.results)) {
       // emit each one seperate
       change.results.forEach((/** @type {ChangeInfo} */ c) => emitter.emit('change', c))
     } else emitter.emit('change', change)
-  });
+  })
 
   // Bind the provided change listener
   emitter.on('change', onChange)

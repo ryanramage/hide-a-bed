@@ -25,7 +25,7 @@ export const queryStream = (rawConfig, view, options, onRow) => new Promise((res
   if (typeof options.keys !== 'undefined') {
     const MAX_URL_LENGTH = 2000
     const keysAsString = `keys=${encodeURIComponent(JSON.stringify(options.keys))}`
-    
+
     if (keysAsString.length + qs.length + 1 <= MAX_URL_LENGTH) {
       // If the keys are short enough, do a GET
       qs += (qs[0] === '?' ? '&' : '?') + keysAsString
@@ -70,7 +70,7 @@ export const queryStream = (rawConfig, view, options, onRow) => new Promise((res
     resolve(undefined) // all work should be done in the stream
   })
 
-  const req = method === 'GET' 
+  const req = method === 'GET'
     ? needle.get(url, opts)
     : needle.post(url, payload, opts)
 

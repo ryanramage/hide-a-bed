@@ -48,7 +48,7 @@ test.test('full db tests', async t => {
     }
   })
   t.test('put with bad rev', async t => {
-    const doc = { _id: 'notThereDoc', _rev: '32-does-not-compute'}
+    const doc = { _id: 'notThereDoc', _rev: '32-does-not-compute' }
     const notThereDoc = await db.put(doc)
     t.notOk(notThereDoc.ok)
     t.equal(notThereDoc.error, 'conflict')
@@ -62,7 +62,6 @@ test.test('full db tests', async t => {
     t.equal(results.rows[1].error, 'not_found')
     console.log(results)
     t.end()
-
   })
   let _rev
   t.test('a transaction', async t => {
@@ -170,7 +169,7 @@ test.test('full db tests', async t => {
     t.test('create lock', async t => {
       const locked = await db.createLock('doc-to-lock', lockOptions)
       t.ok(locked, 'Lock was created successfully')
-      
+
       // Verify lock document exists
       const lockDoc = await db.get('lock-doc-to-lock')
       t.ok(lockDoc, 'Lock document exists')
@@ -199,14 +198,14 @@ test.test('full db tests', async t => {
     t.test('unlock by different user', async t => {
       // Create lock as testUser
       await db.createLock('doc-to-lock', lockOptions)
-      
+
       // Try to unlock as different user
       const differentUserOptions = {
         ...lockOptions,
         username: 'differentUser'
       }
       await db.removeLock('doc-to-lock', differentUserOptions)
-      
+
       // Verify lock still exists
       const lockDoc = await db.get('lock-doc-to-lock')
       t.ok(lockDoc, 'Lock still exists')
@@ -222,7 +221,7 @@ test.test('full db tests', async t => {
       }
       const locked = await db.createLock('doc-to-lock-2', disabledOptions)
       t.ok(locked, 'Lock creation returns true when disabled')
-      
+
       const lockDoc = await db.get('lock-doc-to-lock-2')
       t.notOk(lockDoc, 'No lock document created when disabled')
       t.end()
