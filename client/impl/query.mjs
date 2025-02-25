@@ -22,7 +22,6 @@ export const query = SimpleViewQuery.implement(async (config, view, options = {}
 
   // @ts-ignore
   let qs = queryString(options, ['key', 'startkey', 'endkey', 'reduce', 'group', 'group_level', 'stale', 'limit'])
-  logger.debug('Generated query string:', qs)
   let method = 'GET'
   let payload = null
   const opts = {
@@ -39,17 +38,26 @@ export const query = SimpleViewQuery.implement(async (config, view, options = {}
     // according to http://stackoverflow.com/a/417184/680742,
     // the de facto URL length limit is 2000 characters
 
-    const keysAsString = `keys=${encodeURIComponent(JSON.stringify(options.keys))}`;
+    const _options = structuredClone(options)
+    delete _options.keys
+    qs = queryString(_options, ['key', 'startkey', 'endkey', 'reduce', 'group', 'group_level', 'stale', 'limit'])
+
+    const keysAsString = `keys=${JSON.stringify(options.keys)}`
+
     if (keysAsString.length + qs.length + 1 <= MAX_URL_LENGTH) {
       // If the keys are short enough, do a GET. we do this to work around
       // Safari not understanding 304s on POSTs (see pouchdb/pouchdb#1239)
-      qs += (qs[0] === '?' ? '&' : '?') + keysAsString;
+      method = 'GET'
+      if (qs.length > 0) qs += '&'
+      else qs = '?'
+      qs += keysAsString
     } else {
       method = 'POST';
       payload = {keys: options.keys};
     }
   }
 
+  logger.debug('Generated query string:', qs)
   const url = `${config.couch}/${view}?${qs.toString()}`
   // @ts-ignore
   let results
