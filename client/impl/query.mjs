@@ -38,7 +38,7 @@ export const query = SimpleViewQuery.implement(async (config, view, options = {}
     // according to http://stackoverflow.com/a/417184/680742,
     // the de facto URL length limit is 2000 characters
 
-    const _options = structuredClone(options)
+    const _options = JSON.parse(JSON.stringify(options))
     delete _options.keys
     qs = queryString(_options, ['key', 'startkey', 'endkey', 'reduce', 'group', 'group_level', 'stale', 'limit'])
 

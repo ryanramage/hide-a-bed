@@ -251,7 +251,7 @@ export const bulkSaveTransaction = BulkSaveTransaction.implement(async (config, 
     })
     newDocsToRollback.forEach(d => {
       if (!d.id || !d.rev) return
-      const before = structuredClone(providedDocsById[d.id])
+      const before = JSON.parse(JSON.stringify(providedDocsById[d.id]))
       before._rev = d.rev
       before._deleted = true
       toRollback.push(before)
