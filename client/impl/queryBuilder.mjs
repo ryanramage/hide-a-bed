@@ -8,6 +8,7 @@
  * @property {boolean} [reduce] - Whether to use reduce function
  * @property {boolean} [group] - Whether to group results
  * @property {number} [group_level] - Level at which to group
+* @property {boolean} [include_docs] - Whether to include full couch docs
  * @property {string} [stale] - Stale parameter value
  * @property {number} [limit] - Max number of results
  */
@@ -35,10 +36,28 @@ export class QueryBuilder {
   }
 
   /**
+   * @param {any} startkey
+   * @returns {QueryBuilder}
+   */
+  startkey (startkey) {
+    this.#options.startkey = startkey
+    return this
+  }
+
+  /**
    * @param {any} endkey
    * @returns {QueryBuilder}
    */
   endKey (endkey) {
+    this.#options.endkey = endkey
+    return this
+  }
+
+  /**
+   * @param {any} endkey
+   * @returns {QueryBuilder}
+   */
+  endkey (endkey) {
     this.#options.endkey = endkey
     return this
   }
@@ -67,6 +86,33 @@ export class QueryBuilder {
    */
   groupLevel (level) {
     this.#options.group_level = level
+    return this
+  }
+
+  /**
+   * @param {number} level
+   * @returns {QueryBuilder}
+   */
+  group_level (level) {
+    this.#options.group_level = level
+    return this
+  }
+
+  /**
+   * @param {boolean} includeDocs
+   * @returns {QueryBuilder}
+   */
+  includeDocs (includeDocs = true) {
+    this.#options.include_docs = includeDocs
+    return this
+  }
+
+  /**
+   * @param {boolean} includeDocs
+   * @returns {QueryBuilder}
+   */
+  include_docs (includeDocs = true) {
+    this.#options.include_docs = includeDocs
     return this
   }
 

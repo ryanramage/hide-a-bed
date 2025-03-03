@@ -413,25 +413,26 @@ const result = await query(config, view, options)
 ```
 
 #### createQuery()
-Create a query builder to help construct view queries with a fluent interface.
+Create a query builder to help construct view queries with a fluent interface. Note we have stuck to couch naming conventions and not camel case.
+
 - Returns: QueryBuilder instance with methods:
   - `key(value)`: Set exact key match
-  - `startKey(value)`: Set range start key
-  - `endKey(value)`: Set range end key
+  - `startkey(value)`: Set range start key
+  - `endkey(value)`: Set range end key
   - `descending(bool)`: Set descending sort order
   - `skip(number)`: Set number of results to skip
   - `limit(number)`: Set max number of results
-  - `includeDocs(bool)`: Include full documents
+  - `include_docs(bool)`: Include full documents
   - `reduce(bool)`: Enable/disable reduce
   - `group(bool)`: Enable/disable grouping
-  - `groupLevel(number)`: Set group level
+  - `group_level(number)`: Set group level
   - `build()`: Return the constructed query options object
 
 ```javascript
 const options = createQuery()
-  .startKey('A')
-  .endKey('B')
-  .includeDocs(true)
+  .startkey('A')
+  .endkey('B')
+  .include_docs(true)
   .limit(10)
   .build()
 
