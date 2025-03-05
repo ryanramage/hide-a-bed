@@ -10,7 +10,7 @@ import { CreateLockBound, RemoveLockBound } from './sugar/lock.mjs'
 import { ChangesBound } from './changes.mjs'
 import { WatchDocsBound } from './sugar/watch.mjs'
 
-const BindReturns = z.object({
+export const BindBase = z.object({
   bulkGet: BulkGetBound,
   bulkSave: BulkSaveBound,
   bulkRemove: BulkRemoveBound,
@@ -27,6 +27,15 @@ const BindReturns = z.object({
   changes: ChangesBound,
   watchDocs: WatchDocsBound
 })
+/** @typedef { z.infer<typeof BindBase> } BindBaseSchema */
+
+const RebindOptions = CouchConfig.omit({ couch: true })
+
+// Define a recursive type where config returns the same type
+ export const BindReturns = BindBase.extend({
+   options: z.function().args(RebindOptions).returns(BindBase)
+})
+/** @typedef { z.infer<typeof BindReturns> } BindReturnsSchema */
 
 export const Bind = z.function().args(CouchConfig).returns(BindReturns)
 /** @typedef { z.infer<typeof Bind> } BindSchema */

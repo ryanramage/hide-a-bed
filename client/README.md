@@ -40,8 +40,21 @@ A convience method to bind the config, so you dont need to pass it in.
 ```
 import { bindConfig } from 'hide-a-bed'
 const db = bindConfig(process.env)
-const doc = db.get('doc-123')
+const doc = await db.get('doc-123')
 ```
+
+##### Config Overrides
+
+You also can quickly change one (or more) config settings for a particular call with the db.config(options)
+
+eg
+
+```
+const doc = await db.config({ throwOnGetNotFound: true }).get('doc-id') 
+```
+
+You can pass any of [Config Options](#advanced-config-options) to db.config to override the original bindings.
+
 
 ### Document Operations
 
