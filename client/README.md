@@ -448,6 +448,11 @@ const options = createQuery()
 const result = await query(config, view, options)
 ```
 
+Again, use js types for array keys
+
+  - .startkey([teamId, userId]).endkey([teamId, userId, {}])
+  - .startkey([teamId, userId, startTimestamp]).endkey([teamId, userId, endTimestamp])
+
 #### queryStream
 
 Use Cases *Streaming Data*
