@@ -49,6 +49,9 @@ const schema = {
   ChangesResponse
 }
 
+/**
+ * @param {import('./schema/config.mjs').CouchConfigSchema} config
+ */
 function doBind(config) {
   // Default retry options
   const retryOptions = {
