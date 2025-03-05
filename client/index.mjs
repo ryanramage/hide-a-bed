@@ -49,18 +49,13 @@ const schema = {
   ChangesResponse
 }
 
-/** @type { import('./schema/bind.mjs').BindSchema } */
-const bindConfig = Bind.implement((
-  /** @type { import('./schema/config.mjs').CouchConfigSchema } */
-  config
-) => {
+function doBind(config) {
   // Default retry options
   const retryOptions = {
     maxRetries: config.maxRetries ?? 10,
     initialDelay: config.initialDelay ?? 1000,
     backoffFactor: config.backoffFactor ?? 2
   }
-
   return {
     get: config.bindWithRetry ? withRetry(get.bind(null, config), retryOptions) : get.bind(null, config),
     getAtRev: config.bindWithRetry ? withRetry(getAtRev.bind(null, config), retryOptions) : getAtRev.bind(null, config),
@@ -80,6 +75,21 @@ const bindConfig = Bind.implement((
     watchDocs: watchDocs.bind(null, config),
     changes: changes.bind(null, config)
   }
+}
+
+/** @type { import('./schema/bind.mjs').BindSchema } */
+const bindConfig = Bind.implement((
+  /** @type { import('./schema/config.mjs').CouchConfigSchema } */
+  config
+) => {
+  const funcs = doBind(config)
+  funcs.config = (_overrides) => {
+    // override the config and return doBind again
+    const newConfig = { ...config, ..._overrides }
+    return bindConfig(newConfig)
+  }
+  return doBind(config)
+
 })
 
 export {

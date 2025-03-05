@@ -10,7 +10,7 @@ import { CreateLockBound, RemoveLockBound } from './sugar/lock.mjs'
 import { ChangesBound } from './changes.mjs'
 import { WatchDocsBound } from './sugar/watch.mjs'
 
-const BindReturns = z.object({
+const BindBase= z.object({
   bulkGet: BulkGetBound,
   bulkSave: BulkSaveBound,
   bulkRemove: BulkRemoveBound,
@@ -26,6 +26,10 @@ const BindReturns = z.object({
   removeLock: RemoveLockBound,
   changes: ChangesBound,
   watchDocs: WatchDocsBound
+})
+
+const BindReturns = BindBase.extend({
+  config: z.function().args(CouchConfig).returns(BindBase)
 })
 
 export const Bind = z.function().args(CouchConfig).returns(BindReturns)
