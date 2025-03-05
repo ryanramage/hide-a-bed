@@ -4,6 +4,7 @@ import { CouchConfig } from '../schema/config.mjs'
 import { queryString } from './query.mjs'
 import { RetryableError } from './errors.mjs'
 import { createLogger } from './logger.mjs'
+import { baseQueryStringKeys } from './const.mjs'
 // @ts-ignore
 import JSONStream from 'JSONStream'
 
@@ -18,7 +19,7 @@ export const queryStream = (rawConfig, view, options, onRow) => new Promise((res
 
   let method = 'GET'
   let payload = null
-  let qs = queryString(options, ['key', 'startkey', 'endkey', 'reduce', 'group', 'group_level', 'stale', 'limit'])
+  let qs = queryString(options, baseQueryStringKeys)
   logger.debug('Generated query string:', qs)
 
   // If keys are supplied, issue a POST to circumvent GET query string limits

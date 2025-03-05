@@ -5,6 +5,7 @@ import needle from 'needle'
 import { SimpleViewQuery, SimpleViewQueryResponse } from '../schema/query.mjs' // eslint-disable-line
 import { RetryableError } from './errors.mjs'
 import { createLogger } from './logger.mjs'
+import { baseQueryStringKeys } from './const.mjs'
 
 import pkg from 'lodash'
 const { includes } = pkg
@@ -21,7 +22,7 @@ export const query = SimpleViewQuery.implement(async (config, view, options = {}
   logger.debug('Query options:', options)
 
   // @ts-ignore
-  let qs = queryString(options, ['key', 'startkey', 'endkey', 'reduce', 'group', 'group_level', 'stale', 'limit'])
+  let qs = queryString(options, baseQueryStringKeys)
   let method = 'GET'
   let payload = null
   const opts = {
@@ -40,7 +41,7 @@ export const query = SimpleViewQuery.implement(async (config, view, options = {}
 
     const _options = JSON.parse(JSON.stringify(options))
     delete _options.keys
-    qs = queryString(_options, ['key', 'startkey', 'endkey', 'reduce', 'group', 'group_level', 'stale', 'limit'])
+    qs = queryString(_options, baseQueryStringKeys)
 
     const keysAsString = `keys=${JSON.stringify(options.keys)}`
 

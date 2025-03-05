@@ -5,10 +5,11 @@
  * @property {any} [key] - Exact key to match
  * @property {any} [startkey] - Start of key range
  * @property {any} [endkey] - End of key range
+ * @property {boolean} [descending] - Direction of view rows response
  * @property {boolean} [reduce] - Whether to use reduce function
  * @property {boolean} [group] - Whether to group results
  * @property {number} [group_level] - Level at which to group
-* @property {boolean} [include_docs] - Whether to include full couch docs
+ * @property {boolean} [include_docs] - Whether to include full couch docs
  * @property {string} [stale] - Stale parameter value
  * @property {number} [limit] - Max number of results
  */
@@ -59,6 +60,15 @@ export class QueryBuilder {
    */
   endkey (endkey) {
     this.#options.endkey = endkey
+    return this
+  }
+
+  /**
+   * @param {boolean} descending
+   * @returns {QueryBuilder}
+   */
+  descending (descending) {
+    this.#options.descending = descending
     return this
   }
 
