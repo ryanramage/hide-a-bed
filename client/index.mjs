@@ -73,7 +73,8 @@ function doBind(config) {
     createLock: createLock.bind(null, config),
     removeLock: removeLock.bind(null, config),
     watchDocs: watchDocs.bind(null, config),
-    changes: changes.bind(null, config)
+    changes: changes.bind(null, config),
+    config: null
   }
 }
 
@@ -83,12 +84,15 @@ const bindConfig = Bind.implement((
   config
 ) => {
   const funcs = doBind(config)
-  funcs.config = (_overrides) => {
+  funcs.config = (
+      /** @type { import('./schema/config.mjs').CouchConfigSchema } */
+      _overrides
+    ) => {
     // override the config and return doBind again
     const newConfig = { ...config, ..._overrides }
     return bindConfig(newConfig)
   }
-  return doBind(config)
+  return funcs
 
 })
 
