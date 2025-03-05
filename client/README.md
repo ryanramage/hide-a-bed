@@ -412,6 +412,15 @@ const result = await query(config, view, options)
 // }
 ```
 
+Some notes on the keys. Use native js things for arrays keys, rather then strings. Eg
+
+ - startkey: ['ry'], endkey: ['ry', {}]
+ - startkey: [47, null], endkey: [48, null]
+ - startkey: [customerIdVar], endkey: [customerIdVar, {}]
+ - startkey: [teamId, userId, startTimestamp], endkey: [teamId, userId, endTimestamp]
+
+
+
 #### createQuery()
 Create a query builder to help construct view queries with a fluent interface. Note we have stuck to couch naming conventions and not camel case.
 
