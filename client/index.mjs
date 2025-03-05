@@ -59,7 +59,9 @@ function doBind(config) {
     initialDelay: config.initialDelay ?? 1000,
     backoffFactor: config.backoffFactor ?? 2
   }
-  return {
+  
+  // Create the object without the config property first
+  const result = {
     get: config.bindWithRetry ? withRetry(get.bind(null, config), retryOptions) : get.bind(null, config),
     getAtRev: config.bindWithRetry ? withRetry(getAtRev.bind(null, config), retryOptions) : getAtRev.bind(null, config),
     put: config.bindWithRetry ? withRetry(put.bind(null, config), retryOptions) : put.bind(null, config),
@@ -76,9 +78,10 @@ function doBind(config) {
     createLock: createLock.bind(null, config),
     removeLock: removeLock.bind(null, config),
     watchDocs: watchDocs.bind(null, config),
-    changes: changes.bind(null, config),
-    config: null
+    changes: changes.bind(null, config)
   }
+  
+  return result;
 }
 
 /** @type { import('./schema/bind.mjs').BindSchema } */
@@ -87,16 +90,19 @@ const bindConfig = Bind.implement((
   config
 ) => {
   const funcs = doBind(config)
+  
+  // Add the config function that returns a new bound instance
+  /** @type {any} */
   funcs.config = (
-      /** @type { import('./schema/config.mjs').CouchConfigSchema } */
-      _overrides
-    ) => {
+    /** @type { import('./schema/config.mjs').CouchConfigSchema } */
+    _overrides
+  ) => {
     // override the config and return doBind again
     const newConfig = { ...config, ..._overrides }
     return bindConfig(newConfig)
   }
+  
   return funcs
-
 })
 
 export {
