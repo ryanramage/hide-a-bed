@@ -414,10 +414,10 @@ const result = await query(config, view, options)
 
 Some notes on the keys. Use native js things for arrays keys, rather then strings. Eg
 
- - startkey: ['ry'], endkey: ['ry', {}]
- - startkey: [47, null], endkey: [48, null]
- - startkey: [customerIdVar], endkey: [customerIdVar, {}]
- - startkey: [teamId, userId, startTimestamp], endkey: [teamId, userId, endTimestamp]
+ - ```{ startkey: ['ryan'], endkey: ['ryan', {}] }```
+ - ```{ startkey: [47, null], endkey: [48, null] }```
+ - ```{ startkey: [customerIdVar], endkey: [customerIdVar, {}] }```
+ - ```{ startkey: [teamId, userId, startTimestamp], endkey: [teamId, userId, endTimestamp] }```
 
 
 
@@ -450,8 +450,8 @@ const result = await query(config, view, options)
 
 Again, use js types for array keys
 
-  - .startkey([teamId, userId]).endkey([teamId, userId, {}])
-  - .startkey([teamId, userId, startTimestamp]).endkey([teamId, userId, endTimestamp])
+  - ```.startkey([teamId, userId]).endkey([teamId, userId, {}])```
+  - ```.startkey([teamId, userId, startTimestamp]).endkey([teamId, userId, endTimestamp])```
 
 #### queryStream
 
