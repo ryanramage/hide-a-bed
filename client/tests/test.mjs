@@ -36,6 +36,15 @@ test.test('full db tests', async t => {
     t.equal(notThereDoc, null)
     t.end()
   })
+  t.test('override config with different options', async t => {
+    try {
+      await db.options({ throwOnGetNotFound: true }).get('testdoc-not-there-override')
+      t.fail('should have thrown')
+    } catch (e) {
+      t.equal(e.name, 'NotFoundError')
+      t.end()
+    }
+  })
   t.test('get with no document and throwOnGetNotFound', async t => {
     const _config = { couch: DB_URL, throwOnGetNotFound: true }
     try {

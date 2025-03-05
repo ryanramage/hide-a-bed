@@ -48,10 +48,9 @@ const schema = {
   ChangesOptions,
   ChangesResponse
 }
-
-/**
- * @param {import('./schema/config.mjs').CouchConfigSchema} config
- */
+ /**
+  * @param {import('./schema/config.mjs').CouchConfigSchema } config
+  */
 function doBind(config) {
   // Default retry options
   const retryOptions = {
@@ -89,20 +88,24 @@ const bindConfig = Bind.implement((
   /** @type { import('./schema/config.mjs').CouchConfigSchema } */
   config
 ) => {
-  const funcs = doBind(config)
+  const parsedConfig = CouchConfig.parse(config)
+
+  /** @type { import('./schema/bind.mjs').BindBaseSchema } funcs */
+  const funcs = doBind(parsedConfig)
   
-  // Add the config function that returns a new bound instance
-  /** @type {any} */
-  funcs.config = (
-    /** @type { import('./schema/config.mjs').CouchConfigSchema } */
+  // Add the options function that returns a new bound instance
+  // this allows the user to override some options
+  const reconfig = (
+    /** @type any  */
     _overrides
   ) => {
     // override the config and return doBind again
     const newConfig = { ...config, ..._overrides }
     return bindConfig(newConfig)
   }
-  
-  return funcs
+    /** @type { import('./schema/bind.mjs').BindReturnsSchema } */
+  const all = { ...funcs, options: reconfig }
+  return all
 })
 
 export {
