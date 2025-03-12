@@ -40,7 +40,6 @@ export function withRetry (fn, options = {}) {
 
         // Calculate next delay with a maximum cap
         const nextDelay = Math.min(delay, maxDelay)
-        
         // Wait with exponential backoff
         await sleep(nextDelay)
         delay *= backoffFactor
