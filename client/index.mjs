@@ -48,17 +48,17 @@ const schema = {
   ChangesOptions,
   ChangesResponse
 }
- /**
+/**
   * @param {import('./schema/config.mjs').CouchConfigSchema } config
   */
-function doBind(config) {
+function doBind (config) {
   // Default retry options
   const retryOptions = {
     maxRetries: config.maxRetries ?? 10,
     initialDelay: config.initialDelay ?? 1000,
     backoffFactor: config.backoffFactor ?? 2
   }
-  
+
   // Create the object without the config property first
   const result = {
     get: config.bindWithRetry ? withRetry(get.bind(null, config), retryOptions) : get.bind(null, config),
@@ -79,8 +79,8 @@ function doBind(config) {
     watchDocs: watchDocs.bind(null, config),
     changes: changes.bind(null, config)
   }
-  
-  return result;
+
+  return result
 }
 
 /** @type { import('./schema/bind.mjs').BindSchema } */
@@ -92,7 +92,7 @@ const bindConfig = Bind.implement((
 
   /** @type { import('./schema/bind.mjs').BindBaseSchema } funcs */
   const funcs = doBind(parsedConfig)
-  
+
   // Add the options function that returns a new bound instance
   // this allows the user to override some options
   const reconfig = (
@@ -103,7 +103,7 @@ const bindConfig = Bind.implement((
     const newConfig = { ...config, ..._overrides }
     return bindConfig(newConfig)
   }
-    /** @type { import('./schema/bind.mjs').BindReturnsSchema } */
+  /** @type { import('./schema/bind.mjs').BindReturnsSchema } */
   const all = { ...funcs, options: reconfig }
   return all
 })
