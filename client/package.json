@@ -1,6 +1,6 @@
 {
   "name": "hide-a-bed",
-  "version": "5.1.1",
+  "version": "5.1.2",
   "description": "An abstraction over couchdb calls that includes easy mock/stubs with pouchdb",
   "module": "index.mjs",
   "main": "cjs/index.cjs",
