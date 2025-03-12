@@ -1,16 +1,6 @@
 import { RetryableError } from './errors.mjs'
 import { sleep } from './patch.mjs'
 
-/**
- * Wraps a function with retry logic for RetryableError instances
- * @param {Function} fn - The function to retry
- * @param {Object} options - Retry options
- * @param {number} [options.maxRetries=3] - Maximum number of retry attempts
- * @param {number} [options.initialDelay=1000] - Initial delay in ms
- * @param {number} [options.backoffFactor=2] - Multiplier for exponential backoff
- * @param {number} [options.maxDelay] - Maximum delay between retries in ms
- * @returns {Function} - Wrapped function with retry logic
- */
 export function withRetry (fn, options = {}) {
   const {
     maxRetries = 3,
