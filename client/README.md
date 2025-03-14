@@ -40,8 +40,22 @@ A convience method to bind the config, so you dont need to pass it in.
 ```
 import { bindConfig } from 'hide-a-bed'
 const db = bindConfig(process.env)
+const services = { db } // see example below
 const doc = await db.get('doc-123')
 ```
+
+If you need to force autocompletion/type-checking, you can add the following jsdoc to help your editor
+
+```
+function doSomething (services)
+  /**  @type { import('hide-a-bed/index.mjs').DB} db */
+  const db = services.db;
+```
+
+Here is an example of compiler warnings:
+
+![jsdoc type def](docs/compiler.png)
+
 
 ##### Config Overrides
 
