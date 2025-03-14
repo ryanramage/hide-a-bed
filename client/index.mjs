@@ -1,4 +1,5 @@
 // @ts-check */
+import { z } from 'zod'
 import { bulkGet, bulkSave, bulkRemove, bulkGetDictionary, bulkSaveTransaction } from './impl/bulk.mjs'
 import { get, put, getAtRev } from './impl/crud.mjs'
 import { changes } from './impl/changes.mjs'
@@ -18,7 +19,7 @@ import { Patch, PatchDangerously } from './schema/patch.mjs'
 import { Lock, LockOptions, CreateLock, RemoveLock } from './schema/sugar/lock.mjs'
 import { WatchDocs } from './schema/sugar/watch.mjs'
 import { CouchDoc, CouchDocResponse, CouchPut, CouchGet, CouchGetAtRev } from './schema/crud.mjs'
-import { Bind } from './schema/bind.mjs'
+import { Bind, BindReturns } from './schema/bind.mjs'
 
 const schema = {
   CouchConfig,
@@ -107,6 +108,8 @@ const bindConfig = Bind.implement((
   const all = { ...funcs, options: reconfig }
   return all
 })
+
+/** @typedef { z.infer<typeof BindReturns> } DB */
 
 export {
   get,
