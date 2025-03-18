@@ -48,7 +48,7 @@ If you need to force autocompletion/type-checking, you can add the following jsd
 
 ```
 function doSomething (services)
-  /**  @type { import('hide-a-bed/index.mjs').DB} db */
+  /**  @type { import('hide-a-bed').DB} db */
   const db = services.db;
 ```
 
