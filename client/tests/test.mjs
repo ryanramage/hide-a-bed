@@ -235,5 +235,19 @@ test.test('full db tests', async t => {
       t.notOk(lockDoc, 'No lock document created when disabled')
       t.end()
     })
+
+    t.test('empty keys on bulkGet', async t => {
+      const results = await db.bulkGet([])
+      console.log(results)
+      t.same(results.rows, [], 'empty array returns empty object')
+      t.end()
+    })
+
+    t.test('get db info', async t => {
+      const results = await db.getDBInfo()
+      t.ok(results)
+      t.equal(results.db_name, 'testdb')
+      t.end()
+    })
   })
 })

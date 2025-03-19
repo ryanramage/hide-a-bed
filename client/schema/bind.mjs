@@ -9,6 +9,7 @@ import { SimpleViewQueryStreamBound } from './stream.mjs'
 import { CreateLockBound, RemoveLockBound } from './sugar/lock.mjs'
 import { ChangesBound } from './changes.mjs'
 import { WatchDocsBound } from './sugar/watch.mjs'
+import { GetDBInfoBound } from './util.mjs'
 
 export const BindBase = z.object({
   bulkGet: BulkGetBound,
@@ -25,7 +26,8 @@ export const BindBase = z.object({
   createLock: CreateLockBound,
   removeLock: RemoveLockBound,
   changes: ChangesBound,
-  watchDocs: WatchDocsBound
+  watchDocs: WatchDocsBound,
+  getDBInfo: GetDBInfoBound
 })
 /** @typedef { z.infer<typeof BindBase> } BindBaseSchema */
 
