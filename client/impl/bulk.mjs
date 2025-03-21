@@ -9,13 +9,6 @@ import { createLogger } from './logger.mjs'
 import { CouchDoc } from '../schema/crud.mjs'
 import { setupEmitter } from './trackedEmitter.mjs'
 
-const opts = {
-  json: true,
-  headers: {
-    'Content-Type': 'application/json'
-  }
-}
-
 /** @type { import('../schema/bulk.mjs').BulkSaveSchema } */
 export const bulkSave = BulkSave.implement(async (config, docs) => {
   /** @type {import('./logger.mjs').Logger }  */
@@ -33,6 +26,12 @@ export const bulkSave = BulkSave.implement(async (config, docs) => {
   logger.info(`Starting bulk save of ${docs.length} documents`)
   const url = `${config.couch}/_bulk_docs`
   const body = { docs }
+  const opts = {
+    json: true,
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  }
   let resp
   try {
     resp = await needle('post', url, body, opts)
@@ -64,6 +63,12 @@ export const bulkGet = BulkGet.implement(async (config, ids) => {
   logger.info(`Starting bulk get for ${keys.length} documents`)
   const url = `${config.couch}/_all_docs?include_docs=true`
   const payload = { keys }
+  const opts = {
+    json: true,
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  }
   let resp
   try {
     resp = await needle('post', url, payload, opts)

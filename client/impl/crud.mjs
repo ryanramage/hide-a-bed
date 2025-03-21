@@ -4,19 +4,18 @@ import { CouchGet, CouchPut, CouchGetWithOptions, CouchGetAtRev } from '../schem
 import { RetryableError, NotFoundError } from './errors.mjs'
 import { createLogger } from './logger.mjs'
 
-const opts = {
-  json: true,
-  headers: {
-    'Content-Type': 'application/json'
-  }
-}
-
 /** @type { import('../schema/crud.mjs').CouchGetWithOptionsSchema } */
 const _getWithOptions = CouchGetWithOptions.implement(async (config, id, getOpts) => {
   const logger = createLogger(config)
   const rev = getOpts?.rev
   const path = rev ? `${id}?rev=${rev}` : id
   const url = `${config.couch}/${path}`
+  const opts = {
+    json: true,
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  }
   logger.info(`Getting document with id: ${id}, rev ${rev || 'latest'}`)
 
   try {
@@ -68,6 +67,12 @@ export const put = CouchPut.implement(async (config, doc) => {
   const logger = createLogger(config)
   const url = `${config.couch}/${doc._id}`
   const body = doc
+  const opts = {
+    json: true,
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  }
 
   logger.info(`Putting document with id: ${doc._id}`)
   let resp

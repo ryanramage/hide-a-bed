@@ -26,7 +26,7 @@ export const DBInfo = z.object({
 }).passthrough()
 
 export const GetDBInfo = z.function().args(
-  CouchConfig,
+  CouchConfig
 ).returns(z.promise(DBInfo))
 /** @typedef { z.infer<typeof GetDBInfo> } GetDBInfoSchema */
 

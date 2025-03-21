@@ -4,17 +4,16 @@ import { RetryableError, NotFoundError } from './errors.mjs'
 import { createLogger } from './logger.mjs'
 import { GetDBInfo } from '../schema/util.mjs'
 
-const opts = {
-  json: true,
-  headers: {
-    'Content-Type': 'application/json'
-  }
-}
-
 /** @type { import('../schema/util.mjs').GetDBInfoSchema} */
 export const getDBInfo = GetDBInfo.implement(async (config) => {
   const logger = createLogger(config)
   const url = `${config.couch}`
+  const opts = {
+    json: true,
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  }
   let resp
   try {
     resp = await needle('get', url, opts)
