@@ -14,6 +14,7 @@
 
 And some utility apis
 
+ - [`getDBInfo()`](#getDBInfo)
  - [`createQuery()`](#createquery) 🍭
  - [`withRetry()`](#withretry)
  
@@ -393,6 +394,17 @@ try {
   }
 }
 ```
+
+#### getDBInfo()
+
+Get basic info about a db in couch
+
+```
+const config = { couch: 'http://localhost:5984/mydb' }
+const result = await getDBInfo(config)
+// result: { db_name: 'test', doc_count: 3232 } 
+```
+
 
 ### View Queries
 
