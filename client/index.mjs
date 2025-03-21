@@ -9,6 +9,7 @@ import { watchDocs } from './impl/sugar/watch.mjs'
 import { query } from './impl/query.mjs'
 import { queryStream } from './impl/stream.mjs'
 import { createQuery } from './impl/queryBuilder.mjs'
+import { getDBInfo } from './impl/util.mjs'
 import { withRetry } from './impl/retry.mjs'
 import { BulkSave, BulkGet, BulkRemove, BulkGetDictionary, BulkSaveTransaction } from './schema/bulk.mjs'
 import { CouchConfig } from './schema/config.mjs'
@@ -20,6 +21,7 @@ import { Lock, LockOptions, CreateLock, RemoveLock } from './schema/sugar/lock.m
 import { WatchDocs } from './schema/sugar/watch.mjs'
 import { CouchDoc, CouchDocResponse, CouchPut, CouchGet, CouchGetAtRev } from './schema/crud.mjs'
 import { Bind, BindReturns } from './schema/bind.mjs'
+import { GetDBInfo } from './schema/util.mjs'
 
 const schema = {
   CouchConfig,
@@ -47,7 +49,8 @@ const schema = {
   RemoveLock,
   Changes,
   ChangesOptions,
-  ChangesResponse
+  ChangesResponse,
+  GetDBInfo
 }
 /**
   * @param {import('./schema/config.mjs').CouchConfigSchema } config
@@ -78,7 +81,8 @@ function doBind (config) {
     createLock: createLock.bind(null, config),
     removeLock: removeLock.bind(null, config),
     watchDocs: watchDocs.bind(null, config),
-    changes: changes.bind(null, config)
+    changes: changes.bind(null, config),
+    getDBInfo: config.bindWithRetry ? withRetry(getDBInfo.bind(null, config), retryOptions) : getDBInfo.bind(null, config)
   }
 
   return result
@@ -120,6 +124,7 @@ export {
   query,
   queryStream,
   schema,
+  getDBInfo,
 
   // sugar methods
   patch,
