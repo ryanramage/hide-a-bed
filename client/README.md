@@ -60,15 +60,16 @@ Here is an example of compiler warnings:
 
 ##### Config Overrides
 
-You also can quickly change one (or more) config settings for a particular call with the db.config(options)
+You also can quickly change one (or more) config settings for a particular call with the db.options(optionOverrides)
 
 eg
 
 ```
-const doc = await db.config({ throwOnGetNotFound: true }).get('doc-id') 
+const db = bindConfig({ couch: 'http://localhost:5984/db', throwOnGetNotFound: false  })
+const doc = await db.options({ throwOnGetNotFound: true }).get('doc-id') 
 ```
 
-You can pass any of [Config Options](#advanced-config-options) to db.config to override the original bindings.
+You can pass any of [Config Options](#advanced-config-options) to db.options to override the original config bindings.
 
 
 ### Document Operations
