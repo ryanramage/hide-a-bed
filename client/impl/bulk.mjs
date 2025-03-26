@@ -112,7 +112,9 @@ export const bulkRemove = BulkRemove.implement(async (config, ids) => {
       logger.warn(`Invalid document structure in bulk remove: ${row.id}`, e)
     }
   })
-  return bulkSave(config, toRemove)
+  if (!toRemove.length) return []
+  const result = await bulkSave(config, toRemove)
+  return result
 })
 
 /** @type { import('../schema/bulk.mjs').BulkGetDictionarySchema } */

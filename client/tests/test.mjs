@@ -250,4 +250,16 @@ test.test('full db tests', async t => {
       t.end()
     })
   })
+  t.test('bulkRemove', async t => {
+    const results = await db.bulkRemove(['test-doc-never51'])
+    t.ok(results)
+    t.equal(results.length, 0) // not an actual doc
+
+    const doc = await db.put({ _id: 'test-doc-never51', data: 'hello world' })
+    t.ok(doc.ok, 'Document created')
+    const results2 = await db.bulkRemove(['test-doc-never51'])
+    t.ok(results2)
+    t.equal(results2.length, 1)
+    t.end()
+  })
 })
