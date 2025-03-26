@@ -21,7 +21,7 @@ export const query = SimpleViewQuery.implement(async (config, view, options = {}
   logger.debug('Query options:', options)
 
   // @ts-ignore
-  let qs = queryString(options, ['key', 'startkey', 'endkey', 'reduce', 'group', 'group_level', 'stale', 'limit', 'descending', 'skip'])
+  let qs = queryString(options, ['key', 'startkey', 'endkey', 'reduce', 'group', 'group_level', 'stale', 'limit'])
   let method = 'GET'
   let payload = null
   const opts = {
@@ -40,7 +40,7 @@ export const query = SimpleViewQuery.implement(async (config, view, options = {}
 
     const _options = JSON.parse(JSON.stringify(options))
     delete _options.keys
-    qs = queryString(_options, ['key', 'startkey', 'endkey', 'reduce', 'group', 'group_level', 'stale', 'limit', 'descending', 'skip'])
+    qs = queryString(_options, ['key', 'startkey', 'endkey', 'reduce', 'group', 'group_level', 'stale', 'limit']) // dont need descening or skip, those will work
 
     const keysAsString = `keys=${JSON.stringify(options.keys)}`
 
