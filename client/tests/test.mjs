@@ -262,4 +262,13 @@ test.test('full db tests', async t => {
     t.equal(results2.length, 1)
     t.end()
   })
+  t.test('bulk save', async t => {
+    // make sure docs with no id are accepted
+    const docs = [{ first: true}, { _id: 'bbbbb', second: true}]
+    const results = await db.bulkSave(docs)
+    t.equal(results.length, 2, 'two rows returned')
+    t.ok(results[0].id)
+    t.equal(results[1].id, 'bbbbb', 'id matches')
+    t.end()
+  })
 })
