@@ -49,7 +49,7 @@ export const query = SimpleViewQuery.implement(async (config, view, options = {}
       // Safari not understanding 304s on POSTs (see pouchdb/pouchdb#1239)
       method = 'GET'
       if (qs.length > 0) qs += '&'
-      else qs = '?'
+      else qs = ''
       qs += keysAsString
     } else {
       method = 'POST'

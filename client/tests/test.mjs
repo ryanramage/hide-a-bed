@@ -264,11 +264,21 @@ test.test('full db tests', async t => {
   })
   t.test('bulk save', async t => {
     // make sure docs with no id are accepted
-    const docs = [{ first: true}, { _id: 'bbbbb', second: true}]
+    const docs = [{ first: true }, { _id: 'bbbbb', second: true }]
     const results = await db.bulkSave(docs)
     t.equal(results.length, 2, 'two rows returned')
     t.ok(results[0].id)
     t.equal(results[1].id, 'bbbbb', 'id matches')
+    t.end()
+  })
+  t.test('a view query with only keys', async t => {
+    const docs = [{ _id: 'query-1' }, { _id: 'query-2', included: true }, { _id: 'query-3' }]
+    // create a view
+    await db.put({ _id: '_design/test', views: { test: { map: 'function(doc) { if (!doc.included) return; emit(doc._id, null); }' } } })
+    await db.bulkSave(docs)
+    const queryResults = await db.query('_design/test/_view/test', { keys: ['query-2'] })
+    t.equal(queryResults.rows.length, 1, 'one row returned')
+    t.equal(queryResults.rows[0].key, 'query-2', 'key matches')
     t.end()
   })
 })

@@ -16,7 +16,7 @@ export const BulkSaveResponseSchema = z.array(BulkSaveRow)
 /** @typedef { z.infer<typeof BulkSaveResponseSchema> } Response */
 
 export const OptionalIdCouchDoc = CouchDoc.extend({
-  _id: CouchDoc.shape._id.optional(),
+  _id: CouchDoc.shape._id.optional()
 })
 
 export const BulkSave = z.function().args(
