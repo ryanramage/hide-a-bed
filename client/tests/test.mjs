@@ -1,7 +1,7 @@
 import { TrackedEmitter } from '../impl/trackedEmitter.mjs'
 import test from 'tap'
 import { spawn } from 'child_process'
-import { bindConfig, bulkSaveTransaction, get } from '../index.mjs'
+import { bindConfig, bulkSaveTransaction, get, query } from '../index.mjs'
 import needle from 'needle'
 
 const PORT = 8985
@@ -279,6 +279,11 @@ test.test('full db tests', async t => {
     const queryResults = await db.query('_design/test/_view/test', { keys: ['query-2'] })
     t.equal(queryResults.rows.length, 1, 'one row returned')
     t.equal(queryResults.rows[0].key, 'query-2', 'key matches')
+    t.end()
+  })
+  t.test('all docs query', async t => {
+    const queryresults = await db.query('_all_docs', { })
+    t.ok(queryresults.rows)
     t.end()
   })
 })
