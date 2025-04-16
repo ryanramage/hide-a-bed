@@ -90,3 +90,31 @@ test('bind', async t => {
   t.ok(resp.ok)
   t.end()
 })
+
+test('namespace', async t => {
+  const config = { couch: 'http://localhost:5984' }
+  {
+    const { put } = await setup([], 'test1')
+    const resp = await put(config, { _id: 'first-doc' })
+    t.ok(resp.ok)
+  }
+  {
+    const { put } = await setup([], 'test2')
+    const resp = await put(config, { _id: 'first-doc' })
+    t.ok(resp.ok)
+  }
+  t.end()
+})
+
+test('teardown', async t => {
+  const config = { couch: 'http://localhost:5984' }
+  let hab = await setup([], 'test3')
+  const resp = await hab.put(config, { _id: 'first-doc' })
+  t.ok(resp.ok)
+  await hab.teardown()
+
+  hab = await setup([], 'test3') // like another test suite, using the same name
+  const resp2 = await hab.put(config, { _id: 'first-doc' })
+  t.ok(resp2.ok)
+  t.end()
+})

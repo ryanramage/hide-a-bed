@@ -1,9 +1,9 @@
 import PouchDB from 'pouchdb-memory'
 import lodash from 'lodash'
 import { schema, createQuery } from 'hide-a-bed'
-import { CreateLock, RemoveLock } from './schema/sugar/lock.mjs'
-import { WatchDocs } from './schema/sugar/watch.mjs'
-import { Changes } from './schema/changes.mjs'
+// import { CreateLock, RemoveLock } from './schema/sugar/lock.mjs'
+// import { WatchDocs } from './schema/sugar/watch.mjs'
+// import { Changes } from './schema/changes.mjs'
 import { EventEmitter } from 'events'
 // PouchDB.plugin(PouchMemoryAdaptor)
 const { cloneDeep } = lodash
@@ -23,8 +23,9 @@ const {
   Bind
 } = schema
 
-export const setup = async (designDocs) => {
-  const db = new PouchDB('dbname', { adapter: 'memory' })
+export const setup = async (designDocs, dbname) => {
+  if (!dbname) dbname = 'dbname'
+  const db = new PouchDB(dbname, { adapter: 'memory' })
 
   if (designDocs.length) {
     convert(designDocs)
@@ -155,7 +156,7 @@ export const setup = async (designDocs) => {
     }
   })
 
-  const createLock = CreateLock.implement(async (_config, docId, options) => {
+  const createLock = async (_config, _docId, _options) => {
     // Read mock behavior from config
     if (_config._mockLockSuccess === false) {
       return false
@@ -164,19 +165,19 @@ export const setup = async (designDocs) => {
       throw _config._mockLockError
     }
     return true
-  })
+  }
 
-  const removeLock = RemoveLock.implement(async (_config, docId, options) => {
+  const removeLock = async (_config, _docId, _options) => {
     // Read mock behavior from config
     if (_config._mockUnlockError) {
       throw _config._mockUnlockError
     }
     // Success case just returns undefined
-  })
+  }
 
-  const watchDocs = WatchDocs.implement((_config, docIds, onChange, options = {}) => {
+  const watchDocs = (_config, _docIds, _onChange, _options = {}) => {
     const emitter = new EventEmitter()
-    
+
     // Allow tests to trigger events via config._mockEmitEvent
     if (typeof _config._mockEmitEvent === 'function') {
       _config._mockEmitEvent(emitter)
@@ -190,11 +191,11 @@ export const setup = async (designDocs) => {
         emitter.removeAllListeners()
       }
     }
-  })
+  }
 
-  const changes = Changes.implement(async (_config, onChange, options = {}) => {
+  const changes = async (_config, _onChange, options = {}) => {
     const emitter = new EventEmitter()
-    
+
     // Set up PouchDB changes feed
     const feed = db.changes({
       since: options.since || 'now',
@@ -215,7 +216,11 @@ export const setup = async (designDocs) => {
         emitter.removeAllListeners()
       }
     }
-  })
+  }
+
+  const teardown = async () => {
+    return await db.destroy()
+  }
 
   return {
     bulkSave,
@@ -235,7 +240,8 @@ export const setup = async (designDocs) => {
     createLock,
     removeLock,
     watchDocs,
-    changes
+    changes,
+    teardown
   }
 }
 

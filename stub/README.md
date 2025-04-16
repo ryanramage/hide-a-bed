@@ -55,11 +55,12 @@ import userThingsDesignDoc from './ddocs/userThingsDDoc.js'
 
 test('doStuff works in stub mode', async t => {
     // we have to setup the db with the design docs that are required
-    const db = await setup([userThingsDesignDoc])
+    const db = await setup([userThingsDesignDoc], 'test1') // the name test1 is optional, and namespaces the db
 
     // build up a service api with all your fake endpoints
     const services = { db, callSomeApi: callSomeApiMock }
     const afterStuff = await doStuff(config, services, 'happy-doc-id')
+    db.teardown() // destroy the db in prep for another test 
 })
 
 ```
