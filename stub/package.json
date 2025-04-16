@@ -1,6 +1,6 @@
 {
   "name": "hide-a-bed-stub",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "description": "Stub couchdb calls that match the hide-a-bed api",
   "module": "index.mjs",
   "main": "cjs/index.cjs",
