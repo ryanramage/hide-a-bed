@@ -118,3 +118,23 @@ test('teardown', async t => {
   t.ok(resp2.ok)
   t.end()
 })
+
+test('not found does not throw', async t => {
+  const config = { couch: 'http://localhost:5984' }
+  const { get, getAtRev, patch } = await setup([])
+  try {
+    const result = await get(config, 'not-found')
+    t.deepEqual(result, null)
+    console.log('running get at rev')
+    const getAtRevResult = await getAtRev(config, 'not-found', '2')
+    t.deepEqual(getAtRevResult, null)
+    console.log('running patch')
+    const patchResult = await patch(config, 'not-found', { _rev: '2' })
+    t.deepEqual(patchResult, { ok: false, statusCode: 404, error: 'notFound' })
+  } catch (shouldNOt) {
+    console.log(shouldNOt)
+    t.fail('should not throw')
+  } finally {
+    t.end()
+  }
+})

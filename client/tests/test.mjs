@@ -286,4 +286,10 @@ test.test('full db tests', async t => {
     t.ok(queryresults.rows)
     t.end()
   })
+  t.test('not found doc', async t => {
+    // should not throw
+    const notFound = await db.get('never-51st')
+    console.log('found status', notFound)
+    t.end()
+  })
 })

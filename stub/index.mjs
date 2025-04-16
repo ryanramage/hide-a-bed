@@ -62,21 +62,37 @@ export const setup = async (designDocs, dbname) => {
     return results
   })
 
-  const get = CouchGet.implement(async (_config, id) => await db.get(id))
+  const get = CouchGet.implement(async (_config, id) => {
+    try {
+      return await db.get(id)
+    } catch (error) {
+      // if it's a 404, return an empty object
+      if (error.status === 404) return null
+      // otherwise throw the error
+      throw error
+    }
+  })
 
   const patch = Patch.implement(async (_config, id, properties) => {
-    const doc = await db.get(id)
-    if (doc._rev !== properties._rev) {
-      const result = {}
-      result.ok = false
-      result.error = 'conflict'
-      result.statusCode = 409
-      return result
+    try {
+      const doc = await db.get(id)
+      if (!doc) return null
+      if (doc._rev !== properties._rev) {
+        const result = {}
+        result.ok = false
+        result.error = 'conflict'
+        result.statusCode = 409
+        return result
+      }
+      const updatedDoc = { ...doc, ...properties }
+      const results = await db.put(updatedDoc)
+      results.statusCode = 200
+      return results
+    } catch (error) {
+      if (error.status === 404) return { ok: false, statusCode: 404, error: 'notFound' }
+      // otherwise throw the error
+      throw error
     }
-    const updatedDoc = { ...doc, ...properties }
-    const results = await db.put(updatedDoc)
-    results.statusCode = 200
-    return results
   })
 
   const bulkRemove = BulkRemove.implement(async (_config, ids) => {
@@ -105,7 +121,13 @@ export const setup = async (designDocs, dbname) => {
   })
 
   const getAtRev = CouchGetAtRev.implement(async (_config, id, rev) => {
-    return db.get(id, { rev })
+    try {
+      return await db.get(id, { rev })
+    } catch (error) {
+      if (error.status === 404) return null
+      // otherwise throw the error
+      throw error
+    }
   })
 
   const bulkGetDictionary = BulkGetDictionary.implement(async (_config, ids) => {
