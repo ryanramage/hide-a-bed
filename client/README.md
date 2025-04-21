@@ -37,7 +37,7 @@ See [Advanced Config Options](#advanced-config-options) for more advanced settin
 
 #### bindConfig 
 
-A convience method to bind the config, so you dont need to pass it in.
+A convenience method to bind the config, so you don't need to pass it in.
 ```
 import { bindConfig } from 'hide-a-bed'
 const db = bindConfig(process.env)
@@ -45,7 +45,7 @@ const services = { db } // see example below
 const doc = await db.get('doc-123')
 ```
 
-If you need to force autocompletion/type-checking, you can add the following jsdoc to help your editor
+If you need to force autocompletion/type-checking, you can add the following JSDoc to help your editor
 
 ```
 function doSomething (services)
@@ -79,8 +79,6 @@ You can pass any of [Config Options](#advanced-config-options) to db.options to 
 Get a single document by ID.
 
 **Parameters:**
-- `config`: Object with couch URL string and optional throwOnGetNotFound flag
-- `id`: Document ID string
 - `config`: Object with 
    * `couch` URL string
    * `throwOnGetNotFound` default false. If true, 404 docs throw
@@ -287,7 +285,7 @@ const docs = await bulkGet(config, ids)
 // rows: [
 //   { _id: 'doc1', _rev: '1-abc123', type: 'user', name: 'Alice' },
 //   { _id: 'doc2', _rev: '1-def456', type: 'user', name: 'Bob' },
-//   { key: 'notThereDoc', error: 'not_found' }
+//   { key: 'doesNotExist', error: 'not_found' }
 // ]
 ```
 
@@ -336,7 +334,7 @@ Adds some convenience to bulkGet. Organizes found and notFound documents into pr
 
 ```javascript
 const config = { couch: 'http://localhost:5984/mydb' }
-const ids = ['doc1', 'doc2']
+const ids = ['doc1', 'doc2', 'doesNotExist']
 const results = await bulkGetDictionary(config, ids)
 // results: {
 //   found: {
@@ -344,7 +342,7 @@ const results = await bulkGetDictionary(config, ids)
 //     id2: { _id: 'id2', _rev: '4-421', data: {} },
 //   },
 //   notFound: {
-//      id3: { key: 'id1', error: 'not_found' }
+//      id3: { key: 'doesNotExist', error: 'not_found' }
 //   }
 // }
 ```
@@ -535,7 +533,7 @@ const init = async () => {
 init()
 ```
 
-Want to consume this in the browser? I'd recomment https://www.npmjs.com/package/ndjson-readablestream 
+Want to consume this in the browser? I'd recommend https://www.npmjs.com/package/ndjson-readablestream 
 here is a react component that consumes it https://github.com/Azure-Samples/azure-search-openai-demo/pull/532/files#diff-506debba46b93087dc46a916384e56392808bcc02a99d9291557f3e674d4ad6c
 
 #### changes()
@@ -551,7 +549,7 @@ Subscribe to the CouchDB changes feed to receive real-time updates.
   - `filter`: String name of design document filter function
   - Other standard CouchDB changes feed parameters
 
-Returns an EventEmitter that emits 'change' events with change objects.
+Returns an EventEmitter that emits the following events:
 
 ```javascript
 const config = { couch: 'http://localhost:5984/mydb' }
@@ -587,16 +585,13 @@ Watch specific documents for changes in real-time.
 
  **Parameters:**
  - `config`: Object with `couch` URL string
- - `docIds`: String or array of document IDs to watch (max 100
+ - `docIds`: String or array of document IDs to watch (max 100)
  - `onChange`: Function called for each change
  - `options`: Optional object with parameters:
-   - `include_docs`: Boolean to include full documents (defaul
- false)
+   - `include_docs`: Boolean to include full documents (default false)
    - `maxRetries`: Maximum reconnection attempts (default: 10)
-   - `initialDelay`: Initial reconnection delay in ms (default
- 1000)
-   - `maxDelay`: Maximum reconnection delay in ms (default:
- 30000)
+   - `initialDelay`: Initial reconnection delay in ms (default 1000)
+   - `maxDelay`: Maximum reconnection delay in ms (default: 30000)
 
  Returns an EventEmitter that emits:
  - 'change' events with change objects
