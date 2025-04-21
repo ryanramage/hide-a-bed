@@ -1,20 +1,20 @@
 ### API Quick Reference
 
-🍭 denotes a *Sugar* api - helps makes some tasks sweet and easy, but may hide some complexities you might want to deal with. 
+🍭 denotes a *Sugar* API - helps make some tasks sweet and easy, but may hide some complexities you might want to deal with. 
 
 | Document Operations | Bulk Operations | View Operations | Changes Feed |
 |-------------------|-----------------|-----------------|-----------------|
 | [`get()`](#get) | [`bulkGet()`](#bulkget) | [`query()`](#query) | [`changes()`](#changes) |
-| [`put()`](#put) | [`bulkSave()`](#bulksave) | [`queryStream()`](#querystream) | [`watchDocs()`](#watchDocs) 🍭 |
+| [`put()`](#put) | [`bulkSave()`](#bulksave) | [`queryStream()`](#querystream) | [`watchDocs()`](#watchdocs) 🍭 |
 | [`patch()`](#patch) 🍭 | [`bulkRemove()`](#bulkremove) |  | |
 | [`patchDangerously()`](#patchdangerously) 🍭 | [`bulkGetDictionary()`](#bulkgetdictionary) 🍭 | | |
 | [`getAtRev()`](#getatrev) 🍭 | [`bulkSaveTransaction()`](#bulksavetransaction) 🍭 | | |
-| [`createLock()`](#createLock) 🍭 | | | |
-| [`removeLock()`](#removeLock) 🍭 | | | |
+| [`createLock()`](#createlock) 🍭 | | | |
+| [`removeLock()`](#removelock) 🍭 | | | |
 
-And some utility apis
+And some utility APIs 
 
- - [`getDBInfo()`](#getDBInfo)
+ - [`getDBInfo()`](#getdbinfo)
  - [`createQuery()`](#createquery) 🍭
  - [`withRetry()`](#withretry)
  
@@ -22,9 +22,15 @@ And some utility apis
 ### Setup
 
 Depending on your environment, use import or require
-```import { get, put, query } from 'hide-a-bed'```
+```
+import { get, put, query } from 'hide-a-bed'
+```
+
 or
-```const { get, put, query } = require('hide-a-bed')```
+
+```
+const { get, put, query } = require('hide-a-bed')
+```
 
 ### Config
 
@@ -37,7 +43,9 @@ See [Advanced Config Options](#advanced-config-options) for more advanced settin
 
 #### bindConfig 
 
-A convenience method to bind the config, so you don't need to pass it in.
+bindConfig function is a convenience method to bind the config, so you don't need to pass it in every call. 
+Usually, you label the variable returned db so method calls appear to operate on the bound db. 
+
 ```
 import { bindConfig } from 'hide-a-bed'
 const db = bindConfig(process.env)
@@ -45,12 +53,13 @@ const services = { db } // see example below
 const doc = await db.get('doc-123')
 ```
 
-If you need to force autocompletion/type-checking, you can add the following JSDoc to help your editor
+If you need to enable autocompletion and type-checking, you can add the following JSDoc to help your editor
 
 ```
-function doSomething (services)
-  /**  @type { import('hide-a-bed').DB} db */
-  const db = services.db;
+  function doSomething (services) {
+    /**  @type { import('hide-a-bed').DB} db */
+    const db = services.db;
+  }
 ```
 
 Here is an example of compiler warnings:
@@ -60,9 +69,9 @@ Here is an example of compiler warnings:
 
 ##### Config Overrides
 
-You also can quickly change one (or more) config settings for a particular call with the db.options(optionOverrides)
+You also can quickly override (or more) config settings for a particular call using db.options(optionOverrides)
 
-eg
+e.g.
 
 ```
 const db = bindConfig({ couch: 'http://localhost:5984/db', throwOnGetNotFound: false  })
@@ -90,12 +99,12 @@ const config = { couch: 'http://localhost:5984/mydb' }
 const doc = await get(config, 'doc-123')
 console.log(doc._id, doc._rev)
 
-const notThereIsNull = await get(config, 'does-not-exist')
-console.log(notThereIsNull) // null 
+const notFound = await get(config, 'notFound')
+console.log(notFound) // null 
 
 try {
-  const config = { couch: '', throwOnGetNotFound: true }
-  await get(config, 'does-not-exist')
+  const config = { couch: 'http://localhost:5984/mydb', throwOnGetNotFound: true }
+  await get(config, 'notFound')
 } catch (err) {
   if (err.name === 'NotFoundError') console.log('Document not found')
 }
@@ -109,7 +118,7 @@ Save a document.
 **Parameters:**
 - `config`: Object with `couch` URL string
 - `doc`: Document object with `_id` property
-- Returns: Promise resolving to response with `ok`, `id`, `rev` properties
+- Returns: Promise resolving to response with `ok`, `id`, `rev` properties, eg: { ok: boolean, id: string, rev: string }
 
 ```javascript
 const config = { couch: 'http://localhost:5984/mydb' }
@@ -129,12 +138,12 @@ console.log(result2) // { ok: false, error: 'conflict', statusCode: 409 }
 
 #### patch
 
-Update specific properties of a document, you must know the _rev, and passed in with properties.
+The patch function lets you update specific properties of a document. The _rev value must be set, and passed in with properties.
 
 **Parameters:**
 - `config`: Object with couch URL string
 - `id`: Document ID string
-- `properties`: Object with properties to update, one _must_ be the current _rev
+- `properties`: Object with properties to update, must include _rev property
 - Returns: Promise resolving to response with `ok`, `id`, `rev` properties
 
 ```javascript
@@ -160,7 +169,7 @@ Update specific properties of a document, no _rev is needed.
 - `id`: Document ID string
 - `properties`: Object with properties to update
 
-*warning* - this can clobber data. It will retry even if a conflict happens. There are some use cases for this, but you have been warned, hence the name.
+*Warning*: patchDangerously can clobber data. It will retry even if a conflict happens. There are some use cases for this, but you have been warned, hence the name.
 
 - `id`: Document ID string
 - `properties`: Object with properties to update
@@ -276,7 +285,7 @@ Get multiple documents by ID.
 - `ids`: Array of document ID strings
 - Returns: Promise resolving to array of documents
 
-Not found documents will still have a row in the results, but the doc will be null, and the error property will be set
+Warning: documents that are not found will still have a row in the results. The doc property will be null, and the error property will be set.
 
 ```javascript
 const config = { couch: 'http://localhost:5984/mydb' }
@@ -310,25 +319,25 @@ const results = await bulkRemove(config, ids)
 
 #### bulkGetDictionary
 
-Adds some convenience to bulkGet. Organizes found and notFound documents into properties that are {id:result}. This makes it easy to deal with the results.
+Adds convenience to bulkGet. Organizes found and notFound documents into properties that are {id:result}. This makes it easy to deal with the results.
 
 **Parameters:**
 - `config`: Object with `couch` URL string
-- `ids`: Array of document ID strings to delete
+- `ids`: Array of document ID strings to get 
 - Returns: Promise resolving to an object with found and notFound properties.
 
 *found* looks like 
 ```
 { 
-  id1: { _id: 'id1', _rev: '1-221', data: {} },
-  id2: { _id: 'id2', _rev: '4-421', data: {} },
+  doc1: { _id: 'doc1', _rev: '1-221', data: {} },
+  doc2: { _id: 'doc2', _rev: '4-421', data: {} },
 }
 ```
 
 *notFound* looks like 
 ```
 {
-  id3: { key: 'id1', error: 'not_found' }
+  doesNotExist: { key: 'doesNotExist', error: 'not_found' }
 }
 ```
 
@@ -338,11 +347,11 @@ const ids = ['doc1', 'doc2', 'doesNotExist']
 const results = await bulkGetDictionary(config, ids)
 // results: {
 //   found: {
-//     id1: { _id: 'id1', _rev: '1-221', data: {} },
-//     id2: { _id: 'id2', _rev: '4-421', data: {} },
+//     doc1: { _id: 'doc2', _rev: '1-221', data: {} },
+//     doc2: { _id: 'doc2', _rev: '4-421', data: {} },
 //   },
 //   notFound: {
-//      id3: { key: 'doesNotExist', error: 'not_found' }
+//      doesNotExist: { key: 'doesNotExist', error: 'not_found' }
 //   }
 // }
 ```
@@ -450,7 +459,7 @@ const result = await query(config, view, options)
 // }
 ```
 
-Some notes on the keys. Use native js things for arrays keys, rather then strings. Eg
+Some notes on the keys. Use native js types for arrays keys, rather then strings. Eg
 
  - ```{ startkey: ['ryan'], endkey: ['ryan', {}] }```
  - ```{ startkey: [47, null], endkey: [48, null] }```
@@ -533,8 +542,9 @@ const init = async () => {
 init()
 ```
 
-Want to consume this in the browser? I'd recommend https://www.npmjs.com/package/ndjson-readablestream 
-here is a react component that consumes it https://github.com/Azure-Samples/azure-search-openai-demo/pull/532/files#diff-506debba46b93087dc46a916384e56392808bcc02a99d9291557f3e674d4ad6c
+Want to consume this in the browser? I'd recommend [ndjson-readablestream](https://www.npmjs.com/package/ndjson-readablestream)
+An [example react component](https://github.com/Azure-Samples/azure-search-openai-demo/pull/532/files#diff-506debba46b93087dc46a916384e56392808bcc02a99d9291557f3e674d4ad6c)
+that consumes the readable stream.
 
 #### changes()
 
@@ -542,7 +552,7 @@ Subscribe to the CouchDB changes feed to receive real-time updates.
 
 **Parameters:**
 - `config`: Object with `couch` URL string
-- 'onChange': function called for each change
+- `onChange`: function called for each change
 - `options`: Optional object with parameters:
   - `since`: String or number indicating where to start from ('now' or update sequence number)
   - `include_docs`: Boolean to include full documents
@@ -579,7 +589,7 @@ The changes feed is useful for:
 - Implementing replication
 
 
-#### watchDocs()
+#### watchDocs ()
 
 Watch specific documents for changes in real-time.
 
@@ -588,15 +598,15 @@ Watch specific documents for changes in real-time.
  - `docIds`: String or array of document IDs to watch (max 100)
  - `onChange`: Function called for each change
  - `options`: Optional object with parameters:
-   - `include_docs`: Boolean to include full documents (default false)
-   - `maxRetries`: Maximum reconnection attempts (default: 10)
-   - `initialDelay`: Initial reconnection delay in ms (default 1000)
-   - `maxDelay`: Maximum reconnection delay in ms (default: 30000)
+   - `include_docs`: Boolean - include full documents (default false)
+   - `maxRetries`: Number - maximum reconnection attempts (default: 10)
+   - `initialDelay`: Number - initial reconnection delay in ms (default 1000)
+   - `maxDelay`: Number - maximum reconnection delay in ms (default: 30000)
 
  Returns an EventEmitter that emits:
- - 'change' events with change objects
- - 'error' events when max retries reached
- - 'end' events with last sequence number
+ - 'change' events with change objects.
+ - 'error' events when max retries reached.
+ - 'end' events with last sequence number.
 
  ```javascript
  const config = { couch: 'http://localhost:5984/mydb' }
@@ -634,19 +644,19 @@ Watch specific documents for changes in real-time.
  ```
 
  The watchDocs feed is useful for:
- - Building real-time applications focused on specific documents
- - Triggering actions when particular documents change
- - Maintaining cached copies of frequently accessed documents
 
-Advanced Config Options
-=======================
+ 1. Building real-time applications focused on specific documents
+ 2. Triggering actions when particular documents change
+ 3. Maintaining cached copies of frequently-accessed documents
+
+### Advanced Config Options
 
 The config object supports the following properties:
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
 | couch | string | required | The URL of the CouchDB database |
-| throwOnGetNotFound | boolean | false | If true, throws an error when get() returns 404. If false, returns undefined |
+| throwOnGetNotFound | boolean | false | If true, throws an error when get() returns 404. If false, returns null |
 | bindWithRetry | boolean | true | When using bindConfig(), adds retry logic to bound methods |
 | maxRetries | number | 3 | Maximum number of retry attempts for retryable operations |
 | initialDelay | number | 1000 | Initial delay in milliseconds before first retry |
@@ -655,6 +665,7 @@ The config object supports the following properties:
 | logger | object/function | undefined | Custom logging interface (winston-style object or function) |
 
 Example configuration with all options:
+
 ```javascript
 const config = {
   couch: 'http://localhost:5984/mydb',
@@ -668,9 +679,7 @@ const config = {
 }
 ```
 
-
-Logging Support
-==============
+### Logging Support
 
 The library supports flexible logging options that can be configured through the config object:
 
@@ -707,8 +716,8 @@ The logger will track operations including:
 - Retries and error handling
 
 Each operation logs appropriate information at these levels:
-- error: Fatal/unrecoverable errors
-- warn: Retryable errors, conflicts
-- info: Operation start/completion
-- debug: Detailed operation information
+- error: Fatal/unrecoverable errors.
+- warn: Retryable errors, conflicts.
+- info: Operation start/completion.
+- debug: Detailed operation information.
 
