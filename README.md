@@ -9,7 +9,7 @@
 - 🚀 Simple, promise-based API for CouchDB operations
 - 🧪 Built-in testing support with mock capabilities
 - 🔄 Bulk operations support
-- 📝 Type definitions included
+- 📝 Includes Type definitions
 - ⚡️ Modern ESM imports
 
 ## Installation
@@ -41,7 +41,7 @@ const doc = await db.get(userId)
 
 ### Writing Testable Code
 
-The key to writing testable database code is to use dependency injection. Here's the recommended pattern:
+The key to writing testable database code is to use dependency injection. The recommended pattern is:
 
 ```javascript
 // userService.js
@@ -62,27 +62,25 @@ const userData = await getUserActivity(services, 'user-123')
 
 ### Testing
 
-Using the stub package makes testing your database code easy and reliable:
+Using the stub package makes it easy and reliable to test your database code.
 
 ```javascript
 import { setup } from 'hide-a-bed-stub'
 import { getUserActivity } from './userService.js'
 
-// NOTE - depending on your module system, these lines vary. This shows loading a cjs file
-//        which is the most convoluted. 
+// NOTE - This shows loading a cjs file which is the most convoluted use case.
 import { createRequire } from 'module'
 const require = createRequire(import.meta.url)
 const viewDoc = require('./assets/viewDocs.cjs')
 
 const config = { couch: 'http://fake:5984' } 
-const { bindConfig } = await setup([viewDoc]) // this setups up the view to be available in your testing
+const { bindConfig } = await setup([viewDoc]) // this sets up the view to be available in your test
 const db = bindConfig(config)
 const services = { db }
 
-
 describe('getUserActivity', () => {
   it('retrieves user data and activity', async () => {
-    // add some docs here that match/dont match the view 
+    // add some docs here that match/don't match the view 
     const docs = [
         { _id: 'test-user-id', name: 'bob'},
         { _id: 'act1', ts: 1, value: 'clicked', user: 'test-user-id' },
@@ -111,11 +109,11 @@ The following CouchDB operations are supported:
 - `bulkSave(config, docs)` - Save multiple documents
 - `query(config, viewPath, options)` - Query a view
 
-For detailed API documentation, please visit our [API Reference](https://github.com/ryanramage/hide-a-bed/blob/master/client/README.md)
+For detailed API documentation, visit our [API Reference](https://github.com/ryanramage/hide-a-bed/blob/master/client/README.md)
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome! Submit a Pull Request.
 
 ## License
 
