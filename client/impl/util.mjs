@@ -12,7 +12,10 @@ export const getDBInfo = GetDBInfo.implement(async (config) => {
     json: true,
     headers: {
       'Content-Type': 'application/json'
-    }
+    },
+    open_timeout: config.openTimeout,
+    response_timeout: config.responseTimeout,
+    read_timeout: config.readTimeout
   }
   let resp
   try {

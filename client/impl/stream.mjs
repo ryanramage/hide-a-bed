@@ -36,12 +36,16 @@ export const queryStream = (rawConfig, view, options, onRow) => new Promise((res
   }
 
   const url = `${config.couch}/${view}?${qs.toString()}`
+  /** @type {import("needle").NeedleOptions} */
   const opts = {
-    json: true,
+    json: true, // Note: Needle might ignore this with parse_response: false, but keep for consistency
     headers: {
       'Content-Type': 'application/json'
     },
-    parse_response: false // Keep as stream
+    parse_response: false, // Keep as stream
+    open_timeout: /** @type {number} */ (config.openTimeout ?? 30000),
+    response_timeout: /** @type {number} */ (config.responseTimeout ?? 30000),
+    read_timeout: /** @type {number} */ (config.readTimeout ?? 30000)
   }
 
   const streamer = JSONStream.parse('rows.*')

@@ -26,11 +26,15 @@ export const bulkSave = BulkSave.implement(async (config, docs) => {
   logger.info(`Starting bulk save of ${docs.length} documents`)
   const url = `${config.couch}/_bulk_docs`
   const body = { docs }
+  /** @type {import("needle").NeedleOptions} */
   const opts = {
     json: true,
     headers: {
       'Content-Type': 'application/json'
-    }
+    },
+    open_timeout: /** @type {number} */ (config.openTimeout ?? 30000),
+    response_timeout: /** @type {number} */ (config.responseTimeout ?? 30000),
+    read_timeout: /** @type {number} */ (config.readTimeout ?? 30000)
   }
   let resp
   try {
@@ -63,11 +67,15 @@ export const bulkGet = BulkGet.implement(async (config, ids) => {
   logger.info(`Starting bulk get for ${keys.length} documents`)
   const url = `${config.couch}/_all_docs?include_docs=true`
   const payload = { keys }
+  /** @type {import("needle").NeedleOptions} */
   const opts = {
     json: true,
     headers: {
       'Content-Type': 'application/json'
-    }
+    },
+    open_timeout: /** @type {number} */ (config.openTimeout ?? 30000),
+    response_timeout: /** @type {number} */ (config.responseTimeout ?? 30000),
+    read_timeout: /** @type {number} */ (config.readTimeout ?? 30000)
   }
   let resp
   try {

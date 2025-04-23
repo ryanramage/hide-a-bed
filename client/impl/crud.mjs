@@ -10,11 +10,15 @@ const _getWithOptions = CouchGetWithOptions.implement(async (config, id, getOpts
   const rev = getOpts?.rev
   const path = rev ? `${id}?rev=${rev}` : id
   const url = `${config.couch}/${path}`
+  /** @type {import("needle").NeedleOptions} */
   const opts = {
     json: true,
     headers: {
       'Content-Type': 'application/json'
-    }
+    },
+    open_timeout: /** @type {number} */ (config.openTimeout ?? 30000),
+    response_timeout: /** @type {number} */ (config.responseTimeout ?? 30000),
+    read_timeout: /** @type {number} */ (config.readTimeout ?? 30000)
   }
   logger.info(`Getting document with id: ${id}, rev ${rev || 'latest'}`)
 
@@ -67,11 +71,15 @@ export const put = CouchPut.implement(async (config, doc) => {
   const logger = createLogger(config)
   const url = `${config.couch}/${doc._id}`
   const body = doc
+  /** @type {import("needle").NeedleOptions} */
   const opts = {
     json: true,
     headers: {
       'Content-Type': 'application/json'
-    }
+    },
+    open_timeout: /** @type {number} */ (config.openTimeout ?? 30000),
+    response_timeout: /** @type {number} */ (config.responseTimeout ?? 30000),
+    read_timeout: /** @type {number} */ (config.readTimeout ?? 30000)
   }
 
   logger.info(`Putting document with id: ${doc._id}`)

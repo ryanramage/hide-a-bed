@@ -24,13 +24,6 @@ import { Bind, BindReturns } from './schema/bind.mjs'
 import { GetDBInfo } from './schema/util.mjs'
 import needle from 'needle' // Import needle
 
-// Set default timeouts for all needle requests (30 seconds)
-needle.defaults({
-  open_timeout: 30000,
-  response_timeout: 30000,
-  read_timeout: 30000
-})
-
 const schema = {
   CouchConfig,
   SimpleViewQuery,

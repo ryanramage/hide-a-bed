@@ -18,11 +18,15 @@ export const changes = Changes.implement(async (config, onChange, options = {}) 
   const emitter = new EventEmitter()
   options.db = config.couch
   if (options.since && options.since === 'now') {
+    /** @type {import("needle").NeedleOptions} */
     const opts = {
       json: true,
       headers: {
         'Content-Type': 'application/json'
-      }
+      },
+      open_timeout: /** @type {number} */ (config.openTimeout ?? 30000),
+      response_timeout: /** @type {number} */ (config.responseTimeout ?? 30000),
+      read_timeout: /** @type {number} */ (config.readTimeout ?? 30000)
     }
     // request the GET on config.couch and get the update_seq
     const resp = await needle('get', config.couch, opts)

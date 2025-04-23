@@ -31,7 +31,10 @@ export const watchDocs = WatchDocs.implement((config, docIds, onChange, options 
 
     const opts = {
       headers: { 'Content-Type': 'application/json' },
-      parse_response: false
+      parse_response: false,
+      open_timeout: config.openTimeout,
+      response_timeout: config.responseTimeout,
+      read_timeout: config.readTimeout
     }
 
     let buffer = ''

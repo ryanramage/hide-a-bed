@@ -1,7 +1,7 @@
 // @ts-check
 
 import { z } from 'zod' // eslint-disable-line
-import needle from 'needle'
+import needle from 'needle' // Keep original import
 import { SimpleViewQuery, SimpleViewQueryResponse } from '../schema/query.mjs' // eslint-disable-line
 import { RetryableError } from './errors.mjs'
 import { createLogger } from './logger.mjs'
@@ -24,11 +24,16 @@ export const query = SimpleViewQuery.implement(async (config, view, options = {}
   let qs = queryString(options, ['key', 'startkey', 'endkey', 'reduce', 'group', 'group_level', 'stale', 'limit'])
   let method = 'GET'
   let payload = null
+  /** @type {import("needle").NeedleOptions} */ // Use JSDoc import type
   const opts = {
     json: true,
     headers: {
       'Content-Type': 'application/json'
-    }
+    },
+    // Provide defaults again using ?? to satisfy TS, although Zod should handle this
+    open_timeout: config.openTimeout ?? 30000,
+    response_timeout: config.responseTimeout ?? 30000,
+    read_timeout: config.readTimeout ?? 30000
   }
 
   // If keys are supplied, issue a POST to circumvent GET query string limits

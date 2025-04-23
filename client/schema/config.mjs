@@ -19,6 +19,9 @@ export const CouchConfig = z.object({
   backoffFactor: z.number().optional().default(2).describe('multiplier for exponential backoff'),
   useConsoleLogger: z.boolean().optional().default(false).describe('turn on console as a fallback logger'),
   logger: LoggerSchema.optional().describe('logging interface supporting winston-like or simple function interface'),
+  openTimeout: z.number().optional().default(30000).describe('Timeout for opening the connection in milliseconds'),
+  responseTimeout: z.number().optional().default(30000).describe('Timeout for waiting for the first byte of the response in milliseconds'),
+  readTimeout: z.number().optional().default(30000).describe('Timeout for reading the entire response body in milliseconds'),
   // _emitter: z.any().optional().describe('emitter for events'),
   _normalizedLogger: z.any().optional() // Internal property for caching normalized logger
 }).passthrough().describe('The std config object')
