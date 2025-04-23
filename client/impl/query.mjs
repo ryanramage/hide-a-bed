@@ -116,7 +116,8 @@ export function queryString (options = {}, params) {
         }).join(',') + ']'
       }
     }
-    return `${key}=${value}`
+    // Encode the final value string before adding it to the query part
+    return `${key}=${encodeURIComponent(value)}`
   })
   return parts.join('&')
 }
