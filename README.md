@@ -2,14 +2,14 @@
 
 > A clean, testable CouchDB abstraction layer for Node.js
 
-`hide-a-bed` makes it easy to work with CouchDB in your Node.js applications while keeping your database code testable. It provides a simple interface for common CouchDB operations and includes a companion package for painless testing.
+`hide-a-bed` simplifies working with CouchDB in your Node.js applications while keeping your database code testable. It provides a simple interface for common CouchDB operations and includes a companion package for painless testing.
 
 ## Features
 
 - 🚀 Simple, promise-based API for CouchDB operations
 - 🧪 Built-in testing support with mock capabilities
 - 🔄 Bulk operations support
-- 📝 Includes Type definitions
+- 📝 Includes type definitions
 - ⚡️ Modern ESM imports
 
 ## Installation
@@ -26,7 +26,7 @@ npm install hide-a-bed-stub --save-dev
 
 ### Basic Usage
 
-Here's a simple example of how to use hide-a-bed in your application:
+Example usage of hide-a-bed:
 
 ```javascript
 import { bindConfig } from 'hide-a-bed'
@@ -41,17 +41,17 @@ const doc = await db.get(userId)
 
 ### Writing Testable Code
 
-The key to writing testable database code is to use dependency injection. The recommended pattern is:
+The key to writing testable database code is to use dependency injection. The recommended pattern is: <!-- proofreader-ignore --> 
 
 ```javascript
 // userService.js
 export async function getUserActivity(services, userId) {
   const user = await services.db.get(userId)
   const query = { 
-        startkey: [userId, 0], 
-        endkey: [userId, Date.now()], 
-        include_docs: true 
-    }
+    startkey: [userId, 0], 
+    endkey: [userId, Date.now()], 
+    include_docs: true 
+  }
   const activity = await services.db.query('_design/userThings/_view/byTime', query)
   return { user, activity: activity.rows }
 }
@@ -68,7 +68,7 @@ Using the stub package makes it easy and reliable to test your database code.
 import { setup } from 'hide-a-bed-stub'
 import { getUserActivity } from './userService.js'
 
-// NOTE - This shows loading a cjs file which is the most convoluted use case.
+// NOTE: This demonstrates loading a CJS file, which is the most complex use case.
 import { createRequire } from 'module'
 const require = createRequire(import.meta.url)
 const viewDoc = require('./assets/viewDocs.cjs')
@@ -80,9 +80,9 @@ const services = { db }
 
 describe('getUserActivity', () => {
   it('retrieves user data and activity', async () => {
-    // add some docs here that match/don't match the view 
+    // add some docs here that match/don't match the view <!-- proofreader-ignore --> 
     const docs = [
-        { _id: 'test-user-id', name: 'bob'},
+        { _id: 'test-user-id', name: 'Bob'},
         { _id: 'act1', ts: 1, value: 'clicked', user: 'test-user-id' },
         { _id: 'act2', ts: 2, value: 'submit', user: 'test-user-id'},
         { _id: 'should-not', ts: 3, value: 'clicked', user: 'no-user' }
@@ -109,14 +109,14 @@ The following CouchDB operations are supported:
 - `bulkSave(config, docs)` - Save multiple documents
 - `query(config, viewPath, options)` - Query a view
 
-For detailed API documentation, visit our [API Reference](https://github.com/ryanramage/hide-a-bed/blob/master/client/README.md)
+For detailed documentation, visit our [API Reference](https://github.com/ryanramage/hide-a-bed/blob/master/client/README.md)
 
 ## Contributing
 
-Contributions are welcome! Submit a Pull Request.
+Contributions are welcome! Submit a pull request.
 
 ## License
 
-MIT
+Licensed under the MIT License.
 
 
