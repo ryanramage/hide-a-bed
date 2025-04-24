@@ -1,7 +1,7 @@
 // @ts-check
 
 import { z } from 'zod' // eslint-disable-line
-import needle from 'needle'
+import needle from 'needle' // Keep original import
 import { SimpleViewQuery, SimpleViewQueryResponse } from '../schema/query.mjs' // eslint-disable-line
 import { RetryableError } from './errors.mjs'
 import { createLogger } from './logger.mjs'
@@ -24,11 +24,16 @@ export const query = SimpleViewQuery.implement(async (config, view, options = {}
   let qs = queryString(options, ['key', 'startkey', 'endkey', 'reduce', 'group', 'group_level', 'stale', 'limit'])
   let method = 'GET'
   let payload = null
+  /** @type {import("needle").NeedleOptions} */ // Use JSDoc import type
   const opts = {
     json: true,
     headers: {
       'Content-Type': 'application/json'
-    }
+    },
+    // Provide defaults again using ?? and explicit casting to satisfy TS
+    open_timeout: Number(config.openTimeout) ?? 30000,
+    response_timeout: Number(config.responseTimeout) ?? 30000,
+    read_timeout: Number(config.readTimeout) ?? 30000
   }
 
   // If keys are supplied, issue a POST to circumvent GET query string limits
@@ -104,20 +109,14 @@ export const query = SimpleViewQuery.implement(async (config, view, options = {}
 export function queryString (options = {}, params) {
   const parts = Object.keys(options).map(key => {
     let value = options[key]
+    // For parameters that CouchDB expects as JSON (like key, startkey, endkey),
+    // stringify them correctly. JSON.stringify handles quoting strings, arrays, objects, etc.
+    // Needle will then handle the URL encoding of the resulting string when making the request.
     if (includes(params, key)) {
-      if (typeof value === 'string' && key !== 'stale') value = `"${value}"`
-      if (Array.isArray(value)) {
-        value = '[' + value.map(i => {
-          if (i === null) return 'null'
-          if (typeof i === 'string') return `"${i}"`
-          if (typeof i === 'object' && Object.keys(i).length === 0) return '{}'
-          if (typeof i === 'object') return JSON.stringify(i)
-          return i
-        }).join(',') + ']'
-      }
+      value = JSON.stringify(value)
     }
-    // Encode the final value string before adding it to the query part
-    return `${key}=${encodeURIComponent(value)}`
+    // Let needle handle the final URL encoding.
+    return `${key}=${value}`
   })
   return parts.join('&')
 }
