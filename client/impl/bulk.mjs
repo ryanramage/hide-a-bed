@@ -27,8 +27,10 @@ export const bulkSave = BulkSave.implement(async (config, docs) => {
   const url = `${config.couch}/_bulk_docs`
   const body = { docs }
   const opts = {
+    ...(config.needle || {}),
     json: true,
     headers: {
+      ...config.needle?.headers,
       'Content-Type': 'application/json'
     }
   }
@@ -64,8 +66,10 @@ export const bulkGet = BulkGet.implement(async (config, ids) => {
   const url = `${config.couch}/_all_docs?include_docs=true`
   const payload = { keys }
   const opts = {
+    ...(config.needle || {}),
     json: true,
     headers: {
+      ...config.needle?.headers,
       'Content-Type': 'application/json'
     }
   }

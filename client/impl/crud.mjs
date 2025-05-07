@@ -11,8 +11,10 @@ const _getWithOptions = CouchGetWithOptions.implement(async (config, id, getOpts
   const path = rev ? `${id}?rev=${rev}` : id
   const url = `${config.couch}/${path}`
   const opts = {
+    ...(config.needle || {}),
     json: true,
     headers: {
+      ...config.needle?.headers,
       'Content-Type': 'application/json'
     }
   }
@@ -68,8 +70,10 @@ export const put = CouchPut.implement(async (config, doc) => {
   const url = `${config.couch}/${doc._id}`
   const body = doc
   const opts = {
+    ...(config.needle || {}),
     json: true,
     headers: {
+      ...config.needle?.headers,
       'Content-Type': 'application/json'
     }
   }

@@ -9,8 +9,10 @@ export const getDBInfo = GetDBInfo.implement(async (config) => {
   const logger = createLogger(config)
   const url = `${config.couch}`
   const opts = {
+    ...(config.needle || {}),
     json: true,
     headers: {
+      ...config.needle?.headers,
       'Content-Type': 'application/json'
     }
   }

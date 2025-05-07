@@ -19,8 +19,10 @@ export const changes = Changes.implement(async (config, onChange, options = {}) 
   options.db = config.couch
   if (options.since && options.since === 'now') {
     const opts = {
+      ...(config.needle || {}),
       json: true,
       headers: {
+        ...config.needle?.headers,
         'Content-Type': 'application/json'
       }
     }

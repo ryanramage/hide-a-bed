@@ -30,7 +30,11 @@ export const watchDocs = WatchDocs.implement((config, docIds, onChange, options 
     const url = `${config.couch}/_changes?feed=${feed}&since=${lastSeq}&include_docs=${includeDocs}&filter=_doc_ids&doc_ids=["${ids}"]`
 
     const opts = {
-      headers: { 'Content-Type': 'application/json' },
+      ...(config.needle || {}),
+      headers: {
+        ...config.needle?.headers,
+        'Content-Type': 'application/json'
+      },
       parse_response: false
     }
 

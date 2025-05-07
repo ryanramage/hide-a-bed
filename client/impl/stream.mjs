@@ -37,8 +37,10 @@ export const queryStream = (rawConfig, view, options, onRow) => new Promise((res
 
   const url = `${config.couch}/${view}?${qs.toString()}`
   const opts = {
+    ...(config.needle || {}),
     json: true,
     headers: {
+      ...config.needle?.headers,
       'Content-Type': 'application/json'
     },
     parse_response: false // Keep as stream

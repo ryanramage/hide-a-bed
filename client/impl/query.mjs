@@ -25,8 +25,10 @@ export const query = SimpleViewQuery.implement(async (config, view, options = {}
   let method = 'GET'
   let payload = null
   const opts = {
+    ...(config.needle || {}),
     json: true,
     headers: {
+      ...config.needle?.headers,
       'Content-Type': 'application/json'
     }
   }
