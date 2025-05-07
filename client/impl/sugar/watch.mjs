@@ -4,6 +4,7 @@ import { RetryableError } from '../errors.mjs'
 import { createLogger } from '../logger.mjs'
 import { sleep } from '../patch.mjs'
 import { WatchDocs } from '../../schema/sugar/watch.mjs'
+import { mergeNeedleOpts } from '../util.mjs'
 
 // watch the doc for any changes
 export const watchDocs = WatchDocs.implement((config, docIds, onChange, options = {}) => {
@@ -30,16 +31,15 @@ export const watchDocs = WatchDocs.implement((config, docIds, onChange, options 
     const url = `${config.couch}/_changes?feed=${feed}&since=${lastSeq}&include_docs=${includeDocs}&filter=_doc_ids&doc_ids=["${ids}"]`
 
     const opts = {
-      ...(config.needle || {}),
       headers: {
-        ...config.needle?.headers,
         'Content-Type': 'application/json'
       },
       parse_response: false
     }
+    const mergedOpts = mergeNeedleOpts(config, opts)
 
     let buffer = ''
-    currentRequest = needle.get(url, opts)
+    currentRequest = needle.get(url, mergedOpts)
 
     currentRequest.on('data', chunk => {
       buffer += chunk.toString()

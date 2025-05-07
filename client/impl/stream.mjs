@@ -6,6 +6,7 @@ import { RetryableError } from './errors.mjs'
 import { createLogger } from './logger.mjs'
 // @ts-ignore
 import JSONStream from 'JSONStream'
+import { mergeNeedleOpts } from './util.mjs'
 
 /** @type { import('../schema/stream.mjs').SimpleViewQueryStreamSchema } queryStream */
 export const queryStream = (rawConfig, view, options, onRow) => new Promise((resolve, reject) => {
@@ -37,14 +38,13 @@ export const queryStream = (rawConfig, view, options, onRow) => new Promise((res
 
   const url = `${config.couch}/${view}?${qs.toString()}`
   const opts = {
-    ...(config.needle || {}),
     json: true,
     headers: {
-      ...config.needle?.headers,
       'Content-Type': 'application/json'
     },
     parse_response: false // Keep as stream
   }
+  const mergedOpts = mergeNeedleOpts(config, opts)
 
   const streamer = JSONStream.parse('rows.*')
 
@@ -73,8 +73,8 @@ export const queryStream = (rawConfig, view, options, onRow) => new Promise((res
   })
 
   const req = method === 'GET'
-    ? needle.get(url, opts)
-    : needle.post(url, payload, opts)
+    ? needle.get(url, mergedOpts)
+    : needle.post(url, payload, mergedOpts)
 
   req.on('response', response => {
     logger.debug(`Received response with status code: ${response.statusCode}`)

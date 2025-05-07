@@ -10,9 +10,17 @@ const LoggerSchema = z.object({
   z.any() // message/args
 ).returns(z.void()))
 
-const NeedleOptions = z.object({
-  json: z.boolean().optional().default(true),
-  compressed: z.boolean().optional().default(true),
+export const NeedleBaseOptions = z.object({
+  json: z.boolean(),
+  headers: z.record(z.string(), z.string()),
+  parse_response: z.boolean().optional(),
+})
+
+/** @typedef { z.infer<typeof NeedleBaseOptions> } NeedleBaseOptionsSchema */
+
+export const NeedleOptions = z.object({
+  json: z.boolean().optional(),
+  compressed: z.boolean().optional(),
   follow_max: z.number().optional(),
   follow_set_cookie: z.boolean().optional(),
   follow_set_referer: z.boolean().optional(),
@@ -23,9 +31,7 @@ const NeedleOptions = z.object({
   decode: z.boolean().optional(),
   parse_cookies: z.boolean().optional(),
   cookies: z.record(z.string()).optional(),
-  headers: z.record(z.string()).optional().default({
-    'Content-Type': 'application/json'
-  }),
+  headers: z.record(z.string()).optional(),
   auth: z.enum(['auto', 'digest', 'basic']).optional(),
   username: z.string().optional(),
   password: z.string().optional(),
@@ -51,7 +57,7 @@ export const CouchConfig = z.object({
   logger: LoggerSchema.optional().describe('logging interface supporting winston-like or simple function interface'),
   // _emitter: z.any().optional().describe('emitter for events'),
   _normalizedLogger: z.any().optional(), // Internal property for caching normalized logger
-  needle: NeedleOptions.optional().default({})
+  needleOpts: NeedleOptions.optional().default({}),
 }).passthrough().describe('The std config object')
 
 /** @typedef { z.infer<typeof CouchConfig> } CouchConfigSchema */

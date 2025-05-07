@@ -7,6 +7,7 @@ import { RetryableError } from './errors.mjs'
 import { createLogger } from './logger.mjs'
 
 import pkg from 'lodash'
+import { mergeNeedleOpts } from './util.mjs'
 const { includes } = pkg
 
 /**
@@ -25,13 +26,12 @@ export const query = SimpleViewQuery.implement(async (config, view, options = {}
   let method = 'GET'
   let payload = null
   const opts = {
-    ...(config.needle || {}),
     json: true,
     headers: {
-      ...config.needle?.headers,
       'Content-Type': 'application/json'
     }
   }
+  const mergedOpts = mergeNeedleOpts(config, opts)
 
   // If keys are supplied, issue a POST to circumvent GET query string limits
   // see http://wiki.apache.org/couchdb/HTTP_view_API#Querying_Options
@@ -65,7 +65,7 @@ export const query = SimpleViewQuery.implement(async (config, view, options = {}
   let results
   try {
     logger.debug(`Sending ${method} request to: ${url}`)
-    results = (method === 'GET') ? await needle('get', url, opts) : await needle('post', url, payload, opts)
+    results = (method === 'GET') ? await needle('get', url, mergedOpts) : await needle('post', url, payload, mergedOpts)
   } catch (err) {
     logger.error('Network error during query:', err)
     RetryableError.handleNetworkError(err)
