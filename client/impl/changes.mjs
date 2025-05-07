@@ -12,6 +12,7 @@ import { Changes } from '../schema/changes.mjs'
  * }} ChangeInfo */
 // @ts-ignore
 import ChangesStream from 'changes-stream'
+import { mergeNeedleOpts } from './util.mjs'
 
 /** @type { import('../schema/changes.mjs').ChangesSchema } */
 export const changes = Changes.implement(async (config, onChange, options = {}) => {
@@ -24,8 +25,9 @@ export const changes = Changes.implement(async (config, onChange, options = {}) 
         'Content-Type': 'application/json'
       }
     }
+    const mergedOpts = mergeNeedleOpts(config, opts)
     // request the GET on config.couch and get the update_seq
-    const resp = await needle('get', config.couch, opts)
+    const resp = await needle('get', config.couch, mergedOpts)
     options.since = resp.body.update_seq
   }
 

@@ -8,6 +8,7 @@ import { TransactionSetupError, TransactionVersionConflictError, TransactionBulk
 import { createLogger } from './logger.mjs'
 import { CouchDoc } from '../schema/crud.mjs'
 import { setupEmitter } from './trackedEmitter.mjs'
+import { mergeNeedleOpts } from './util.mjs'
 
 /** @type { import('../schema/bulk.mjs').BulkSaveSchema } */
 export const bulkSave = BulkSave.implement(async (config, docs) => {
@@ -32,9 +33,10 @@ export const bulkSave = BulkSave.implement(async (config, docs) => {
       'Content-Type': 'application/json'
     }
   }
+  const mergedOpts = mergeNeedleOpts(config, opts)
   let resp
   try {
-    resp = await needle('post', url, body, opts)
+    resp = await needle('post', url, body, mergedOpts)
   } catch (err) {
     logger.error('Network error during bulk save:', err)
     RetryableError.handleNetworkError(err)
@@ -69,9 +71,10 @@ export const bulkGet = BulkGet.implement(async (config, ids) => {
       'Content-Type': 'application/json'
     }
   }
+  const mergedOpts = mergeNeedleOpts(config, opts)
   let resp
   try {
-    resp = await needle('post', url, payload, opts)
+    resp = await needle('post', url, payload, mergedOpts)
   } catch (err) {
     logger.error('Network error during bulk get:', err)
     RetryableError.handleNetworkError(err)
