@@ -57,7 +57,7 @@ export const CouchConfig = z.object({
   logger: LoggerSchema.optional().describe('logging interface supporting winston-like or simple function interface'),
   // _emitter: z.any().optional().describe('emitter for events'),
   _normalizedLogger: z.any().optional(), // Internal property for caching normalized logger
-  needleOpts: NeedleOptions.optional().default({}),
+  needleOpts: NeedleOptions.optional(),
 }).passthrough().describe('The std config object')
 
 /** @typedef { z.infer<typeof CouchConfig> } CouchConfigSchema */
