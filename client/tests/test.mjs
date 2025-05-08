@@ -304,4 +304,30 @@ test.test('full db tests', async t => {
     console.log('found status', notFound)
     t.end()
   })
+
+  t.test('hardDelete test', async (t) => {
+    // First create a document to delete
+    const doc = await db.put({ _id: 'delete-test-doc', data: 'to be deleted' })
+    t.ok(doc.ok, 'Document created successfully')
+
+    // Verify the document exists
+    const fetchedDoc = await db.get('delete-test-doc')
+    t.equal(
+      fetchedDoc.data,
+      'to be deleted',
+      'Document exists and has correct data'
+    )
+
+    // Delete the document
+    const deleteResult = await db.hardDelete({
+      _id: 'delete-test-doc',
+      _rev: fetchedDoc._rev
+    })
+    t.ok(deleteResult.ok, 'Document deleted successfully')
+
+    // Verify the document no longer exists
+    const deletedDoc = await db.get('delete-test-doc')
+    t.equal(deletedDoc, null, 'Document was successfully deleted')
+    t.end()
+  })
 })

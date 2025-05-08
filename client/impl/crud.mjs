@@ -1,6 +1,6 @@
 // @ts-check
 import needle from 'needle'
-import { CouchGet, CouchPut, CouchGetWithOptions, CouchGetAtRev } from '../schema/crud.mjs'
+import {CouchGet, CouchPut, CouchGetWithOptions, CouchGetAtRev, CouchHardDelete} from '../schema/crud.mjs'
 import { RetryableError, NotFoundError } from './errors.mjs'
 import { createLogger } from './logger.mjs'
 import { mergeNeedleOpts } from './util.mjs'
@@ -29,7 +29,7 @@ const _getWithOptions = CouchGetWithOptions.implement(async (config, id, getOpts
     const result = resp?.body || {}
     if (resp.statusCode === 404) {
       if (config.throwOnGetNotFound) {
-        logger.warn(`Document not found (throwing error): ${id}, rev ${rev || 'latest'}`)
+        logger.warn( `Document not found (throwing error): ${id}, rev ${rev || 'latest'}`)
         throw new NotFoundError(id, result.reason || 'not_found')
       } else {
         logger.debug(`Document not found (returning undefined): ${id}, rev ${rev || 'latest'}`)
@@ -107,5 +107,67 @@ export const put = CouchPut.implement(async (config, doc) => {
   }
 
   logger.info(`Successfully saved document: ${doc._id}`)
+  return result
+})
+
+/** @type { import('../schema/crud.mjs').CouchHardDeleteSchema } */
+export const hardDelete = CouchHardDelete.implement(async (config, doc) => {
+  const logger = createLogger(config)
+  const url = `${config.couch}/${doc._id}?rev=${doc._rev}`
+  const opts = {
+    json: true,
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  }
+  const mergedOpts = mergeNeedleOpts(config, opts)
+
+  logger.info(`Deleting document with id: ${doc._id}`)
+  let resp
+  try {
+    resp = await needle('delete', url, mergedOpts)
+  } catch (err) {
+    logger.error('Error during delete operation:', err)
+    RetryableError.handleNetworkError(err)
+  }
+
+  if (!resp) {
+    logger.error('No response received from delete request')
+    throw new RetryableError('no response', 503)
+  }
+
+  let result
+  if (typeof resp.body === 'string') {
+    try {
+      result = JSON.parse(resp.body)
+    } catch (e) {
+      result = {}
+    }
+  } else {
+    result = resp.body || {}
+  }
+  result.statusCode = resp.statusCode
+
+  if (resp.statusCode === 404) {
+    logger.warn(`Document not found for deletion: ${doc._id}`)
+    result.ok = false
+    result.error = 'not_found'
+    return result
+  }
+
+  if (RetryableError.isRetryableStatusCode(resp.statusCode)) {
+    logger.warn(`Retryable status code received: ${resp.statusCode}`)
+    throw new RetryableError(
+      result.reason || 'retryable error',
+      resp.statusCode
+    )
+  }
+
+  if (resp.statusCode !== 200) {
+    logger.error(`Unexpected status code: ${resp.statusCode}`)
+    throw new Error(result.reason || 'failed')
+  }
+
+  logger.info(`Successfully deleted document: ${doc._id}`)
   return result
 })

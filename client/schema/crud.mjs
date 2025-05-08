@@ -62,3 +62,20 @@ export const CouchGetWithOptions = z.function().args(
   CouchGetOptions
 ).returns(z.promise(CouchDoc.nullable()))
 /** @typedef { z.infer<typeof CouchGetWithOptions> } CouchGetWithOptionsSchema */
+
+export const CouchHardDelete = z.function().args(
+  CouchConfig,
+  z.object({
+    _id: z.string().describe('the couch doc id'),
+    _rev: z.string().describe('the couch doc revision')
+  }).describe('the couch doc to delete')
+).returns(z.promise(CouchDocResponse))
+/** @typedef { z.infer<typeof CouchHardDelete> } CouchHardDeleteSchema */
+
+export const CouchHardDeleteBound = z.function().args(
+  z.object({
+    _id: z.string().describe('the couch doc id'),
+    _rev: z.string().describe('the couch doc revision')
+  }).describe('the couch doc to delete')
+).returns(z.promise(CouchDocResponse))
+/** @typedef { z.infer<typeof CouchHardDeleteBound> } CouchHardDeleteBoundSchema */
