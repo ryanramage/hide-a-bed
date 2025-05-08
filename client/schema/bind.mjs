@@ -1,7 +1,7 @@
 // @ts-check
 import { z } from 'zod'
 import { CouchConfig } from './config.mjs'
-import { BulkSaveBound, BulkGetBound, BulkRemoveBound, BulkGetDictionaryBound, BulkSaveTransactionBound } from './bulk.mjs'
+import { BulkSaveBound, BulkGetBound, BulkRemoveBound, BulkRemoveMapBound, BulkGetDictionaryBound, BulkSaveTransactionBound } from './bulk.mjs'
 import { CouchGetBound, CouchPutBound, CouchGetAtRevBound } from './crud.mjs'
 import { PatchBound } from './patch.mjs'
 import { SimpleViewQueryBound } from './query.mjs'
@@ -15,6 +15,7 @@ export const BindBase = z.object({
   bulkGet: BulkGetBound,
   bulkSave: BulkSaveBound,
   bulkRemove: BulkRemoveBound,
+  bulkRemoveMap: BulkRemoveMapBound,
   bulkGetDictionary: BulkGetDictionaryBound,
   bulkSaveTransaction: BulkSaveTransactionBound,
   get: CouchGetBound,
