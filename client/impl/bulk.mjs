@@ -135,14 +135,7 @@ export const bulkRemoveMap = BulkRemoveMap.implement(async (config, ids) => {
         results.push(result)
       } catch(e) {
         logger.warn(`Invalid document structure in bulk remove map: ${id}`, e)
-        // if (e instanceof Error) {
-        //   results.push({ id, ok: false, error: e.message.toString(), statusCode: 400 })
-        // } else {
-        //   results.push({ id, ok: false, error: 'unknown Zod parse error', statusCode: 400 })
-        // }
       }
-    // } else {
-    //   results.push({ id, ok: false, error: 'failed to get doc for deleting', statusCode: 404 })
     }
   }
   return results
