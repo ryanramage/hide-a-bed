@@ -2,7 +2,7 @@
 import needle from 'needle'
 import { BulkSave, BulkGet, BulkRemove, BulkRemoveMap, BulkGetDictionary, BulkSaveTransaction } from '../schema/bulk.mjs'
 import { withRetry } from './retry.mjs'
-import { get, put } from './crud.mjs'
+import { get, put, remove } from './crud.mjs'
 import { RetryableError } from './errors.mjs'
 import { TransactionSetupError, TransactionVersionConflictError, TransactionBulkOperationError, TransactionRollbackError } from './transactionErrors.mjs'
 import { createLogger } from './logger.mjs'
@@ -130,8 +130,11 @@ export const bulkRemoveMap = BulkRemoveMap.implement(async (config, ids) => {
     if (resp) {
       try {
         const d = CouchDoc.parse(resp)
-        d._deleted = true
-        const result = await put(config, d)
+        if(!d._rev) throw new Error('no rev')
+        const result = await remove(config, {
+          id: d._id,
+          rev: d._rev
+        })
         results.push(result)
       } catch(e) {
         logger.warn(`Invalid document structure in bulk remove map: ${id}`, e)

@@ -111,9 +111,9 @@ export const put = CouchPut.implement(async (config, doc) => {
 })
 
 /** @type { import('../schema/crud.mjs').CouchRemoveSchema } */
-export const remove = CouchRemove.implement(async (config, doc) => {
+export const remove = CouchRemove.implement(async (config, {id, rev}) => {
   const logger = createLogger(config)
-  const url = `${config.couch}/${doc._id}?rev=${doc._rev}`
+  const url = `${config.couch}/${id}?rev=${rev}`
   const opts = {
     json: true,
     headers: {
@@ -122,7 +122,7 @@ export const remove = CouchRemove.implement(async (config, doc) => {
   }
   const mergedOpts = mergeNeedleOpts(config, opts)
 
-  logger.info(`Deleting document with id: ${doc._id}`)
+  logger.info(`Deleting document with id: ${id}`)
   let resp
   try {
     resp = await needle('delete', url, mergedOpts)
@@ -149,7 +149,7 @@ export const remove = CouchRemove.implement(async (config, doc) => {
   result.statusCode = resp.statusCode
 
   if (resp.statusCode === 404) {
-    logger.warn(`Document not found for deletion: ${doc._id}`)
+    logger.warn(`Document not found for deletion: ${id}`)
     result.ok = false
     result.error = 'not_found'
     return result
@@ -168,6 +168,6 @@ export const remove = CouchRemove.implement(async (config, doc) => {
     throw new Error(result.reason || 'failed')
   }
 
-  logger.info(`Successfully deleted document: ${doc._id}`)
+  logger.info(`Successfully deleted document: ${id}`)
   return result
 })

@@ -66,16 +66,16 @@ export const CouchGetWithOptions = z.function().args(
 export const CouchRemove = z.function().args(
   CouchConfig,
   z.object({
-    _id: z.string().describe('the couch doc id'),
-    _rev: z.string().describe('the couch doc revision')
+    id: z.string().describe('the couch doc id'),
+    rev: z.string().describe('the couch doc revision')
   }).describe('the couch doc to delete')
 ).returns(z.promise(CouchDocResponse))
 /** @typedef { z.infer<typeof CouchRemove> } CouchRemoveSchema */
 
 export const CouchRemoveBound = z.function().args(
   z.object({
-    _id: z.string().describe('the couch doc id'),
-    _rev: z.string().describe('the couch doc revision')
+    id: z.string().describe('the couch doc id'),
+    rev: z.string().describe('the couch doc revision')
   }).describe('the couch doc to delete')
 ).returns(z.promise(CouchDocResponse))
 /** @typedef { z.infer<typeof CouchRemoveBound> } CouchRemoveBoundSchema */
