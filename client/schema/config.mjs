@@ -10,6 +10,42 @@ const LoggerSchema = z.object({
   z.any() // message/args
 ).returns(z.void()))
 
+export const NeedleBaseOptions = z.object({
+  json: z.boolean(),
+  headers: z.record(z.string(), z.string()),
+  parse_response: z.boolean().optional(),
+})
+
+/** @typedef { z.infer<typeof NeedleBaseOptions> } NeedleBaseOptionsSchema */
+
+export const NeedleOptions = z.object({
+  json: z.boolean().optional(),
+  compressed: z.boolean().optional(),
+  follow_max: z.number().optional(),
+  follow_set_cookie: z.boolean().optional(),
+  follow_set_referer: z.boolean().optional(),
+  follow: z.number().optional(),
+  timeout: z.number().optional(),
+  read_timeout: z.number().optional(),
+  parse_response: z.boolean().optional(),
+  decode: z.boolean().optional(),
+  parse_cookies: z.boolean().optional(),
+  cookies: z.record(z.string()).optional(),
+  headers: z.record(z.string()).optional(),
+  auth: z.enum(['auto', 'digest', 'basic']).optional(),
+  username: z.string().optional(),
+  password: z.string().optional(),
+  proxy: z.string().optional(),
+  agent: z.any().optional(),
+  rejectUnauthorized: z.boolean().optional(),
+  output: z.string().optional(),
+  parse: z.boolean().optional(),
+  multipart: z.boolean().optional(),
+  open_timeout: z.number().optional(),
+  response_timeout: z.number().optional(),
+  keepAlive: z.boolean().optional()
+})
+
 export const CouchConfig = z.object({
   throwOnGetNotFound: z.boolean().optional().default(false).describe('if a get is 404 should we throw or return undefined'),
   couch: z.string().describe('the url of the couch db'),
@@ -20,7 +56,8 @@ export const CouchConfig = z.object({
   useConsoleLogger: z.boolean().optional().default(false).describe('turn on console as a fallback logger'),
   logger: LoggerSchema.optional().describe('logging interface supporting winston-like or simple function interface'),
   // _emitter: z.any().optional().describe('emitter for events'),
-  _normalizedLogger: z.any().optional() // Internal property for caching normalized logger
+  _normalizedLogger: z.any().optional(), // Internal property for caching normalized logger
+  needleOpts: NeedleOptions.optional(),
 }).passthrough().describe('The std config object')
 
 /** @typedef { z.infer<typeof CouchConfig> } CouchConfigSchema */

@@ -3,6 +3,7 @@ import needle from 'needle'
 import { CouchGet, CouchPut, CouchGetWithOptions, CouchGetAtRev } from '../schema/crud.mjs'
 import { RetryableError, NotFoundError } from './errors.mjs'
 import { createLogger } from './logger.mjs'
+import { mergeNeedleOpts } from './util.mjs'
 
 /** @type { import('../schema/crud.mjs').CouchGetWithOptionsSchema } */
 const _getWithOptions = CouchGetWithOptions.implement(async (config, id, getOpts) => {
@@ -16,10 +17,11 @@ const _getWithOptions = CouchGetWithOptions.implement(async (config, id, getOpts
       'Content-Type': 'application/json'
     }
   }
+  const mergedOpts = mergeNeedleOpts(config, opts)
   logger.info(`Getting document with id: ${id}, rev ${rev || 'latest'}`)
 
   try {
-    const resp = await needle('get', url, opts)
+    const resp = await needle('get', url, mergedOpts)
     if (!resp) {
       logger.error('No response received from get request')
       throw new RetryableError('no response', 503)
@@ -73,11 +75,12 @@ export const put = CouchPut.implement(async (config, doc) => {
       'Content-Type': 'application/json'
     }
   }
+  const mergedOpts = mergeNeedleOpts(config, opts)
 
   logger.info(`Putting document with id: ${doc._id}`)
   let resp
   try {
-    resp = await needle('put', url, body, opts)
+    resp = await needle('put', url, body, mergedOpts)
   } catch (err) {
     logger.error('Error during put operation:', err)
     RetryableError.handleNetworkError(err)
