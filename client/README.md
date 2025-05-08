@@ -1,27 +1,27 @@
 ### API Quick Reference
 
-🍭 denotes a *Sugar* API - helps make some tasks sweet and easy, but may hide some complexities you might want to deal with. 
+🍭 denotes a *Sugar* API - helps make some tasks sweet and easy, but may hide some complexities you might want to deal with.
 
 | Document Operations | Bulk Operations | View Operations | Changes Feed |
 |-------------------|-----------------|-----------------|-----------------|
 | [`get()`](#get) | [`bulkGet()`](#bulkget) | [`query()`](#query) | [`changes()`](#changes) |
 | [`put()`](#put) | [`bulkSave()`](#bulksave) | [`queryStream()`](#querystream) | [`watchDocs()`](#watchdocs) 🍭 |
-| [`patch()`](#patch) 🍭 | [`bulkRemove()`](#bulkremove) |  | |
-| [`patchDangerously()`](#patchdangerously) 🍭 | [`bulkGetDictionary()`](#bulkgetdictionary) 🍭 | | |
-| [`getAtRev()`](#getatrev) 🍭 | [`bulkSaveTransaction()`](#bulksavetransaction) 🍭 | | |
-| [`createLock()`](#createlock) 🍭 | | | |
+| [`patch()`](#patch) 🍭 | [`bulkRemove()`](#bulkremove) | | |
+| [`patchDangerously()`](#patchdangerously) 🍭 | [`bulkRemoveMap()`](#bulkremovemap) | | |
+| [`getAtRev()`](#getatrev) 🍭 | [`bulkGetDictionary()`](#bulkgetdictionary) 🍭 | | |
+| [`createLock()`](#createlock) 🍭 | [`bulkSaveTransaction()`](#bulksavetransaction) 🍭 | | |
 | [`removeLock()`](#removelock) 🍭 | | | |
 
-And some utility APIs 
+And some utility APIs
 
- - [`getDBInfo()`](#getdbinfo)
- - [`createQuery()`](#createquery) 🍭
- - [`withRetry()`](#withretry)
- 
+- [`getDBInfo()`](#getdbinfo)
+- [`createQuery()`](#createquery) 🍭
+- [`withRetry()`](#withretry)
 
 ### Setup
 
 Depending on your environment, use import or require
+
 ```
 import { get, put, query } from 'hide-a-bed'
 ```
@@ -41,10 +41,10 @@ And it is passed in as the first argument of all the functions
 
 See [Advanced Config Options](#advanced-config-options) for more advanced settings.
 
-#### bindConfig 
+#### bindConfig
 
-bindConfig function is a convenience method to bind the config, so you don't need to pass it in every call. 
-Usually, you label the variable returned db so method calls appear to operate on the bound db. 
+bindConfig function is a convenience method to bind the config, so you don't need to pass it in every call.
+Usually, you label the variable returned db so method calls appear to operate on the bound db.
 
 ```
 import { bindConfig } from 'hide-a-bed'
@@ -66,7 +66,6 @@ Here is an example of compiler warnings:
 
 ![jsdoc type def](docs/compiler.png)
 
-
 ##### Config Overrides
 
 You also can quickly override (or more) config settings for a particular call using db.options(optionOverrides)
@@ -80,7 +79,6 @@ const doc = await db.options({ throwOnGetNotFound: true }).get('doc-id')
 
 You can pass any of [Config Options](#advanced-config-options) to db.options to override the original config bindings.
 
-
 ### Document Operations
 
 #### get
@@ -88,9 +86,10 @@ You can pass any of [Config Options](#advanced-config-options) to db.options to 
 Get a single document by ID.
 
 **Parameters:**
-- `config`: Object with 
-   * `couch` URL string
-   * `throwOnGetNotFound` default false. If true, 404 docs throw
+
+- `config`: Object with
+  - `couch` URL string
+  - `throwOnGetNotFound` default false. If true, 404 docs throw
 - `id`: Document ID string
 - Returns: Promise resolving to document object or null if not found
 
@@ -116,6 +115,7 @@ try {
 Save a document.
 
 **Parameters:**
+
 - `config`: Object with `couch` URL string
 - `doc`: Document object with `_id` property
 - Returns: Promise resolving to response with `ok`, `id`, `rev` properties, eg: { ok: boolean, id: string, rev: string }
@@ -141,6 +141,7 @@ console.log(result2) // { ok: false, error: 'conflict', statusCode: 409 }
 The patch function lets you update specific properties of a document. The _rev value must be set, and passed in with properties.
 
 **Parameters:**
+
 - `config`: Object with couch URL string
 - `id`: Document ID string
 - `properties`: Object with properties to update, must include _rev property
@@ -160,11 +161,13 @@ const properties = {
 const result = await patch(config, 'doc-123', properties)
 // result: { ok: true, id: 'doc-123', rev: '2-xyz789' }
 ```
+
 #### patchDangerously
 
 Update specific properties of a document, no _rev is needed.
 
 **Parameters:**
+
 - `config`: Object with couch URL string
 - `id`: Document ID string
 - `properties`: Object with properties to update
@@ -194,6 +197,7 @@ const result = await patchDangerously(config, 'doc-123', properties)
 Return a document at the rev specified.
 
 **Parameters:**
+
 - `config`: Object with couch URL string
 - `id`: Document ID string
 - `rev`: Revision string to retrieve
@@ -210,11 +214,12 @@ console.log(doc._id, doc._rev)
 
 Create a lock document to try and prevent concurrent modifications.
 
-Note this does not internally lock the document that is referenced by the id. People can still mutate it with 
-all the other document mutation functions. This should just be used at an app level to coordinate access 
+Note this does not internally lock the document that is referenced by the id. People can still mutate it with
+all the other document mutation functions. This should just be used at an app level to coordinate access
 on long running document editing.
 
 **Parameters:**
+
 - `config`: Object with `couch` URL string
 - `docId`: Document ID string to lock
 - `options`: Lock options object:
@@ -228,6 +233,7 @@ Returns a Promise resolving to boolean indicating if lock was created successful
 Remove a lock from a document.
 
 **Parameters:**
+
 - `config`: Object with `couch` URL string
 - `docId`: Document ID string to unlock
 - `options`: Lock options object:
@@ -259,6 +265,7 @@ if (locked) {
 Save multiple documents in one request.
 
 **Parameters:**
+
 - `config`: Object with `couch` URL string
 - `docs`: Array of document objects, each with `_id`
 - Returns: Promise resolving to array of results with `ok`, `id`, `rev` for each doc
@@ -281,6 +288,7 @@ const results = await bulkSave(config, docs)
 Get multiple documents by ID.
 
 **Parameters:**
+
 - `config`: Object with `couch` URL string
 - `ids`: Array of document ID strings
 - Returns: Promise resolving to array of documents
@@ -303,6 +311,7 @@ const docs = await bulkGet(config, ids)
 Delete multiple documents in one request.
 
 **Parameters:**
+
 - `config`: Object with `couch` URL string
 - `ids`: Array of document ID strings to delete
 - Returns: Promise resolving to array of results with `ok`, `id`, `rev` for each deletion
@@ -317,16 +326,38 @@ const results = await bulkRemove(config, ids)
 // ]
 ```
 
+#### bulkRemoveMap
+
+Delete multiple documents in one request. Same inputs and outputs as [bulkRemove](#bulkremove), but internally the logic will handle one document at a time instead of using couch bulk operations. Useful for working with documents that have large data requirements (1MB or more).
+
+**Parameters:**
+
+- `config`: Object with `couch` URL string
+- `ids`: Array of document ID strings to delete
+- Returns: Promise resolving to array of results with `ok`, `id`, `rev` for each deletion
+
+```javascript
+const config = { couch: 'http://localhost:5984/mydb' }
+const ids = ['doc1', 'doc2']
+const results = await bulkRemoveMap(config, ids)
+// results: [
+//   { ok: true, id: 'doc1', rev: '2-ghi789' },
+//   { ok: true, id: 'doc2', rev: '2-jkl012' }
+// ]
+```
+
 #### bulkGetDictionary
 
 Adds convenience to bulkGet. Organizes found and notFound documents into properties that are {id:result}. This makes it easy to deal with the results.
 
 **Parameters:**
+
 - `config`: Object with `couch` URL string
-- `ids`: Array of document ID strings to get 
+- `ids`: Array of document ID strings to get
 - Returns: Promise resolving to an object with found and notFound properties.
 
-*found* looks like 
+*found* looks like
+
 ```
 { 
   doc1: { _id: 'doc1', _rev: '1-221', data: {} },
@@ -334,7 +365,8 @@ Adds convenience to bulkGet. Organizes found and notFound documents into propert
 }
 ```
 
-*notFound* looks like 
+*notFound* looks like
+
 ```
 {
   doesNotExist: { key: 'doesNotExist', error: 'not_found' }
@@ -361,6 +393,7 @@ const results = await bulkGetDictionary(config, ids)
 Perform a bulk save operation with all-or-nothing semantics.
 
 **Parameters:**
+
 - `config`: Object with `couch` URL string
 - `transactionId`: Unique identifier for the transaction
 - `docs`: Array of document objects to save
@@ -371,6 +404,7 @@ This operation ensures that either all documents are saved successfully, or none
 Note: The transactionId has to be unique for the lifetime of the app. It is used to prevent two processes from executing the same transaction. It is up to you to craft a transactionId that uniquely represents this transaction, and that also is the same if another process tries to generate it.
 
 Exceptions to handle:
+
 - `TransactionSetupError`: Thrown if the transaction document cannot be created. Usually because it already exists
 - `TransactionVersionConflictError`: Thrown if there are version conflicts with existing documents.
 - `TransactionBulkOperationError`: Thrown if the bulk save operation fails for some documents.
@@ -413,7 +447,6 @@ const result = await getDBInfo(config)
 // result: { db_name: 'test', doc_count: 3232 } 
 ```
 
-
 ### View Queries
 
 #### query
@@ -421,6 +454,7 @@ const result = await getDBInfo(config)
 Query a view with options.
 
 **Parameters:**
+
 - `config`: Object with `couch` URL string
 - `view`: View path string (e.g. '_design/doc/_view/name')
 - `options`: Optional object with query parameters:
@@ -461,14 +495,13 @@ const result = await query(config, view, options)
 
 Some notes on the keys. Use native js types for arrays keys, rather then strings. Eg
 
- - ```{ startkey: ['ryan'], endkey: ['ryan', {}] }```
- - ```{ startkey: [47, null], endkey: [48, null] }```
- - ```{ startkey: [customerIdVar], endkey: [customerIdVar, {}] }```
- - ```{ startkey: [teamId, userId, startTimestamp], endkey: [teamId, userId, endTimestamp] }```
-
-
+- ```{ startkey: ['ryan'], endkey: ['ryan', {}] }```
+- ```{ startkey: [47, null], endkey: [48, null] }```
+- ```{ startkey: [customerIdVar], endkey: [customerIdVar, {}] }```
+- ```{ startkey: [teamId, userId, startTimestamp], endkey: [teamId, userId, endTimestamp] }```
 
 #### createQuery()
+
 Create a query builder to help construct view queries with a fluent interface. Note we have stuck to couch naming conventions and not camel case.
 
 - Returns: QueryBuilder instance with methods:
@@ -497,14 +530,15 @@ const result = await query(config, view, options)
 
 Again, use js types for array keys
 
-  - ```.startkey([teamId, userId]).endkey([teamId, userId, {}])```
-  - ```.startkey([teamId, userId, startTimestamp]).endkey([teamId, userId, endTimestamp])```
+- ```.startkey([teamId, userId]).endkey([teamId, userId, {}])```
+- ```.startkey([teamId, userId, startTimestamp]).endkey([teamId, userId, endTimestamp])```
 
 #### queryStream
 
 Use Cases *Streaming Data*
 
 **Parameters:**
+
 - `config`: Object with couch URL string
 - `view`: View path string
 - `options`: Query options object
@@ -512,7 +546,7 @@ Use Cases *Streaming Data*
 
 Want to stream data from couch? You can with queryStream. It looks identical to query, except you add an extra 'onRow' function
 
-Here is a small hapi example of streaming data from couch to the client as ndjson. 
+Here is a small hapi example of streaming data from couch to the client as ndjson.
 We do a small transform by only streaming the doc. you can do a lot of things in the onrow function.
 
 ```
@@ -551,6 +585,7 @@ that consumes the readable stream.
 Subscribe to the CouchDB changes feed to receive real-time updates.
 
 **Parameters:**
+
 - `config`: Object with `couch` URL string
 - `onChange`: function called for each change
 - `options`: Optional object with parameters:
@@ -583,30 +618,32 @@ feed.stop()
 ```
 
 The changes feed is useful for:
+
 - Building real-time applications
 - Keeping local data in sync with CouchDB
 - Triggering actions when documents change
 - Implementing replication
-
 
 #### watchDocs ()
 
 Watch specific documents for changes in real-time.
 
  **Parameters:**
- - `config`: Object with `couch` URL string
- - `docIds`: String or array of document IDs to watch (max 100)
- - `onChange`: Function called for each change
- - `options`: Optional object with parameters:
-   - `include_docs`: Boolean - include full documents (default false)
-   - `maxRetries`: Number - maximum reconnection attempts (default: 10)
-   - `initialDelay`: Number - initial reconnection delay in ms (default 1000)
-   - `maxDelay`: Number - maximum reconnection delay in ms (default: 30000)
+
+- `config`: Object with `couch` URL string
+- `docIds`: String or array of document IDs to watch (max 100)
+- `onChange`: Function called for each change
+- `options`: Optional object with parameters:
+  - `include_docs`: Boolean - include full documents (default false)
+  - `maxRetries`: Number - maximum reconnection attempts (default: 10)
+  - `initialDelay`: Number - initial reconnection delay in ms (default 1000)
+  - `maxDelay`: Number - maximum reconnection delay in ms (default: 30000)
 
  Returns an EventEmitter that emits:
- - 'change' events with change objects.
- - 'error' events when max retries reached.
- - 'end' events with last sequence number.
+
+- 'change' events with change objects.
+- 'error' events when max retries reached.
+- 'end' events with last sequence number.
 
  ```javascript
  const config = { couch: 'http://localhost:5984/mydb' }
@@ -709,6 +746,7 @@ const config = {
 ```
 
 The logger will track operations including:
+
 - Document operations (get, put, patch)
 - Bulk operations
 - View queries
@@ -716,8 +754,8 @@ The logger will track operations including:
 - Retries and error handling
 
 Each operation logs appropriate information at these levels:
+
 - error: Fatal/unrecoverable errors.
 - warn: Retryable errors, conflicts.
 - info: Operation start/completion.
 - debug: Detailed operation information.
-
