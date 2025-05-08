@@ -58,12 +58,12 @@ export const bulkSave = BulkSave.implement(async (config, docs) => {
 })
 
 /** @type { import('../schema/bulk.mjs').BulkGetSchema } */
-export const bulkGet = BulkGet.implement(async (config, ids) => {
+export const bulkGet = BulkGet.implement(async (config, ids, includeDocs = true) => {
   const logger = createLogger(config)
   const keys = ids
 
   logger.info(`Starting bulk get for ${keys.length} documents`)
-  const url = `${config.couch}/_all_docs?include_docs=true`
+  const url = `${config.couch}/_all_docs${ includeDocs ? "?include_docs=true": "" }`
   const payload = { keys }
   const opts = {
     json: true,
@@ -124,21 +124,22 @@ export const bulkRemove = BulkRemove.implement(async (config, ids) => {
 export const bulkRemoveMap = BulkRemoveMap.implement(async (config, ids) => {
   const logger = createLogger(config)
   logger.info(`Starting bulk remove map for ${ids.length} documents`)
+
+  const {rows} = await bulkGet(config, ids, false)
+
   const results = [];
-  for (const id of ids) {
-    const resp = await get(config, id)
-    if (resp) {
-      try {
-        const d = CouchDoc.parse(resp)
-        if(!d._rev) throw new Error('no rev')
-        const result = await remove(config, {
-          id: d._id,
-          rev: d._rev
-        })
-        results.push(result)
-      } catch(e) {
-        logger.warn(`Invalid document structure in bulk remove map: ${id}`, e)
-      }
+  for (const row of rows) {
+    try {
+      if (!row.value?.rev) throw new Error(`no rev found for doc ${row.id}`)
+      if (!row.id) {throw new Error(`no id found for doc ${row}`)}
+      
+      const result = await remove(config, {
+        id: row.id,
+        rev: row.value.rev
+      })
+      results.push(result)
+    } catch(e) {
+      logger.warn(`Error removing a doc in bulk remove map: ${row.id}`, e)
     }
   }
   return results
