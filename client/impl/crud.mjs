@@ -1,6 +1,6 @@
 // @ts-check
 import needle from 'needle'
-import {CouchGet, CouchPut, CouchGetWithOptions, CouchGetAtRev, CouchHardDelete} from '../schema/crud.mjs'
+import {CouchGet, CouchPut, CouchGetWithOptions, CouchGetAtRev, CouchRemove} from '../schema/crud.mjs'
 import { RetryableError, NotFoundError } from './errors.mjs'
 import { createLogger } from './logger.mjs'
 import { mergeNeedleOpts } from './util.mjs'
@@ -110,8 +110,8 @@ export const put = CouchPut.implement(async (config, doc) => {
   return result
 })
 
-/** @type { import('../schema/crud.mjs').CouchHardDeleteSchema } */
-export const hardDelete = CouchHardDelete.implement(async (config, doc) => {
+/** @type { import('../schema/crud.mjs').CouchRemoveSchema } */
+export const remove = CouchRemove.implement(async (config, doc) => {
   const logger = createLogger(config)
   const url = `${config.couch}/${doc._id}?rev=${doc._rev}`
   const opts = {

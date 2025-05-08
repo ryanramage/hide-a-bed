@@ -305,7 +305,7 @@ test.test('full db tests', async t => {
     t.end()
   })
 
-  t.test('hardDelete test', async (t) => {
+  t.test('remove test', async (t) => {
     // First create a document to delete
     const doc = await db.put({ _id: 'delete-test-doc', data: 'to be deleted' })
     t.ok(doc.ok, 'Document created successfully')
@@ -319,7 +319,7 @@ test.test('full db tests', async t => {
     )
 
     // Delete the document
-    const deleteResult = await db.hardDelete({
+    const deleteResult = await db.remove({
       _id: 'delete-test-doc',
       _rev: fetchedDoc._rev
     })
