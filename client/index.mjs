@@ -1,6 +1,6 @@
 // @ts-check */
 import { z } from 'zod'
-import { bulkGet, bulkSave, bulkRemove, bulkGetDictionary, bulkSaveTransaction } from './impl/bulk.mjs'
+import { bulkGet, bulkSave, bulkRemove, bulkRemoveMap, bulkGetDictionary, bulkSaveTransaction } from './impl/bulk.mjs'
 import { get, put, getAtRev } from './impl/crud.mjs'
 import { changes } from './impl/changes.mjs'
 import { patch, patchDangerously } from './impl/patch.mjs'
@@ -11,7 +11,7 @@ import { queryStream } from './impl/stream.mjs'
 import { createQuery } from './impl/queryBuilder.mjs'
 import { getDBInfo } from './impl/util.mjs'
 import { withRetry } from './impl/retry.mjs'
-import { BulkSave, BulkGet, BulkRemove, BulkGetDictionary, BulkSaveTransaction } from './schema/bulk.mjs'
+import { BulkSave, BulkGet, BulkRemove, BulkRemoveMap, BulkGetDictionary, BulkSaveTransaction } from './schema/bulk.mjs'
 import { CouchConfig } from './schema/config.mjs'
 import { SimpleViewQuery, SimpleViewQueryResponse } from './schema/query.mjs'
 import { Changes, ChangesOptions, ChangesResponse } from './schema/changes.mjs'
@@ -32,6 +32,7 @@ const schema = {
   BulkSave,
   BulkGet,
   BulkRemove,
+  BulkRemoveMap,
   BulkGetDictionary,
   BulkSaveTransaction,
   CouchGet,
@@ -76,6 +77,7 @@ function doBind (config) {
     patch: config.bindWithRetry ? withRetry(patch.bind(null, config), retryOptions) : patch.bind(null, config),
     patchDangerously: patchDangerously.bind(null, config), // patchDangerously not included in retry
     bulkRemove: config.bindWithRetry ? withRetry(bulkRemove.bind(null, config), retryOptions) : bulkRemove.bind(null, config),
+    bulkRemoveMap: config.bindWithRetry ? withRetry(bulkRemoveMap.bind(null, config), retryOptions) : bulkRemoveMap.bind(null, config),
     bulkGetDictionary: config.bindWithRetry ? withRetry(bulkGetDictionary.bind(null, config), retryOptions) : bulkGetDictionary.bind(null, config),
     bulkSaveTransaction: bulkSaveTransaction.bind(null, config),
     createLock: createLock.bind(null, config),
@@ -130,6 +132,7 @@ export {
   patch,
   patchDangerously,
   bulkRemove,
+  bulkRemoveMap,
   bulkGetDictionary,
   bulkSaveTransaction,
 

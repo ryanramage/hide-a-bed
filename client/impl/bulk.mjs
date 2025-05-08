@@ -1,8 +1,8 @@
 // @ts-check
 import needle from 'needle'
-import { BulkSave, BulkGet, BulkRemove, BulkGetDictionary, BulkSaveTransaction } from '../schema/bulk.mjs'
+import { BulkSave, BulkGet, BulkRemove, BulkRemoveMap, BulkGetDictionary, BulkSaveTransaction } from '../schema/bulk.mjs'
 import { withRetry } from './retry.mjs'
-import { put } from './crud.mjs'
+import { get, put } from './crud.mjs'
 import { RetryableError } from './errors.mjs'
 import { TransactionSetupError, TransactionVersionConflictError, TransactionBulkOperationError, TransactionRollbackError } from './transactionErrors.mjs'
 import { createLogger } from './logger.mjs'
@@ -115,6 +115,34 @@ export const bulkRemove = BulkRemove.implement(async (config, ids) => {
   if (!toRemove.length) return []
   const result = await bulkSave(config, toRemove)
   return result
+})
+
+/** @type { import('../schema/bulk.mjs').BulkRemoveMapSchema } */
+export const bulkRemoveMap = BulkRemoveMap.implement(async (config, ids) => {
+  const logger = createLogger(config)
+  logger.info(`Starting bulk remove map for ${ids.length} documents`)
+  const results = [];
+  for (const id of ids) {
+    const resp = await get(config, id)
+    if (resp) {
+      try {
+        const d = CouchDoc.parse(resp)
+        d._deleted = true
+        const result = await put(config, d)
+        results.push(result)
+      } catch(e) {
+        logger.warn(`Invalid document structure in bulk remove map: ${id}`, e)
+        // if (e instanceof Error) {
+        //   results.push({ id, ok: false, error: e.message.toString(), statusCode: 400 })
+        // } else {
+        //   results.push({ id, ok: false, error: 'unknown Zod parse error', statusCode: 400 })
+        // }
+      }
+    // } else {
+    //   results.push({ id, ok: false, error: 'failed to get doc for deleting', statusCode: 404 })
+    }
+  }
+  return results
 })
 
 /** @type { import('../schema/bulk.mjs').BulkGetDictionarySchema } */

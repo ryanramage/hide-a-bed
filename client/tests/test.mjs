@@ -262,6 +262,18 @@ test.test('full db tests', async t => {
     t.equal(results2.length, 1)
     t.end()
   })
+  t.test('bulkRemoveMap', async t => {
+    const results = await db.bulkRemoveMap(['test-doc-never52'])
+    t.ok(results)
+    t.equal(results.length, 0) // not an actual doc
+
+    const doc = await db.put({ _id: 'test-doc-never52', data: 'hello world' })
+    t.ok(doc.ok, 'Document created')
+    const results2 = await db.bulkRemoveMap(['test-doc-never52'])
+    t.ok(results2)
+    t.equal(results2.length, 1)
+    t.end()
+  })
   t.test('bulk save', async t => {
     // make sure docs with no id are accepted
     const docs = [{ first: true }, { _id: 'bbbbb', second: true }]
