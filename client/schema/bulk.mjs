@@ -36,13 +36,12 @@ export const BulkSaveBound = z.function().args(
 export const BulkGet = z.function().args(
   CouchConfig,
   z.array(z.string().describe('the ids to get')),
-  z.boolean().describe('includeDocs')
+  z.boolean().optional().describe('includeDocs')
 ).returns(z.promise(SimpleViewQueryResponse))
 /** @typedef { z.infer<typeof BulkGet> } BulkGetSchema */
 
 export const BulkGetBound = z.function().args(
-  z.array(z.string().describe('the ids to get')),
-  z.boolean().describe('includeDocs')
+  z.array(z.string().describe('the ids to get'))
 ).returns(z.promise(SimpleViewQueryResponse))
 /** @typedef { z.infer<typeof BulkGetBound> } BulkGetBoundSchema */
 

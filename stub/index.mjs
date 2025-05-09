@@ -96,7 +96,7 @@ export const setup = async (designDocs, dbname) => {
   })
 
   const bulkRemove = BulkRemove.implement(async (_config, ids) => {
-    const resp = await bulkGet(_config, ids, true)
+    const resp = await bulkGet(_config, ids)
     const rows = resp.rows || []
     const deleteDocs = rows.map(row => ({
       ...row.doc,
@@ -131,7 +131,7 @@ export const setup = async (designDocs, dbname) => {
   })
 
   const bulkGetDictionary = BulkGetDictionary.implement(async (_config, ids) => {
-    const resp = await bulkGet(_config, ids, true)
+    const resp = await bulkGet(_config, ids)
     const results = { found: {}, notFound: {} }
 
     resp.rows.forEach(row => {

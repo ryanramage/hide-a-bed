@@ -65,7 +65,7 @@ test.test('full db tests', async t => {
     t.end()
   })
   t.test('bulk get, including one doc that does not exist', async t => {
-    const results = await db.bulkGet(['testdoc', 'notThereDoc'], true)
+    const results = await db.bulkGet(['testdoc', 'notThereDoc'])
     t.equal(results.rows.length, 2, 'two rows returned')
     t.equal(results.rows[0].id, 'testdoc')
     t.equal(results.rows[1].error, 'not_found')
@@ -132,7 +132,7 @@ test.test('full db tests', async t => {
       t.equal(e.name, 'TransactionRollbackError', 'correct error type thrown')
 
       // lets make sure doc a has data from before, and
-      const finalDocs = await db.bulkGet(['a', 'rollback2', 'b'], true)
+      const finalDocs = await db.bulkGet(['a', 'rollback2', 'b'])
       t.equal(finalDocs.rows.length, 3, 'two rows returned')
       t.equal(finalDocs.rows[0].doc.data, 'interfered', 'doc has the intereferd data')
       t.notOk(finalDocs.rows[1].doc, 'doc b was deleted, and not saved')
@@ -237,7 +237,7 @@ test.test('full db tests', async t => {
     })
 
     t.test('empty keys on bulkGet', async t => {
-      const results = await db.bulkGet([], true)
+      const results = await db.bulkGet([])
       console.log(results)
       t.same(results.rows, [], 'empty array returns empty object')
       t.end()
