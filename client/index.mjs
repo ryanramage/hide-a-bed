@@ -70,6 +70,7 @@ function doBind (config) {
     get: config.bindWithRetry ? withRetry(get.bind(null, config), retryOptions) : get.bind(null, config),
     getAtRev: config.bindWithRetry ? withRetry(getAtRev.bind(null, config), retryOptions) : getAtRev.bind(null, config),
     put: config.bindWithRetry ? withRetry(put.bind(null, config), retryOptions) : put.bind(null, config),
+    remove: config.bindWithRetry ? withRetry(remove.bind(null, config), retryOptions) : remove.bind(null, config),
     bulkGet: config.bindWithRetry ? withRetry(bulkGet.bind(null, config), retryOptions) : bulkGet.bind(null, config),
     bulkSave: config.bindWithRetry ? withRetry(bulkSave.bind(null, config), retryOptions) : bulkSave.bind(null, config),
     query: config.bindWithRetry ? withRetry(query.bind(null, config), retryOptions) : query.bind(null, config),
@@ -86,7 +87,6 @@ function doBind (config) {
     watchDocs: watchDocs.bind(null, config),
     changes: changes.bind(null, config),
     getDBInfo: config.bindWithRetry ? withRetry(getDBInfo.bind(null, config), retryOptions) : getDBInfo.bind(null, config),
-    remove: config.bindWithRetry ? withRetry(remove.bind(null, config), retryOptions) : remove.bind(null, config)
   }
 
   return result
