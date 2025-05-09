@@ -58,7 +58,7 @@ export const bulkSave = BulkSave.implement(async (config, docs) => {
 })
 
 /** @type { import('../schema/bulk.mjs').BulkGetSchema } */
-export const bulkGet = BulkGet.implement(async (config, ids, includeDocs = true) => {
+export const bulkGet = BulkGet.implement(async (config, ids, includeDocs) => {
   const logger = createLogger(config)
   const keys = ids
 
