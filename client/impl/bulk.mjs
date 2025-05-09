@@ -102,7 +102,7 @@ export const bulkGet = BulkGet.implement(async (config, ids, includeDocs = true)
 export const bulkRemove = BulkRemove.implement(async (config, ids) => {
   const logger = createLogger(config)
   logger.info(`Starting bulk remove for ${ids.length} documents`)
-  const resp = await bulkGet(config, ids)
+  const resp = await bulkGet(config, ids, true)
   /** @type { Array<import('../schema/crud.mjs').CouchDocSchema> } toRemove */
   const toRemove = []
   resp.rows.forEach(row => {
@@ -147,7 +147,7 @@ export const bulkRemoveMap = BulkRemoveMap.implement(async (config, ids) => {
 
 /** @type { import('../schema/bulk.mjs').BulkGetDictionarySchema } */
 export const bulkGetDictionary = BulkGetDictionary.implement(async (config, ids) => {
-  const resp = await bulkGet(config, ids)
+  const resp = await bulkGet(config, ids, true)
 
   /** @type { import('../schema/bulk.mjs').BulkGetDictionaryResponseSchema } results */
   const results = { found: {}, notFound: {} }

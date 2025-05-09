@@ -298,7 +298,7 @@ Warning: documents that are not found will still have a row in the results. The 
 ```javascript
 const config = { couch: 'http://localhost:5984/mydb' }
 const ids = ['doc1', 'doc2', 'doesNotExist']
-const docs = await bulkGet(config, ids)
+const docs = await bulkGet(config, ids, true)
 // rows: [
 //   { _id: 'doc1', _rev: '1-abc123', type: 'user', name: 'Alice' },
 //   { _id: 'doc2', _rev: '1-def456', type: 'user', name: 'Bob' },

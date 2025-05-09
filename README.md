@@ -105,7 +105,7 @@ The following CouchDB operations are supported:
 - `put(config, doc)` - Create or update a document
 - `post(config, doc)` - Create a new document with auto-generated ID
 - `delete(config, id, rev)` - Delete a document
-- `bulkGet(config, ids)` - Retrieve multiple documents
+- `bulkGet(config, ids, true/false)` - Retrieve multiple documents with docs included or not
 - `bulkSave(config, docs)` - Save multiple documents
 - `query(config, viewPath, options)` - Query a view
 
