@@ -1,6 +1,6 @@
 // @ts-check
 import needle from 'needle'
-import {CouchGet, CouchPut, CouchGetWithOptions, CouchGetAtRev, CouchRemove} from '../schema/crud.mjs'
+import { CouchGet, CouchPut, CouchGetWithOptions, CouchGetAtRev, CouchRemove } from '../schema/crud.mjs'
 import { RetryableError, NotFoundError } from './errors.mjs'
 import { createLogger } from './logger.mjs'
 import { mergeNeedleOpts } from './util.mjs'
@@ -29,7 +29,7 @@ const _getWithOptions = CouchGetWithOptions.implement(async (config, id, getOpts
     const result = resp?.body || {}
     if (resp.statusCode === 404) {
       if (config.throwOnGetNotFound) {
-        logger.warn( `Document not found (throwing error): ${id}, rev ${rev || 'latest'}`)
+        logger.warn(`Document not found (throwing error): ${id}, rev ${rev || 'latest'}`)
         throw new NotFoundError(id, result.reason || 'not_found')
       } else {
         logger.debug(`Document not found (returning undefined): ${id}, rev ${rev || 'latest'}`)

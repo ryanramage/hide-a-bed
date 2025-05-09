@@ -11,7 +11,7 @@ export const mergeNeedleOpts = MergeNeedleOpts.implement(
    * @param {import('./schema/config.mjs').CouchConfigSchema} config
    * @param {Record<string, any>} opts
    */
-    config, 
+    config,
     opts
   ) => {
     if (config.needleOpts) {
@@ -20,7 +20,7 @@ export const mergeNeedleOpts = MergeNeedleOpts.implement(
         ...config.needleOpts,
         headers: {
           ...opts.headers,
-          ...(config.needleOpts.headers || {}),
+          ...(config.needleOpts.headers || {})
         }
       }
     }

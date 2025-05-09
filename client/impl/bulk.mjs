@@ -1,6 +1,6 @@
 // @ts-check
 import needle from 'needle'
-import { BulkSave, BulkGet, BulkRemove, BulkRemoveMap, BulkGetDictionary, BulkSaveTransaction } from '../schema/bulk.mjs'
+import { BulkSave, BulkGet, BulkRemove, BulkRemoveMap, BulkGetDictionary, BulkSaveTransaction, BulkGetWithOptions } from '../schema/bulk.mjs'
 import { withRetry } from './retry.mjs'
 import { get, put, remove } from './crud.mjs'
 import { RetryableError } from './errors.mjs'
@@ -9,7 +9,6 @@ import { createLogger } from './logger.mjs'
 import { CouchDoc } from '../schema/crud.mjs'
 import { setupEmitter } from './trackedEmitter.mjs'
 import { mergeNeedleOpts } from './util.mjs'
-import { BulkGetWithOptions } from '../schema/bulk.mjs'
 
 /** @type { import('../schema/bulk.mjs').BulkSaveSchema } */
 export const bulkSave = BulkSave.implement(async (config, docs) => {
@@ -64,7 +63,7 @@ const _bulkGetWithOptions = BulkGetWithOptions.implement(async (config, ids, { i
   const keys = ids
 
   logger.info(`Starting bulk get for ${keys.length} documents`)
-  const url = `${config.couch}/_all_docs${ includeDocs ? "?include_docs=true": "" }`
+  const url = `${config.couch}/_all_docs${includeDocs ? '?include_docs=true' : ''}`
   const payload = { keys }
   const opts = {
     json: true,
@@ -99,7 +98,7 @@ const _bulkGetWithOptions = BulkGetWithOptions.implement(async (config, ids, { i
 
 /** @type { import('../schema/bulk.mjs').BulkGetSchema } */
 export const bulkGet = BulkGet.implement(async (config, ids) => {
-  const getOptions = {includeDocs: true}
+  const getOptions = { includeDocs: true }
   return _bulkGetWithOptions(config, ids, getOptions)
 })
 // sugar methods
@@ -133,15 +132,15 @@ export const bulkRemoveMap = BulkRemoveMap.implement(async (config, ids) => {
 
   const { rows } = await _bulkGetWithOptions(config, ids, { includeDocs: false })
 
-  const results = [];
+  const results = []
   for (const row of rows) {
     try {
       if (!row.value?.rev) throw new Error(`no rev found for doc ${row.id}`)
-      if (!row.id) {throw new Error(`no id found for doc ${row}`)}
-      
-      const result = await remove(config,row.id, row.value.rev)
+      if (!row.id) { throw new Error(`no id found for doc ${row}`) }
+
+      const result = await remove(config, row.id, row.value.rev)
       results.push(result)
-    } catch(e) {
+    } catch (e) {
       logger.warn(`Error removing a doc in bulk remove map: ${row.id}`, e)
     }
   }
