@@ -36,7 +36,6 @@ export const BulkSaveBound = z.function().args(
 export const BulkGet = z.function().args(
   CouchConfig,
   z.array(z.string().describe('the ids to get')),
-  z.boolean().optional().describe('includeDocs')
 ).returns(z.promise(SimpleViewQueryResponse))
 /** @typedef { z.infer<typeof BulkGet> } BulkGetSchema */
 
@@ -44,6 +43,15 @@ export const BulkGetBound = z.function().args(
   z.array(z.string().describe('the ids to get'))
 ).returns(z.promise(SimpleViewQueryResponse))
 /** @typedef { z.infer<typeof BulkGetBound> } BulkGetBoundSchema */
+
+export const BulkGetWithOptions = z.function().args(
+  CouchConfig,
+  z.array(z.string().describe('the ids to get')),
+  z.object({
+    includeDocs: z.boolean().optional().describe('the couch doc revision')
+  })
+).returns(z.promise(SimpleViewQueryResponse))
+/** @typedef { z.infer<typeof BulkGetWithOptions> } BulkGetWithOptionsSchema */
 
 export const BulkRemove = z.function().args(
   CouchConfig,

@@ -9,6 +9,7 @@ import { createLogger } from './logger.mjs'
 import { CouchDoc } from '../schema/crud.mjs'
 import { setupEmitter } from './trackedEmitter.mjs'
 import { mergeNeedleOpts } from './util.mjs'
+import { BulkGetWithOptions } from '../schema/bulk.mjs'
 
 /** @type { import('../schema/bulk.mjs').BulkSaveSchema } */
 export const bulkSave = BulkSave.implement(async (config, docs) => {
@@ -57,8 +58,8 @@ export const bulkSave = BulkSave.implement(async (config, docs) => {
   return results
 })
 
-/** @type { import('../schema/bulk.mjs').BulkGetSchema } */
-export const bulkGet = BulkGet.implement(async (config, ids, includeDocs) => {
+/** @type { import('../schema/bulk.mjs').BulkGetWithOptionsSchema } */
+const _bulkGetWithOptions = BulkGetWithOptions.implement(async (config, ids, { includeDocs = true }) => {
   const logger = createLogger(config)
   const keys = ids
 
@@ -96,6 +97,11 @@ export const bulkGet = BulkGet.implement(async (config, ids, includeDocs) => {
   return body
 })
 
+/** @type { import('../schema/bulk.mjs').BulkGetSchema } */
+export const bulkGet = BulkGet.implement(async (config, ids) => {
+  const getOptions = {includeDocs: true}
+  return _bulkGetWithOptions(config, ids, getOptions)
+})
 // sugar methods
 
 /** @type { import('../schema/bulk.mjs').BulkRemoveSchema } */
@@ -125,7 +131,7 @@ export const bulkRemoveMap = BulkRemoveMap.implement(async (config, ids) => {
   const logger = createLogger(config)
   logger.info(`Starting bulk remove map for ${ids.length} documents`)
 
-  const { rows } = await bulkGet(config, ids, false)
+  const { rows } = await _bulkGetWithOptions(config, ids, { includeDocs: false })
 
   const results = [];
   for (const row of rows) {
