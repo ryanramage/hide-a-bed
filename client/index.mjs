@@ -1,7 +1,7 @@
 // @ts-check */
 import { z } from 'zod'
 import { bulkGet, bulkSave, bulkRemove, bulkRemoveMap, bulkGetDictionary, bulkSaveTransaction } from './impl/bulk.mjs'
-import { get, put, getAtRev } from './impl/crud.mjs'
+import { get, put, getAtRev, remove } from './impl/crud.mjs'
 import { changes } from './impl/changes.mjs'
 import { patch, patchDangerously } from './impl/patch.mjs'
 import { createLock, removeLock } from './impl/sugar/lock.mjs'
@@ -19,7 +19,7 @@ import { SimpleViewQueryStream, OnRow } from './schema/stream.mjs'
 import { Patch, PatchDangerously } from './schema/patch.mjs'
 import { Lock, LockOptions, CreateLock, RemoveLock } from './schema/sugar/lock.mjs'
 import { WatchDocs } from './schema/sugar/watch.mjs'
-import { CouchDoc, CouchDocResponse, CouchPut, CouchGet, CouchGetAtRev } from './schema/crud.mjs'
+import { CouchDoc, CouchDocResponse, CouchPut, CouchGet, CouchGetAtRev, CouchRemove } from './schema/crud.mjs'
 import { Bind, BindReturns } from './schema/bind.mjs'
 import { GetDBInfo } from './schema/util.mjs'
 
@@ -42,6 +42,7 @@ const schema = {
   Patch,
   PatchDangerously,
   CouchGetAtRev,
+  CouchRemove,
   Bind,
   Lock,
   WatchDocs,
@@ -69,6 +70,7 @@ function doBind (config) {
     get: config.bindWithRetry ? withRetry(get.bind(null, config), retryOptions) : get.bind(null, config),
     getAtRev: config.bindWithRetry ? withRetry(getAtRev.bind(null, config), retryOptions) : getAtRev.bind(null, config),
     put: config.bindWithRetry ? withRetry(put.bind(null, config), retryOptions) : put.bind(null, config),
+    remove: config.bindWithRetry ? withRetry(remove.bind(null, config), retryOptions) : remove.bind(null, config),
     bulkGet: config.bindWithRetry ? withRetry(bulkGet.bind(null, config), retryOptions) : bulkGet.bind(null, config),
     bulkSave: config.bindWithRetry ? withRetry(bulkSave.bind(null, config), retryOptions) : bulkSave.bind(null, config),
     query: config.bindWithRetry ? withRetry(query.bind(null, config), retryOptions) : query.bind(null, config),
@@ -84,7 +86,7 @@ function doBind (config) {
     removeLock: removeLock.bind(null, config),
     watchDocs: watchDocs.bind(null, config),
     changes: changes.bind(null, config),
-    getDBInfo: config.bindWithRetry ? withRetry(getDBInfo.bind(null, config), retryOptions) : getDBInfo.bind(null, config)
+    getDBInfo: config.bindWithRetry ? withRetry(getDBInfo.bind(null, config), retryOptions) : getDBInfo.bind(null, config),
   }
 
   return result
@@ -121,6 +123,7 @@ export {
   get,
   getAtRev,
   put,
+  remove,
   bulkGet,
   bulkSave,
   query,

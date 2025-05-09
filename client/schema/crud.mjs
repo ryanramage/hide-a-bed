@@ -62,3 +62,16 @@ export const CouchGetWithOptions = z.function().args(
   CouchGetOptions
 ).returns(z.promise(CouchDoc.nullable()))
 /** @typedef { z.infer<typeof CouchGetWithOptions> } CouchGetWithOptionsSchema */
+
+export const CouchRemove = z.function().args(
+  CouchConfig,
+  z.string().describe('the couch doc id'),
+  z.string().describe('the couch doc revision')
+).returns(z.promise(CouchDocResponse))
+/** @typedef { z.infer<typeof CouchRemove> } CouchRemoveSchema */
+
+export const CouchRemoveBound = z.function().args(
+  z.string().describe('the couch doc id'),
+  z.string().describe('the couch doc revision')
+).returns(z.promise(CouchDocResponse))
+/** @typedef { z.infer<typeof CouchRemoveBound> } CouchRemoveBoundSchema */

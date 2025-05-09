@@ -6,7 +6,7 @@
 |-------------------|-----------------|-----------------|-----------------|
 | [`get()`](#get) | [`bulkGet()`](#bulkget) | [`query()`](#query) | [`changes()`](#changes) |
 | [`put()`](#put) | [`bulkSave()`](#bulksave) | [`queryStream()`](#querystream) | [`watchDocs()`](#watchdocs) 🍭 |
-| [`patch()`](#patch) 🍭 | [`bulkRemove()`](#bulkremove) | | |
+| [`patch()`](#patch) 🍭 | [`bulkRemove()`](#bulkremove) | [`remove()`](#remove) | |
 | [`patchDangerously()`](#patchdangerously) 🍭 | [`bulkRemoveMap()`](#bulkremovemap) | | |
 | [`getAtRev()`](#getatrev) 🍭 | [`bulkGetDictionary()`](#bulkgetdictionary) 🍭 | | |
 | [`createLock()`](#createlock) 🍭 | [`bulkSaveTransaction()`](#bulksavetransaction) 🍭 | | |
@@ -324,6 +324,28 @@ const results = await bulkRemove(config, ids)
 //   { ok: true, id: 'doc1', rev: '2-ghi789' },
 //   { ok: true, id: 'doc2', rev: '2-jkl012' }
 // ]
+```
+
+#### remove
+
+Delete document from DB with id and rev.
+
+Allows more efficient deletion of document by providing only id and rev. This is useful for deleting documents that are large, or have a lot of data.
+
+**Parameters:**
+
+- `config`: Object with `couch` URL string
+- `id`: document ID to delete
+- `rev`: rev of the document to delete
+- Returns: Promise resolving to array of results with `ok`, `id`, `rev` for the deletion
+
+```javascript
+const config = { couch: 'http://localhost:5984/mydb' }
+const id = 'doc1'
+const rev = '2-ghi789'
+const results = await remove(config, id, rev)
+// result:
+//   { ok: true, id: 'doc1', rev: '2-ghi789' }
 ```
 
 #### bulkRemoveMap

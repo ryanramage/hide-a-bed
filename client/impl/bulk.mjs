@@ -1,8 +1,8 @@
 // @ts-check
 import needle from 'needle'
-import { BulkSave, BulkGet, BulkRemove, BulkRemoveMap, BulkGetDictionary, BulkSaveTransaction } from '../schema/bulk.mjs'
+import { BulkSave, BulkGet, BulkRemove, BulkRemoveMap, BulkGetDictionary, BulkSaveTransaction, BulkGetWithOptions } from '../schema/bulk.mjs'
 import { withRetry } from './retry.mjs'
-import { get, put } from './crud.mjs'
+import { get, put, remove } from './crud.mjs'
 import { RetryableError } from './errors.mjs'
 import { TransactionSetupError, TransactionVersionConflictError, TransactionBulkOperationError, TransactionRollbackError } from './transactionErrors.mjs'
 import { createLogger } from './logger.mjs'
@@ -57,13 +57,13 @@ export const bulkSave = BulkSave.implement(async (config, docs) => {
   return results
 })
 
-/** @type { import('../schema/bulk.mjs').BulkGetSchema } */
-export const bulkGet = BulkGet.implement(async (config, ids) => {
+/** @type { import('../schema/bulk.mjs').BulkGetWithOptionsSchema } */
+const _bulkGetWithOptions = BulkGetWithOptions.implement(async (config, ids, { includeDocs = true }) => {
   const logger = createLogger(config)
   const keys = ids
 
   logger.info(`Starting bulk get for ${keys.length} documents`)
-  const url = `${config.couch}/_all_docs?include_docs=true`
+  const url = `${config.couch}/_all_docs${includeDocs ? '?include_docs=true' : ''}`
   const payload = { keys }
   const opts = {
     json: true,
@@ -96,6 +96,11 @@ export const bulkGet = BulkGet.implement(async (config, ids) => {
   return body
 })
 
+/** @type { import('../schema/bulk.mjs').BulkGetSchema } */
+export const bulkGet = BulkGet.implement(async (config, ids) => {
+  const getOptions = { includeDocs: true }
+  return _bulkGetWithOptions(config, ids, getOptions)
+})
 // sugar methods
 
 /** @type { import('../schema/bulk.mjs').BulkRemoveSchema } */
@@ -124,18 +129,19 @@ export const bulkRemove = BulkRemove.implement(async (config, ids) => {
 export const bulkRemoveMap = BulkRemoveMap.implement(async (config, ids) => {
   const logger = createLogger(config)
   logger.info(`Starting bulk remove map for ${ids.length} documents`)
-  const results = [];
-  for (const id of ids) {
-    const resp = await get(config, id)
-    if (resp) {
-      try {
-        const d = CouchDoc.parse(resp)
-        d._deleted = true
-        const result = await put(config, d)
-        results.push(result)
-      } catch(e) {
-        logger.warn(`Invalid document structure in bulk remove map: ${id}`, e)
-      }
+
+  const { rows } = await _bulkGetWithOptions(config, ids, { includeDocs: false })
+
+  const results = []
+  for (const row of rows) {
+    try {
+      if (!row.value?.rev) throw new Error(`no rev found for doc ${row.id}`)
+      if (!row.id) { throw new Error(`no id found for doc ${row}`) }
+
+      const result = await remove(config, row.id, row.value.rev)
+      results.push(result)
+    } catch (e) {
+      logger.warn(`Error removing a doc in bulk remove map: ${row.id}`, e)
     }
   }
   return results
