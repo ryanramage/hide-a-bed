@@ -319,10 +319,7 @@ test.test('full db tests', async t => {
     )
 
     // Delete the document
-    const deleteResult = await db.remove({
-      id: 'delete-test-doc',
-      rev: fetchedDoc._rev
-    })
+    const deleteResult = await db.remove('delete-test-doc', fetchedDoc._rev)
     t.ok(deleteResult.ok, 'Document deleted successfully')
 
     // Verify the document no longer exists

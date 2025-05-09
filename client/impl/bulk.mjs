@@ -125,7 +125,7 @@ export const bulkRemoveMap = BulkRemoveMap.implement(async (config, ids) => {
   const logger = createLogger(config)
   logger.info(`Starting bulk remove map for ${ids.length} documents`)
 
-  const {rows} = await bulkGet(config, ids, false)
+  const { rows } = await bulkGet(config, ids, false)
 
   const results = [];
   for (const row of rows) {
@@ -133,10 +133,7 @@ export const bulkRemoveMap = BulkRemoveMap.implement(async (config, ids) => {
       if (!row.value?.rev) throw new Error(`no rev found for doc ${row.id}`)
       if (!row.id) {throw new Error(`no id found for doc ${row}`)}
       
-      const result = await remove(config, {
-        id: row.id,
-        rev: row.value.rev
-      })
+      const result = await remove(config,row.id, row.value.rev)
       results.push(result)
     } catch(e) {
       logger.warn(`Error removing a doc in bulk remove map: ${row.id}`, e)

@@ -111,7 +111,7 @@ export const put = CouchPut.implement(async (config, doc) => {
 })
 
 /** @type { import('../schema/crud.mjs').CouchRemoveSchema } */
-export const remove = CouchRemove.implement(async (config, {id, rev}) => {
+export const remove = CouchRemove.implement(async (config, id, rev) => {
   const logger = createLogger(config)
   const url = `${config.couch}/${id}?rev=${rev}`
   const opts = {
