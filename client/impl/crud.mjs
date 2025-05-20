@@ -125,7 +125,7 @@ export const remove = CouchRemove.implement(async (config, id, rev) => {
   logger.info(`Deleting document with id: ${id}`)
   let resp
   try {
-    resp = await needle('delete', url, mergedOpts)
+    resp = await needle('delete', url, null, mergedOpts)
   } catch (err) {
     logger.error('Error during delete operation:', err)
     RetryableError.handleNetworkError(err)
