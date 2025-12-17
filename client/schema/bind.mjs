@@ -7,7 +7,6 @@ import { PatchBound } from './patch.mjs'
 import { SimpleViewQueryBound } from './query.mjs'
 import { SimpleViewQueryStreamBound } from './stream.mjs'
 import { CreateLockBound, RemoveLockBound } from './sugar/lock.mjs'
-import { ChangesBound } from './changes.mjs'
 import { WatchDocsBound } from './sugar/watch.mjs'
 import { GetDBInfoBound } from './util.mjs'
 
@@ -27,7 +26,6 @@ export const BindBase = z.object({
   queryStream: SimpleViewQueryStreamBound,
   createLock: CreateLockBound,
   removeLock: RemoveLockBound,
-  changes: ChangesBound,
   watchDocs: WatchDocsBound,
   getDBInfo: GetDBInfoBound
 })

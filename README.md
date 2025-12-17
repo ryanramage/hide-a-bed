@@ -20,6 +20,9 @@ npm install hide-a-bed
 
 # Install the testing utilities (recommended)
 npm install hide-a-bed-stub --save-dev
+
+# Install the standalone changes feed helper when needed
+npm install hide-a-bed-changes
 ```
 
 ## Quick Start

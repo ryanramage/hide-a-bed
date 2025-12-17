@@ -1,6 +1,6 @@
 import { z } from 'zod'
-import { CouchConfig } from './config.mjs'
-import { CouchDoc } from './crud.mjs'
+import { CouchConfig } from '../../client/schema/config.mjs'
+import { CouchDoc } from '../../client/schema/crud.mjs'
 
 export const ChangesOptions = z.object({
   feed: z.enum(['continuous', 'longpoll']).default('continuous'),
@@ -48,12 +48,3 @@ export const Changes = z.function()
 
 /** @typedef { z.infer<typeof Changes> } ChangesSchema */
 /** @typedef { z.infer<typeof ChangesEmitter> } ChangesEmitterSchema */
-
-export const ChangesBound = z.function()
-  .args(
-    z.function().args(z.any()).returns(z.void()),
-    ChangesOptions
-  )
-  .returns(z.promise(ChangesEmitter))
-
-/** @typedef { z.infer<typeof ChangesBound> } ChangesBoundSchema */

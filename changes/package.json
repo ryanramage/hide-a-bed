@@ -1,0 +1,41 @@
+{
+  "name": "hide-a-bed-changes",
+  "version": "1.0.0",
+  "description": "Streaming CouchDB changes feed helper for hide-a-bed",
+  "type": "module",
+  "main": "./index.mjs",
+  "exports": {
+    "import": "./index.mjs",
+    "default": "./index.mjs"
+  },
+  "scripts": {
+    "clean": "rm -rf coverage && (find . -name \"*.map\" -type f -delete || true)",
+    "test": "standard",
+    "lint:fix": "standard --fix"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ryanramage/hide-a-bed.git"
+  },
+  "keywords": [
+    "couchdb",
+    "changes",
+    "hide-a-bed"
+  ],
+  "author": "ryan ramage",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ryanramage/hide-a-bed/issues"
+  },
+  "homepage": "https://github.com/ryanramage/hide-a-bed#readme",
+  "peerDependencies": {
+    "hide-a-bed": ">=5.5.0"
+  },
+  "dependencies": {
+    "changes-stream": "^2.2.0",
+    "needle": "3.3.1"
+  },
+  "devDependencies": {
+    "standard": "17.1.0"
+  }
+}
