@@ -122,5 +122,3 @@ export async function changes (config, onChange, options = {}) {
     }
   }
 }
-
-export default changes

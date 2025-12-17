@@ -3,15 +3,18 @@
   "version": "1.0.0",
   "description": "Streaming CouchDB changes feed helper for hide-a-bed",
   "type": "module",
-  "main": "./index.mjs",
+  "main": "./cjs/index.cjs",
+  "module": "./index.mjs",
   "exports": {
     "import": "./index.mjs",
-    "default": "./index.mjs"
+    "require": "./cjs/index.cjs",
+    "default": "./cjs/index.cjs"
   },
   "scripts": {
-    "clean": "rm -rf coverage && (find . -name \"*.map\" -type f -delete || true)",
+    "build": "tsc && tsdown",
     "test": "standard",
-    "lint:fix": "standard --fix"
+    "lint:fix": "standard --fix",
+    "prepublish": "npm run build"
   },
   "repository": {
     "type": "git",
@@ -36,6 +39,8 @@
     "needle": "3.3.1"
   },
   "devDependencies": {
-    "standard": "17.1.0"
+    "standard": "17.1.0",
+    "tsdown": "^0.18.1",
+    "typescript": "^5.9.3"
   }
 }
