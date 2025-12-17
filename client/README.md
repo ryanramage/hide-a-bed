@@ -2,10 +2,10 @@
 
 🍭 denotes a *Sugar* API - helps make some tasks sweet and easy, but may hide some complexities you might want to deal with.
 
-| Document Operations | Bulk Operations | View Operations | Changes Feed |
+| Document Operations | Bulk Operations | View Operations | Change Utilities |
 |-------------------|-----------------|-----------------|-----------------|
-| [`get()`](#get) | [`bulkGet()`](#bulkget) | [`query()`](#query) | [`changes()`](#changes) |
-| [`put()`](#put) | [`bulkSave()`](#bulksave) | [`queryStream()`](#querystream) | [`watchDocs()`](#watchdocs) 🍭 |
+| [`get()`](#get) | [`bulkGet()`](#bulkget) | [`query()`](#query) | [`watchDocs()`](#watchdocs) 🍭 |
+| [`put()`](#put) | [`bulkSave()`](#bulksave) | [`queryStream()`](#querystream) | [Standalone changes feed](#changes-feed-companion) |
 | [`patch()`](#patch) 🍭 | [`bulkRemove()`](#bulkremove) | [`remove()`](#remove) | |
 | [`patchDangerously()`](#patchdangerously) 🍭 | [`bulkRemoveMap()`](#bulkremovemap) | | |
 | [`getAtRev()`](#getatrev) 🍭 | [`bulkGetDictionary()`](#bulkgetdictionary) 🍭 | | |
@@ -602,49 +602,32 @@ Want to consume this in the browser? I'd recommend [ndjson-readablestream](https
 An [example react component](https://github.com/Azure-Samples/azure-search-openai-demo/pull/532/files#diff-506debba46b93087dc46a916384e56392808bcc02a99d9291557f3e674d4ad6c)
 that consumes the readable stream.
 
-#### changes()
+#### Changes feed companion
 
-Subscribe to the CouchDB changes feed to receive real-time updates.
+The main client no longer bundles the legacy `changes-stream` dependency. Install [`hide-a-bed-changes`](../changes) when you need a CouchDB `_changes` feed helper:
 
-**Parameters:**
+```
+npm install hide-a-bed-changes
+```
 
-- `config`: Object with `couch` URL string
-- `onChange`: function called for each change
-- `options`: Optional object with parameters:
-  - `since`: String or number indicating where to start from ('now' or update sequence number)
-  - `include_docs`: Boolean to include full documents
-  - `filter`: String name of design document filter function
-  - Other standard CouchDB changes feed parameters
-
-Returns an EventEmitter that emits the following events:
+Usage mirrors the original API:
 
 ```javascript
+import { changes } from 'hide-a-bed-changes'
+
 const config = { couch: 'http://localhost:5984/mydb' }
-const options = { 
-  since: 'now',
-  include_docs: true
-}
 
-const onChange = change => {
+const feed = await changes(config, change => {
   console.log('Document changed:', change.id)
-  console.log('New revision:', change.changes[0].rev)
-  if (change.doc) {
-    console.log('Document contents:', change.doc)
-  }
-}
-const feed = await changes(config, onChange, options)
+}, { since: 'now', include_docs: true })
 
+feed.on('error', console.error)
 
-// Stop listening to changes
+// later
 feed.stop()
 ```
 
-The changes feed is useful for:
-
-- Building real-time applications
-- Keeping local data in sync with CouchDB
-- Triggering actions when documents change
-- Implementing replication
+`hide-a-bed-changes` reuses the same config structure, merges `config.needleOpts`, and resolves `since: 'now'` to the current `update_seq` before starting the feed.
 
 #### watchDocs ()
 
