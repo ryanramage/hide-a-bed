@@ -1,11 +1,9 @@
 node_modules/
 cjs/
-package-lock.json
 temp/
-*.mts
-*.mts.map
 .DS_Store
 log.txt
 *.tap
 config.json
 integration/
+types/output/

@@ -2,19 +2,25 @@
   "name": "hide-a-bed",
   "version": "5.5.3",
   "description": "An abstraction over couchdb calls that includes easy mock/stubs with pouchdb",
-  "module": "index.mjs",
-  "main": "cjs/index.cjs",
   "type": "module",
-  "types": "index.d.mts",
+  "main": "./cjs/index.cjs",
+  "module": "./index.mjs",
+  "types": "./types/output/index.d.mts",
   "exports": {
-    "require": "./cjs/index.cjs",
-    "import": "./index.mjs",
+    "types": "./types/output/index.d.mts",
+    "require": {
+      "types": "./types/output/index.d.mts",
+      "default": "./cjs/index.cjs"
+    },
+    "import": {
+      "types": "./types/output/index.d.mts",
+      "default": "./index.mjs"
+    },
     "default": "./cjs/index.cjs"
   },
   "scripts": {
     "clean": "rm -rf cjs && (find . -name \"*.mts\" -type f -delete || true) && (find . -name \"*.map\" -type f -delete || true) && (find . -name \"log.txt\" -type f -delete || true)",
-    "build": "npm run clean && tsc && npx -p dualmode@latest build",
-    "build:cjs": "rm -rf cjs && node build/build.mjs",
+    "build": "tsdown && tsc",
     "test": "node tests/*.mjs",
     "lint:fix": "standard --fix",
     "prepublish": "npm run build",
@@ -44,7 +50,6 @@
   "devDependencies": {
     "@types/lodash": "^4.17.15",
     "@types/needle": "^3.3.0",
-    "esbuild": "^0.24.2",
     "glob": "^11.0.0",
     "install": "^0.13.0",
     "npm": "^11.1.0",
@@ -52,10 +57,11 @@
     "standard": "17.1.0",
     "tap": "^21.0.2",
     "tape": "5.8.1",
+    "tsdown": "^0.12.9",
     "typescript": "5.6.2"
   },
   "volta": {
-    "node": "20.17.0",
+    "node": "22.21.1",
     "npm": "10.8.2"
   }
 }
