@@ -65,7 +65,7 @@ export const query = SimpleViewQuery.implement(async (config, view, options = {}
   let results
   try {
     logger.debug(`Sending ${method} request to: ${url}`)
-    results = (method === 'GET') ? await needle('get', url, mergedOpts) : await needle('post', url, payload, mergedOpts)
+    results = method === 'GET' ? await needle('get', url, mergedOpts) : await needle('post', url, payload, mergedOpts)
   } catch (err) {
     logger.error('Network error during query:', err)
     RetryableError.handleNetworkError(err)
@@ -104,21 +104,27 @@ export const query = SimpleViewQuery.implement(async (config, view, options = {}
  * @returns {string}
  */
 export function queryString (options = {}, params) {
-  const parts = Object.keys(options).map(key => {
-    let value = options[key]
+  const searchParams = new URLSearchParams()
+  Object.entries(options).forEach(([key, rawValue]) => {
+    let value = rawValue
     if (includes(params, key)) {
       if (typeof value === 'string' && key !== 'stale') value = `"${value}"`
       if (Array.isArray(value)) {
-        value = '[' + value.map(i => {
-          if (i === null) return 'null'
-          if (typeof i === 'string') return `"${i}"`
-          if (typeof i === 'object' && Object.keys(i).length === 0) return '{}'
-          if (typeof i === 'object') return JSON.stringify(i)
-          return i
-        }).join(',') + ']'
+        value =
+          '[' +
+          value
+            .map((i) => {
+              if (i === null) return 'null'
+              if (typeof i === 'string') return `"${i}"`
+              if (typeof i === 'object' && Object.keys(i).length === 0) return '{}'
+              if (typeof i === 'object') return JSON.stringify(i)
+              return i
+            })
+            .join(',') +
+          ']'
       }
     }
-    return `${key}=${value}`
+    searchParams.set(key, String(value))
   })
-  return parts.join('&')
+  return searchParams.toString()
 }
