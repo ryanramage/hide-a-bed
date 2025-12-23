@@ -1,6 +1,6 @@
 {
   "name": "@brivity/hide-a-bed",
-  "version": "7.0.0-test.9",
+  "version": "7.0.0-test.10",
   "description": "An abstraction over couchdb calls that includes easy mock/stubs with pouchdb",
   "type": "module",
   "main": "./dist/cjs/index.cjs",
