@@ -175,7 +175,7 @@ export async function query<
 
   // If validation schemas are provided, validate each row accordingly
   if (options.validate && body.rows) {
-    body.rows = await parseRows<DocSchema>(body.rows, options.validate)
+    body.rows = await parseRows<DocSchema, KeySchema, ValueSchema>(body.rows, options.validate)
   }
 
   logger.info(`Successfully executed view query: ${view}`)
