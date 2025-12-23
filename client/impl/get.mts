@@ -108,17 +108,6 @@ async function _getWithOptions<DocSchema extends StandardSchemaV1>(
   }
 }
 
-export async function get(
-  config: CouchConfigInput,
-  id: string
-): Promise<z.output<typeof CouchDoc> | null>
-
-export async function get<DocSchema extends StandardSchemaV1>(
-  config: CouchConfigInput,
-  id: string,
-  options: GetOptions<DocSchema>
-): Promise<StandardSchemaV1.InferOutput<DocSchema> | null>
-
 export async function get<DocSchema extends StandardSchemaV1 = typeof CouchDoc>(
   config: CouchConfigInput,
   id: string,
@@ -131,19 +120,6 @@ export type GetBound = <DocSchema extends StandardSchemaV1 = typeof CouchDoc>(
   id: string,
   options?: GetOptions<DocSchema>
 ) => Promise<StandardSchemaV1.InferOutput<DocSchema> | null>
-
-export async function getAtRev(
-  config: CouchConfigInput,
-  id: string,
-  rev: string
-): Promise<StandardSchemaV1.InferOutput<typeof CouchDoc> | null>
-
-export async function getAtRev<DocSchema extends StandardSchemaV1>(
-  config: CouchConfigInput,
-  id: string,
-  rev: string,
-  options: GetOptions<DocSchema>
-): Promise<StandardSchemaV1.InferOutput<DocSchema> | null>
 
 export async function getAtRev<DocSchema extends StandardSchemaV1>(
   config: CouchConfigInput,
