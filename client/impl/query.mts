@@ -2,42 +2,18 @@ import needle, { type BodyData, type NeedleHttpVerbs } from 'needle'
 import { createLogger } from './utils/logger.mts'
 
 import { CouchConfig, type CouchConfigInput } from '../schema/config.mts'
-import { z } from 'zod'
+import { z, ZodAny, ZodNever } from 'zod'
 import { queryString } from './utils/queryString.mts'
 import { mergeNeedleOpts } from './utils/mergeNeedleOpts.mts'
 import { RetryableError } from './utils/errors.mts'
 import { ViewOptions, type ViewString } from '../schema/couch/couch.input.schema.ts'
-import type {
-  ViewQueryResponse,
-  ViewQueryResponseValidated
-} from '../schema/couch/couch.output.schema.ts'
+import type { CouchDoc, ViewQueryResponseValidated } from '../schema/couch/couch.output.schema.ts'
 import type { StandardSchemaV1 } from '../types/standard-schema.ts'
 
-export async function query(
-  config: CouchConfigInput,
-  view: ViewString,
-  options?: ViewOptions
-): Promise<ViewQueryResponse>
-
 export async function query<
-  DocSchema extends StandardSchemaV1,
-  KeySchema extends StandardSchemaV1,
-  ValueSchema extends StandardSchemaV1
->(
-  config: CouchConfigInput,
-  view: ViewString,
-  options: ViewOptions & {
-    validate?: {
-      keySchema?: KeySchema
-      valueSchema?: ValueSchema
-    }
-  }
-): Promise<ViewQueryResponseValidated<DocSchema, KeySchema, ValueSchema>>
-
-export async function query<
-  DocSchema extends StandardSchemaV1,
-  KeySchema extends StandardSchemaV1,
-  ValueSchema extends StandardSchemaV1
+  DocSchema extends StandardSchemaV1 = typeof CouchDoc,
+  KeySchema extends StandardSchemaV1 = ZodAny,
+  ValueSchema extends StandardSchemaV1 = ZodAny
 >(
   config: CouchConfigInput,
   view: ViewString,
@@ -50,6 +26,28 @@ export async function query<
     }
   }
 ): Promise<ViewQueryResponseValidated<DocSchema, KeySchema, ValueSchema>>
+
+export async function query<
+  DocSchema extends StandardSchemaV1 = ZodNever,
+  KeySchema extends StandardSchemaV1 = ZodAny,
+  ValueSchema extends StandardSchemaV1 = ZodAny
+>(
+  config: CouchConfigInput,
+  view: ViewString,
+  options: ViewOptions & {
+    include_docs?: false | undefined
+    validate?: {
+      keySchema?: KeySchema
+      valueSchema?: ValueSchema
+    }
+  }
+): Promise<ViewQueryResponseValidated<DocSchema, KeySchema, ValueSchema>>
+
+export async function query(
+  config: CouchConfigInput,
+  view: ViewString,
+  options?: ViewOptions
+): Promise<ViewQueryResponseValidated<ZodNever, ZodAny, ZodAny>>
 
 /**
  * Executes a CouchDB view query with optional schema validation and automatic handling
@@ -194,25 +192,10 @@ export async function query<
 }
 
 export type QueryBound = {
-  (view: ViewString, options?: ViewOptions): Promise<ViewQueryResponse>
   <
-    DocSchema extends StandardSchemaV1,
-    KeySchema extends StandardSchemaV1,
-    ValueSchema extends StandardSchemaV1
-  >(
-    view: ViewString,
-    options: ViewOptions & {
-      include_docs: false
-      validate?: {
-        keySchema?: KeySchema
-        valueSchema?: ValueSchema
-      }
-    }
-  ): Promise<ViewQueryResponseValidated<DocSchema, KeySchema, ValueSchema>>
-  <
-    DocSchema extends StandardSchemaV1,
-    KeySchema extends StandardSchemaV1,
-    ValueSchema extends StandardSchemaV1
+    DocSchema extends StandardSchemaV1 = typeof CouchDoc,
+    KeySchema extends StandardSchemaV1 = ZodAny,
+    ValueSchema extends StandardSchemaV1 = ZodAny
   >(
     view: ViewString,
     options: ViewOptions & {
@@ -224,4 +207,22 @@ export type QueryBound = {
       }
     }
   ): Promise<ViewQueryResponseValidated<DocSchema, KeySchema, ValueSchema>>
+  <
+    DocSchema extends StandardSchemaV1 = ZodNever,
+    KeySchema extends StandardSchemaV1 = ZodAny,
+    ValueSchema extends StandardSchemaV1 = ZodAny
+  >(
+    view: ViewString,
+    options: ViewOptions & {
+      include_docs?: false | undefined
+      validate?: {
+        keySchema?: KeySchema
+        valueSchema?: ValueSchema
+      }
+    }
+  ): Promise<ViewQueryResponseValidated<DocSchema, KeySchema, ValueSchema>>
+  (
+    view: ViewString,
+    options?: ViewOptions
+  ): Promise<ViewQueryResponseValidated<ZodNever, ZodAny, ZodAny>>
 }
