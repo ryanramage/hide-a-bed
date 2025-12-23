@@ -3,15 +3,14 @@ import { CouchConfig, type CouchConfigInput } from '../schema/config.mts'
 import { createLogger } from './utils/logger.mts'
 import { mergeNeedleOpts } from './utils/mergeNeedleOpts.mts'
 import { RetryableError } from './utils/errors.mts'
-import { z } from 'zod'
 import {
-  ViewRow,
   ViewQueryResponse,
   type ViewQueryResponseValidated,
   CouchDoc,
   type ViewRowValidated
 } from '../schema/couch/couch.output.schema.ts'
 import type { StandardSchemaV1 } from '../types/standard-schema.ts'
+import { parseRows, type OnInvalidDocAction } from './utils/parseRows.mts'
 
 export type BulkGetResponse<DocSchema extends StandardSchemaV1 = StandardSchemaV1<CouchDoc>> =
   ViewQueryResponseValidated<
@@ -22,83 +21,12 @@ export type BulkGetResponse<DocSchema extends StandardSchemaV1 = StandardSchemaV
     }>
   >
 
-export type OnInvalidDocAction = 'throw' | 'skip'
-
 export type BulkGetOptions<DocSchema extends StandardSchemaV1> = {
   includeDocs?: boolean
   validate?: {
     docSchema: DocSchema
     onInvalidDoc?: OnInvalidDocAction
   }
-}
-
-async function parseRows<DocSchema extends StandardSchemaV1>(
-  rows: unknown,
-  schema: DocSchema,
-  onInvalidDoc: OnInvalidDocAction = 'throw'
-) {
-  if (!Array.isArray(rows)) {
-    throw new Error('invalid rows format')
-  }
-
-  type FinalRow = {
-    id?: string
-    key?: string
-    value?: unknown
-    doc?: StandardSchemaV1.InferOutput<DocSchema>
-    error?: string
-  }
-  type RowResult = FinalRow | 'skip'
-  const isFinalRow = (row: RowResult): row is FinalRow => row !== 'skip'
-
-  const parsedRows: Array<RowResult> = await Promise.all(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    rows.map(async (row: any) => {
-      try {
-        /**
-         * If no doc is present, parse without doc validation.
-         * This allows handling of not-found documents or rows without docs.
-         */
-        if (row.doc == null) {
-          return z.looseObject(ViewRow.shape).parse(row)
-        }
-
-        const parsedDoc = await schema['~standard'].validate(row.doc)
-
-        if (parsedDoc.issues) {
-          if (onInvalidDoc === 'throw') {
-            throw parsedDoc.issues
-          } else {
-            // skip invalid doc
-            return 'skip'
-          }
-        } else {
-          const parsedRow = z
-            .looseObject({
-              id: z.string().optional(),
-              key: z.any().nullish(),
-              value: z.any().nullish(),
-              error: z.string().optional()
-            })
-            .parse(row)
-
-          return {
-            ...parsedRow,
-            doc: parsedDoc.value
-          }
-        }
-      } catch (e) {
-        if (onInvalidDoc === 'throw') {
-          throw e
-        } else {
-          // skip invalid doc
-          return 'skip'
-        }
-      }
-    })
-  )
-
-  return parsedRows.filter(isFinalRow)
 }
 
 /**
@@ -187,7 +115,10 @@ async function _bulkGetWithOptions<DocSchema extends StandardSchemaV1 = typeof C
   }
 
   const docSchema = options.validate?.docSchema || CouchDoc
-  const rows = await parseRows(body.rows, docSchema, options.validate?.onInvalidDoc)
+  const rows = await parseRows(body.rows, {
+    onInvalidDoc: options.validate?.onInvalidDoc,
+    docSchema
+  })
 
   return {
     ...body,

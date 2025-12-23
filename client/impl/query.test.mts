@@ -3,7 +3,7 @@ import test, { suite } from 'node:test'
 import needle from 'needle'
 import { randomUUID } from 'node:crypto'
 import { setTimeout as delay } from 'node:timers/promises'
-import { z, ZodError } from 'zod'
+import { z } from 'zod'
 
 import type { CouchConfigInput } from '../schema/config.mts'
 import { TEST_DB_URL } from '../test/setup-db.mts'
@@ -170,15 +170,61 @@ suite('query', () => {
       ({ rows }) => rows?.length === 1
     )
 
-    await assert.rejects(
+    await assert.rejects(async () => {
+      return query(config, `_design/${designId}/_view/${viewName}`, {
+        validate: {
+          valueSchema: z.number()
+        }
+      })
+    })
+  })
+
+  test('skips invalid documents when onInvalidDoc=skip', async () => {
+    const designId = `query-skip-${randomUUID()}`
+    const viewName = 'byPlayer'
+    const tag = `query-suite-${randomUUID()}`
+    await putDesignDoc(
+      designId,
+      viewName,
+      `function(doc) { if (doc.tag !== '${tag}') return; emit(doc.player, doc.score); }`
+    )
+
+    const validDoc = {
+      _id: `doc-${randomUUID()}`,
+      tag,
+      player: 'valid',
+      score: 5
+    }
+    const invalidDoc = {
+      _id: `doc-${randomUUID()}`,
+      tag,
+      player: 'invalid',
+      score: 'nope'
+    }
+
+    await putDoc(validDoc)
+    await putDoc(invalidDoc)
+
+    const response = await eventually(
       () =>
         query(config, `_design/${designId}/_view/${viewName}`, {
+          include_docs: true,
           validate: {
-            valueSchema: z.number()
+            docSchema: z.looseObject({
+              _id: z.string(),
+              tag: z.string(),
+              player: z.string(),
+              score: z.number()
+            }),
+            keySchema: z.string(),
+            valueSchema: z.number(),
+            onInvalidDoc: 'skip'
           }
         }),
-      (err: unknown) => err instanceof ZodError
+      ({ rows }) => rows.length === 1
     )
+
+    assert.strictEqual(response.rows[0]?.doc?.player, validDoc.player)
   })
 
   test('posts payload when keys exceed URL limit', async () => {

@@ -9,6 +9,7 @@ import { RetryableError } from './utils/errors.mts'
 import { ViewOptions, type ViewString } from '../schema/couch/couch.input.schema.ts'
 import type { CouchDoc, ViewQueryResponseValidated } from '../schema/couch/couch.output.schema.ts'
 import type { StandardSchemaV1 } from '../types/standard-schema.ts'
+import { parseRows, type OnInvalidDocAction } from './utils/parseRows.mts'
 
 export async function query<
   DocSchema extends StandardSchemaV1 = typeof CouchDoc,
@@ -20,6 +21,7 @@ export async function query<
   options: ViewOptions & {
     include_docs: true
     validate?: {
+      onInvalidDoc?: OnInvalidDocAction
       docSchema?: DocSchema
       keySchema?: KeySchema
       valueSchema?: ValueSchema
@@ -37,11 +39,13 @@ export async function query<
   options: ViewOptions & {
     include_docs?: false | undefined
     validate?: {
+      onInvalidDoc?: OnInvalidDocAction
+      docSchema?: DocSchema
       keySchema?: KeySchema
       valueSchema?: ValueSchema
     }
   }
-): Promise<ViewQueryResponseValidated<DocSchema, KeySchema, ValueSchema>>
+): Promise<ViewQueryResponseValidated<ZodNever, KeySchema, ValueSchema>>
 
 export async function query(
   config: CouchConfigInput,
@@ -80,6 +84,7 @@ export async function query<
   view: ViewString,
   options: ViewOptions & {
     validate?: {
+      onInvalidDoc?: OnInvalidDocAction
       docSchema?: DocSchema
       keySchema?: KeySchema
       valueSchema?: ValueSchema
@@ -169,20 +174,8 @@ export async function query<
   }
 
   // If validation schemas are provided, validate each row accordingly
-  if (options.validate) {
-    const { docSchema, keySchema, valueSchema } = options.validate
-
-    // TODO check validation logic and add same `onInvalidDoc` parameter from other impl.
-    body.rows = z
-      .array(
-        z.looseObject({
-          id: z.string(),
-          key: keySchema ? keySchema : z.any(),
-          value: valueSchema ? valueSchema : z.any(),
-          doc: docSchema ? docSchema : z.any().optional()
-        })
-      )
-      .parse(body.rows)
+  if (options.validate && body.rows) {
+    body.rows = await parseRows<DocSchema>(body.rows, options.validate)
   }
 
   logger.info(`Successfully executed view query: ${view}`)
@@ -201,6 +194,7 @@ export type QueryBound = {
     options: ViewOptions & {
       include_docs: true
       validate?: {
+        onInvalidDoc?: OnInvalidDocAction
         docSchema?: DocSchema
         keySchema?: KeySchema
         valueSchema?: ValueSchema
@@ -216,11 +210,13 @@ export type QueryBound = {
     options: ViewOptions & {
       include_docs?: false | undefined
       validate?: {
+        onInvalidDoc?: OnInvalidDocAction
+        docSchema?: DocSchema
         keySchema?: KeySchema
         valueSchema?: ValueSchema
       }
     }
-  ): Promise<ViewQueryResponseValidated<DocSchema, KeySchema, ValueSchema>>
+  ): Promise<ViewQueryResponseValidated<ZodNever, KeySchema, ValueSchema>>
   (
     view: ViewString,
     options?: ViewOptions

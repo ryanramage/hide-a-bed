@@ -52,9 +52,9 @@ export type {
   BulkGetDictionaryOptions,
   BulkGetDictionaryResult,
   BulkGetOptions,
-  BulkGetResponse,
-  OnInvalidDocAction
+  BulkGetResponse
 } from './impl/bulkGet.mts'
+export type { OnInvalidDocAction } from './impl/utils/parseRows.mts'
 export type { GetOptions, GetBound, GetAtRevBound } from './impl/get.mts'
 export type { QueryBound } from './impl/query.mts'
 export type {
