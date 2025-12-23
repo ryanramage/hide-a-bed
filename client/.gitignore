@@ -1,5 +1,5 @@
 node_modules/
-cjs/
+dist/
 temp/
 .DS_Store
 log.txt
@@ -7,3 +7,4 @@ log.txt
 config.json
 integration/
 types/output/
+docs

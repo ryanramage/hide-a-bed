@@ -1,0 +1,19 @@
+{
+  "folders": [
+    {
+      "path": "../."
+    },
+    {
+      "path": "../changes"
+    },
+    {
+      "path": "../client",
+    },
+    {
+      "path": "../stub"
+    },
+    {
+      "path": "../test"
+    }
+  ],
+}

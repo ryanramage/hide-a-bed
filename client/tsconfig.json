@@ -1,13 +1,15 @@
 {
-  "include": ["*.mjs"],
-  "exclude": ["node_modules", "cjs"],
+  "exclude": ["node_modules", "dist", "types/output", "docs"],
   "compilerOptions": {
-    "module": "Node16",
-    "target": "es2020",
+    "module": "nodenext",
+    "target": "esnext",
+    "erasableSyntaxOnly": true,
+    "rewriteRelativeImportExtensions": true,
+    "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
     "strict": true,
-    // "checkJs": true, // TODO: enable for better type safety
     "allowJs": true,
+    "checkJs": true,
     "skipLibCheck": true,
     "declaration": true,
     "emitDeclarationOnly": true,
