@@ -1,0 +1,4 @@
+{
+  "exclude": ["**/dist/**"],
+  "kindSortOrder": ["Variable", "Function"]
+}

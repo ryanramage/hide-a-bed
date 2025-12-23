@@ -1,16 +1,16 @@
 ### API Quick Reference
 
-🍭 denotes a *Sugar* API - helps make some tasks sweet and easy, but may hide some complexities you might want to deal with.
+🍭 denotes a _Sugar_ API - helps make some tasks sweet and easy, but may hide some complexities you might want to deal with.
 
-| Document Operations | Bulk Operations | View Operations | Changes Feed |
-|-------------------|-----------------|-----------------|-----------------|
-| [`get()`](#get) | [`bulkGet()`](#bulkget) | [`query()`](#query) | [`changes()`](#changes) |
-| [`put()`](#put) | [`bulkSave()`](#bulksave) | [`queryStream()`](#querystream) | [`watchDocs()`](#watchdocs) 🍭 |
-| [`patch()`](#patch) 🍭 | [`bulkRemove()`](#bulkremove) | [`remove()`](#remove) | |
-| [`patchDangerously()`](#patchdangerously) 🍭 | [`bulkRemoveMap()`](#bulkremovemap) | | |
-| [`getAtRev()`](#getatrev) 🍭 | [`bulkGetDictionary()`](#bulkgetdictionary) 🍭 | | |
-| [`createLock()`](#createlock) 🍭 | [`bulkSaveTransaction()`](#bulksavetransaction) 🍭 | | |
-| [`removeLock()`](#removelock) 🍭 | | | |
+| Document Operations                          | Bulk Operations                                    | View Operations                 | Change Utilities                                   |
+| -------------------------------------------- | -------------------------------------------------- | ------------------------------- | -------------------------------------------------- |
+| [`get()`](#get)                              | [`bulkGet()`](#bulkget)                            | [`query()`](#query)             | [`watchDocs()`](#watchdocs) 🍭                     |
+| [`put()`](#put)                              | [`bulkSave()`](#bulksave)                          | [`queryStream()`](#querystream) | [Standalone changes feed](#changes-feed-companion) |
+| [`patch()`](#patch) 🍭                       | [`bulkRemove()`](#bulkremove)                      | [`remove()`](#remove)           |                                                    |
+| [`patchDangerously()`](#patchdangerously) 🍭 | [`bulkRemoveMap()`](#bulkremovemap)                |                                 |                                                    |
+| [`getAtRev()`](#getatrev) 🍭                 | [`bulkGetDictionary()`](#bulkgetdictionary) 🍭     |                                 |                                                    |
+| [`createLock()`](#createlock) 🍭             | [`bulkSaveTransaction()`](#bulksavetransaction) 🍭 |                                 |                                                    |
+| [`removeLock()`](#removelock) 🍭             |                                                    |                                 |                                                    |
 
 And some utility APIs
 
@@ -35,9 +35,9 @@ const { get, put, query } = require('hide-a-bed')
 ### Config
 
 Anywhere you see a config, it is an object with the following setup
-```{ couch: 'https://username:pass@the.couch.url.com:5984' }```
+`{ couch: 'https://username:pass@the.couch.url.com:5984' }`
 And it is passed in as the first argument of all the functions
-```const doc = await get(config, 'doc-123')```
+`const doc = await get(config, 'doc-123')`
 
 See [Advanced Config Options](#advanced-config-options) for more advanced settings.
 
@@ -53,19 +53,6 @@ const services = { db } // see example below
 const doc = await db.get('doc-123')
 ```
 
-If you need to enable autocompletion and type-checking, you can add the following JSDoc to help your editor
-
-```
-  function doSomething (services) {
-    /**  @type { import('hide-a-bed').DB} db */
-    const db = services.db;
-  }
-```
-
-Here is an example of compiler warnings:
-
-![jsdoc type def](docs/compiler.png)
-
 ##### Config Overrides
 
 You also can quickly override (or more) config settings for a particular call using db.options(optionOverrides)
@@ -74,7 +61,7 @@ e.g.
 
 ```
 const db = bindConfig({ couch: 'http://localhost:5984/db', throwOnGetNotFound: false  })
-const doc = await db.options({ throwOnGetNotFound: true }).get('doc-id') 
+const doc = await db.options({ throwOnGetNotFound: true }).get('doc-id')
 ```
 
 You can pass any of [Config Options](#advanced-config-options) to db.options to override the original config bindings.
@@ -99,15 +86,17 @@ const doc = await get(config, 'doc-123')
 console.log(doc._id, doc._rev)
 
 const notFound = await get(config, 'notFound')
-console.log(notFound) // null 
+console.log(notFound) // null
 
 try {
-  const config = { couch: 'http://localhost:5984/mydb', throwOnGetNotFound: true }
+  const config = {
+    couch: 'http://localhost:5984/mydb',
+    throwOnGetNotFound: true
+  }
   await get(config, 'notFound')
 } catch (err) {
   if (err.name === 'NotFoundError') console.log('Document not found')
 }
-
 ```
 
 #### put
@@ -122,7 +111,7 @@ Save a document.
 
 ```javascript
 const config = { couch: 'http://localhost:5984/mydb' }
-const doc = { 
+const doc = {
   _id: 'doc-123',
   type: 'user',
   name: 'Alice'
@@ -131,29 +120,28 @@ const result = await put(config, doc)
 // result: { ok: true, id: 'doc-123', rev: '1-abc123' }
 
 // imaginary rev returns a conflict
-const doc = { _id: 'notThereDoc', _rev: '32-does-not-compute'}
+const doc = { _id: 'notThereDoc', _rev: '32-does-not-compute' }
 const result2 = await db.put(doc)
 console.log(result2) // { ok: false, error: 'conflict', statusCode: 409 }
 ```
 
 #### patch
 
-The patch function lets you update specific properties of a document. The _rev value must be set, and passed in with properties.
+The patch function lets you update specific properties of a document. The \_rev value must be set, and passed in with properties.
 
 **Parameters:**
 
 - `config`: Object with couch URL string
 - `id`: Document ID string
-- `properties`: Object with properties to update, must include _rev property
+- `properties`: Object with properties to update, must include \_rev property
 - Returns: Promise resolving to response with `ok`, `id`, `rev` properties
 
 ```javascript
-const config = { 
+const config = {
   couch: 'http://localhost:5984/mydb',
-  retries: 3,
-  delay: 500
+  retries: 3
 }
-const properties = { 
+const properties = {
   _rev: '3-fdskjhfsdkjhfsd',
   name: 'Alice Smith',
   updated: true
@@ -164,7 +152,7 @@ const result = await patch(config, 'doc-123', properties)
 
 #### patchDangerously
 
-Update specific properties of a document, no _rev is needed.
+Update specific properties of a document, no \_rev is needed.
 
 **Parameters:**
 
@@ -172,19 +160,18 @@ Update specific properties of a document, no _rev is needed.
 - `id`: Document ID string
 - `properties`: Object with properties to update
 
-*Warning*: patchDangerously can clobber data. It will retry even if a conflict happens. There are some use cases for this, but you have been warned, hence the name.
+_Warning_: patchDangerously can clobber data. It will retry even if a conflict happens. There are some use cases for this, but you have been warned, hence the name.
 
 - `id`: Document ID string
 - `properties`: Object with properties to update
 - Returns: Promise resolving to response with `ok`, `id`, `rev` properties
 
 ```javascript
-const config = { 
+const config = {
   couch: 'http://localhost:5984/mydb',
-  retries: 3,
-  delay: 500
+  retries: 3
 }
-const properties = { 
+const properties = {
   name: 'Alice Smith',
   updated: true
 }
@@ -202,7 +189,7 @@ Return a document at the rev specified.
 - `id`: Document ID string
 - `rev`: Revision string to retrieve
 
-*CouchDB* is not a version control db. This is a special function for unique situations. The _rev might not be around as couch cleans up old revs.
+_CouchDB_ is not a version control db. This is a special function for unique situations. The \_rev might not be around as couch cleans up old revs.
 
 ```javascript
 const config = { couch: 'http://localhost:5984/mydb' }
@@ -291,17 +278,27 @@ Get multiple documents by ID.
 
 - `config`: Object with `couch` URL string
 - `ids`: Array of document ID strings
-- Returns: Promise resolving to array of documents
+- `options` _(optional)_:
+  - `validate.docSchema`: zod v4 schema applied to each found document before returning.
+- Returns: Promise resolving to the optionally validated bulk response
 
 Warning: documents that are not found will still have a row in the results. The doc property will be null, and the error property will be set.
 
 ```javascript
+import z from 'zod'
+
 const config = { couch: 'http://localhost:5984/mydb' }
 const ids = ['doc1', 'doc2', 'doesNotExist']
-const docs = await bulkGet(config, ids)
+const docs = await bulkGet(config, ids, {
+  docSchema: z.looseObject({
+    _id: z.string(),
+    type: z.string(),
+    name: z.string()
+  })
+})
 // rows: [
-//   { _id: 'doc1', _rev: '1-abc123', type: 'user', name: 'Alice' },
-//   { _id: 'doc2', _rev: '1-def456', type: 'user', name: 'Bob' },
+//   { id: 'doc1', doc: { _id: 'doc1', type: 'user', name: 'Alice' } },
+//   { id: 'doc2', doc: { _id: 'doc2', type: 'user', name: 'Bob' } },
 //   { key: 'doesNotExist', error: 'not_found' }
 // ]
 ```
@@ -376,18 +373,20 @@ Adds convenience to bulkGet. Organizes found and notFound documents into propert
 
 - `config`: Object with `couch` URL string
 - `ids`: Array of document ID strings to get
+- `options` _(optional)_:
+  - `validate.docSchema`: zod v4 schema applied to each found document before returning.
 - Returns: Promise resolving to an object with found and notFound properties.
 
-*found* looks like
+_found_ looks like
 
 ```
-{ 
+{
   doc1: { _id: 'doc1', _rev: '1-221', data: {} },
   doc2: { _id: 'doc2', _rev: '4-421', data: {} },
 }
 ```
 
-*notFound* looks like
+_notFound_ looks like
 
 ```
 {
@@ -396,9 +395,16 @@ Adds convenience to bulkGet. Organizes found and notFound documents into propert
 ```
 
 ```javascript
+import z from 'zod'
+
 const config = { couch: 'http://localhost:5984/mydb' }
 const ids = ['doc1', 'doc2', 'doesNotExist']
-const results = await bulkGetDictionary(config, ids)
+const results = await bulkGetDictionary(config, ids, {
+  docSchema: z.looseObject({
+    _id: z.string(),
+    data: z.record(z.any())
+  })
+})
 // results: {
 //   found: {
 //     doc1: { _id: 'doc2', _rev: '1-221', data: {} },
@@ -466,7 +472,7 @@ Get basic info about a db in couch
 ```
 const config = { couch: 'http://localhost:5984/mydb' }
 const result = await getDBInfo(config)
-// result: { db_name: 'test', doc_count: 3232 } 
+// result: { db_name: 'test', doc_count: 3232 }
 ```
 
 ### View Queries
@@ -478,7 +484,7 @@ Query a view with options.
 **Parameters:**
 
 - `config`: Object with `couch` URL string
-- `view`: View path string (e.g. '_design/doc/_view/name')
+- `view`: View path string (e.g. '\_design/doc/\_view/name')
 - `options`: Optional object with query parameters:
   - `startkey`: Start key for range
   - `endkey`: End key for range
@@ -504,7 +510,7 @@ const options = {
 const result = await query(config, view, options)
 // result: {
 //   rows: [
-//     { 
+//     {
 //       id: 'doc1',
 //       key: 'Alice',
 //       value: 1,
@@ -517,10 +523,10 @@ const result = await query(config, view, options)
 
 Some notes on the keys. Use native js types for arrays keys, rather then strings. Eg
 
-- ```{ startkey: ['ryan'], endkey: ['ryan', {}] }```
-- ```{ startkey: [47, null], endkey: [48, null] }```
-- ```{ startkey: [customerIdVar], endkey: [customerIdVar, {}] }```
-- ```{ startkey: [teamId, userId, startTimestamp], endkey: [teamId, userId, endTimestamp] }```
+- `{ startkey: ['ryan'], endkey: ['ryan', {}] }`
+- `{ startkey: [47, null], endkey: [48, null] }`
+- `{ startkey: [customerIdVar], endkey: [customerIdVar, {}] }`
+- `{ startkey: [teamId, userId, startTimestamp], endkey: [teamId, userId, endTimestamp] }`
 
 #### createQuery()
 
@@ -540,24 +546,19 @@ Create a query builder to help construct view queries with a fluent interface. N
   - `build()`: Return the constructed query options object
 
 ```javascript
-const options = createQuery()
-  .startkey('A')
-  .endkey('B')
-  .include_docs(true)
-  .limit(10)
-  .build()
+const options = createQuery().startkey('A').endkey('B').include_docs(true).limit(10).build()
 
 const result = await query(config, view, options)
 ```
 
 Again, use js types for array keys
 
-- ```.startkey([teamId, userId]).endkey([teamId, userId, {}])```
-- ```.startkey([teamId, userId, startTimestamp]).endkey([teamId, userId, endTimestamp])```
+- `.startkey([teamId, userId]).endkey([teamId, userId, {}])`
+- `.startkey([teamId, userId, startTimestamp]).endkey([teamId, userId, endTimestamp])`
 
 #### queryStream
 
-Use Cases *Streaming Data*
+Use Cases _Streaming Data_
 
 **Parameters:**
 
@@ -602,55 +603,42 @@ Want to consume this in the browser? I'd recommend [ndjson-readablestream](https
 An [example react component](https://github.com/Azure-Samples/azure-search-openai-demo/pull/532/files#diff-506debba46b93087dc46a916384e56392808bcc02a99d9291557f3e674d4ad6c)
 that consumes the readable stream.
 
-#### changes()
+#### Changes feed companion
 
-Subscribe to the CouchDB changes feed to receive real-time updates.
+The main client no longer bundles the legacy `changes-stream` dependency. Install `hide-a-bed-changes` when you need a CouchDB `_changes` feed helper:
 
-**Parameters:**
+```
+npm install hide-a-bed-changes
+```
 
-- `config`: Object with `couch` URL string
-- `onChange`: function called for each change
-- `options`: Optional object with parameters:
-  - `since`: String or number indicating where to start from ('now' or update sequence number)
-  - `include_docs`: Boolean to include full documents
-  - `filter`: String name of design document filter function
-  - Other standard CouchDB changes feed parameters
-
-Returns an EventEmitter that emits the following events:
+Usage mirrors the original API:
 
 ```javascript
+import { changes } from 'hide-a-bed-changes'
+
 const config = { couch: 'http://localhost:5984/mydb' }
-const options = { 
-  since: 'now',
-  include_docs: true
-}
 
-const onChange = change => {
-  console.log('Document changed:', change.id)
-  console.log('New revision:', change.changes[0].rev)
-  if (change.doc) {
-    console.log('Document contents:', change.doc)
-  }
-}
-const feed = await changes(config, onChange, options)
+const feed = await changes(
+  config,
+  change => {
+    console.log('Document changed:', change.id)
+  },
+  { since: 'now', include_docs: true }
+)
 
+feed.on('error', console.error)
 
-// Stop listening to changes
+// later
 feed.stop()
 ```
 
-The changes feed is useful for:
-
-- Building real-time applications
-- Keeping local data in sync with CouchDB
-- Triggering actions when documents change
-- Implementing replication
+`hide-a-bed-changes` reuses the same config structure, merges `config.needleOpts`, and resolves `since: 'now'` to the current `update_seq` before starting the feed.
 
 #### watchDocs ()
 
 Watch specific documents for changes in real-time.
 
- **Parameters:**
+**Parameters:**
 
 - `config`: Object with `couch` URL string
 - `docIds`: String or array of document IDs to watch (max 100)
@@ -661,67 +649,67 @@ Watch specific documents for changes in real-time.
   - `initialDelay`: Number - initial reconnection delay in ms (default 1000)
   - `maxDelay`: Number - maximum reconnection delay in ms (default: 30000)
 
- Returns an EventEmitter that emits:
+Returns an EventEmitter that emits:
 
 - 'change' events with change objects.
 - 'error' events when max retries reached.
 - 'end' events with last sequence number.
 
- ```javascript
- const config = { couch: 'http://localhost:5984/mydb' }
+```javascript
+const config = { couch: 'http://localhost:5984/mydb' }
 
- // Watch a single document
- const feed = await watchDocs(config, 'doc123', change => {
-   console.log('Document changed:', change.id)
-   console.log('New revision:', change.changes[0].rev)
- })
+// Watch a single document
+const feed = await watchDocs(config, 'doc123', change => {
+  console.log('Document changed:', change.id)
+  console.log('New revision:', change.changes[0].rev)
+})
 
- // Watch multiple documents with full doc content
- const feed = await watchDocs(
-   config,
-   ['doc1', 'doc2', 'doc3'],
-   change => {
-     if (change.doc) {
-       console.log('Updated document:', change.doc)
-     }
-   },
-   { include_docs: true }
- )
+// Watch multiple documents with full doc content
+const feed = await watchDocs(
+  config,
+  ['doc1', 'doc2', 'doc3'],
+  change => {
+    if (change.doc) {
+      console.log('Updated document:', change.doc)
+    }
+  },
+  { include_docs: true }
+)
 
- // Handle errors
- feed.on('error', error => {
-   console.error('Watch error:', error)
- })
+// Handle errors
+feed.on('error', error => {
+  console.error('Watch error:', error)
+})
 
- // Handle end of feed
- feed.on('end', ({ lastSeq }) => {
-   console.log('Feed ended at sequence:', lastSeq)
- })
+// Handle end of feed
+feed.on('end', ({ lastSeq }) => {
+  console.log('Feed ended at sequence:', lastSeq)
+})
 
- // Stop watching
- feed.stop()
- ```
+// Stop watching
+feed.stop()
+```
 
- The watchDocs feed is useful for:
+The watchDocs feed is useful for:
 
- 1. Building real-time applications focused on specific documents
- 2. Triggering actions when particular documents change
- 3. Maintaining cached copies of frequently-accessed documents
+1.  Building real-time applications focused on specific documents
+2.  Triggering actions when particular documents change
+3.  Maintaining cached copies of frequently-accessed documents
 
 ### Advanced Config Options
 
 The config object supports the following properties:
 
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| couch | string | required | The URL of the CouchDB database |
-| throwOnGetNotFound | boolean | false | If true, throws an error when get() returns 404. If false, returns null |
-| bindWithRetry | boolean | true | When using bindConfig(), adds retry logic to bound methods |
-| maxRetries | number | 3 | Maximum number of retry attempts for retryable operations |
-| initialDelay | number | 1000 | Initial delay in milliseconds before first retry |
-| backoffFactor | number | 2 | Multiplier for exponential backoff between retries |
-| useConsoleLogger | boolean | false | If true, enables console logging when no logger is provided |
-| logger | object/function | undefined | Custom logging interface (winston-style object or function) |
+| Property           | Type            | Default   | Description                                                             |
+| ------------------ | --------------- | --------- | ----------------------------------------------------------------------- |
+| couch              | string          | required  | The URL of the CouchDB database                                         |
+| throwOnGetNotFound | boolean         | false     | If true, throws an error when get() returns 404. If false, returns null |
+| bindWithRetry      | boolean         | true      | When using bindConfig(), adds retry logic to bound methods              |
+| maxRetries         | number          | 3         | Maximum number of retry attempts for retryable operations               |
+| initialDelay       | number          | 1000      | Initial delay in milliseconds before first retry                        |
+| backoffFactor      | number          | 2         | Multiplier for exponential backoff between retries                      |
+| useConsoleLogger   | boolean         | false     | If true, enables console logging when no logger is provided             |
+| logger             | object/function | undefined | Custom logging interface (winston-style object or function)             |
 
 Example configuration with all options:
 
@@ -744,7 +732,7 @@ The library supports flexible logging options that can be configured through the
 
 ```javascript
 // Enable console logging (error, warn, info, debug)
-const config = { 
+const config = {
   couch: 'http://localhost:5984/mydb',
   useConsoleLogger: true
 }
@@ -753,10 +741,10 @@ const config = {
 const config = {
   couch: 'http://localhost:5984/mydb',
   logger: {
-    error: (msg) => console.error(msg),
-    warn: (msg) => console.warn(msg),
-    info: (msg) => console.info(msg),
-    debug: (msg) => console.debug(msg)
+    error: msg => console.error(msg),
+    warn: msg => console.warn(msg),
+    info: msg => console.info(msg),
+    debug: msg => console.debug(msg)
   }
 }
 

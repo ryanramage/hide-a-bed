@@ -20,6 +20,9 @@ npm install hide-a-bed
 
 # Install the testing utilities (recommended)
 npm install hide-a-bed-stub --save-dev
+
+# Install the standalone changes feed helper when needed
+npm install hide-a-bed-changes
 ```
 
 ## Quick Start
@@ -115,7 +118,9 @@ For detailed documentation, visit our [API Reference](https://github.com/ryanram
 
 Contributions are welcome! Submit a pull request.
 
-## License
+### Test environment
+
+`npm test` starts an in-memory PouchDB server via the shared global setup in `client/test/setup.mts` and tears it down after the suite finishes. Because every suite writes to the same `hide-a-bed-test-db` instance, make generated document IDs unique per test run (for example, prefix with the test title plus `crypto.randomUUID()`) and avoid reusing hard-coded `_id` strings across suites. This keeps parallel runs isolated and prevents conflicts when the shared database still contains documents from previous tests.## License
 
 Licensed under the MIT License.
 
