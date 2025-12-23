@@ -170,22 +170,7 @@ async function executeBulkGet(
  * @throws {Error<StandardSchemaV1.FailureResult["issues"]>} When the configuration or validation schemas fail to parse.
  * @throws {Error} When CouchDB returns a non-retryable error payload.
  */
-async function _bulkGetWithOptions(
-  config: CouchConfigInput,
-  ids: Array<string | undefined>,
-  options: { includeDocs: false }
-): Promise<BulkGetResponse>
-
-async function _bulkGetWithOptions<DocSchema extends StandardSchemaV1>(
-  config: CouchConfigInput,
-  ids: Array<string | undefined>,
-  options: {
-    includeDocs: true
-    validate?: { docSchema: DocSchema; onInvalidDoc?: 'throw' | 'skip' }
-  }
-): Promise<BulkGetResponse<DocSchema>>
-
-async function _bulkGetWithOptions<DocSchema extends StandardSchemaV1>(
+async function _bulkGetWithOptions<DocSchema extends StandardSchemaV1 = typeof CouchDoc>(
   config: CouchConfigInput,
   ids: Array<string | undefined>,
   options: BulkGetOptions<DocSchema> = {}
@@ -210,26 +195,6 @@ async function _bulkGetWithOptions<DocSchema extends StandardSchemaV1>(
   }
 }
 
-export async function bulkGet(
-  config: CouchConfigInput,
-  ids: Array<string | undefined>
-): Promise<BulkGetResponse>
-
-export async function bulkGet(
-  config: CouchConfigInput,
-  ids: Array<string | undefined>,
-  options: { includeDocs: false }
-): Promise<BulkGetResponse>
-
-export async function bulkGet<DocSchema extends StandardSchemaV1>(
-  config: CouchConfigInput,
-  ids: Array<string | undefined>,
-  options: {
-    includeDocs?: true
-    validate?: { docSchema: DocSchema; onInvalidDoc?: 'throw' | 'skip' }
-  }
-): Promise<BulkGetResponse<DocSchema>>
-
 /**
  * Bulk get documents by IDs.
  *
@@ -251,19 +216,13 @@ export async function bulkGet<DocSchema extends StandardSchemaV1>(
  * @throws {Error<StandardSchemaV1.FailureResult["issues"]>} When the configuration or validation schemas fail to parse.
  * @throws {Error} When CouchDB returns a non-retryable error payload.
  */
-export async function bulkGet<DocSchema extends StandardSchemaV1>(
+export async function bulkGet<DocSchema extends StandardSchemaV1 = typeof CouchDoc>(
   config: CouchConfigInput,
   ids: Array<string | undefined>,
   options: BulkGetOptions<DocSchema> = {}
 ) {
-  if (options?.includeDocs === false) {
-    return _bulkGetWithOptions(config, ids, {
-      includeDocs: false
-    })
-  }
-
   return _bulkGetWithOptions<DocSchema>(config, ids, {
-    includeDocs: true,
+    includeDocs: options.includeDocs,
     validate: options?.validate
   })
 }
@@ -288,7 +247,7 @@ export type BulkGetBound = {
  * Bulk get documents by IDs and return a dictionary of found and not found documents.
  */
 
-export type BulkGetDictionaryOptions<DocSchema extends StandardSchemaV1> = Omit<
+export type BulkGetDictionaryOptions<DocSchema extends StandardSchemaV1 = typeof CouchDoc> = Omit<
   BulkGetOptions<DocSchema>,
   'includeDocs'
 >
@@ -302,17 +261,6 @@ export type BulkGetDictionaryResult<
     ViewRowValidated<DocSchema, StandardSchemaV1, StandardSchemaV1<{ rev: string }>>
   >
 }
-
-export async function bulkGetDictionary(
-  config: CouchConfigInput,
-  ids: Array<string | undefined>
-): Promise<BulkGetDictionaryResult>
-
-export async function bulkGetDictionary<DocSchema extends StandardSchemaV1>(
-  config: CouchConfigInput,
-  ids: Array<string | undefined>,
-  options: Omit<BulkGetDictionaryOptions<DocSchema>, 'includeDocs'>
-): Promise<BulkGetDictionaryResult<DocSchema>>
 
 /**
  * Bulk get documents by IDs and return a dictionary of found and not found documents.
@@ -329,11 +277,11 @@ export async function bulkGetDictionary<DocSchema extends StandardSchemaV1>(
  * @throws {Error<StandardSchemaV1.FailureResult["issues"]>} When the configuration or validation schemas fail to parse.
  * @throws {Error} When CouchDB returns a non-retryable error payload.
  */
-export async function bulkGetDictionary<DocSchema extends StandardSchemaV1>(
+export async function bulkGetDictionary<DocSchema extends StandardSchemaV1 = typeof CouchDoc>(
   config: CouchConfigInput,
   ids: Array<string | undefined>,
   options?: Omit<BulkGetDictionaryOptions<DocSchema>, 'includeDocs'>
-) {
+): Promise<BulkGetDictionaryResult<DocSchema>> {
   const response = await bulkGet(config, ids, {
     includeDocs: true,
     ...options
@@ -370,9 +318,8 @@ export async function bulkGetDictionary<DocSchema extends StandardSchemaV1>(
 }
 
 export type BulkGetDictionaryBound = {
-  (ids: string[]): Promise<BulkGetDictionaryResult>
   <DocSchema extends StandardSchemaV1 = typeof CouchDoc>(
     ids: string[],
-    options: BulkGetOptions<DocSchema>
+    options: BulkGetDictionaryOptions<DocSchema>
   ): Promise<BulkGetDictionaryResult<DocSchema>>
 }

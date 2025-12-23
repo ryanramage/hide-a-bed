@@ -92,7 +92,7 @@ function doBind(config: CouchConfig) {
   // Create the object without the config property first
   const result = {
     /**
-     * These functions use overloaded signatures
+     * These functions use overloaded signatures when bound.
      * To preserve the overloads we need dedicated Bound types
      */
     bulkGet: getBoundWithRetry<BulkGetBound>(bulkGet, config),
