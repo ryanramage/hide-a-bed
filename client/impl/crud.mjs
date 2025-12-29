@@ -67,7 +67,8 @@ export const getAtRev = CouchGetAtRev.implement(async (config, id, rev) => {
 /** @type { import('../schema/crud.mjs').CouchPutSchema } */
 export const put = CouchPut.implement(async (config, doc) => {
   const logger = createLogger(config)
-  const url = `${config.couch}/${doc._id}`
+  const encodedId = encodeURIComponent(doc._id)
+  const url = `${config.couch}/${encodedId}`
   const body = doc
   const opts = {
     json: true,
