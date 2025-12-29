@@ -15,37 +15,70 @@ const config = {
 }
 
 let server
-test.test('full db tests', async t => {
+test.test('full db tests', async (t) => {
   console.log('Starting PouchDB Server...')
-  server = spawn('node_modules/.bin/pouchdb-server', ['--in-memory', '--port', PORT.toString()], { stdio: 'inherit' })
+  server = spawn(
+    'node_modules/.bin/pouchdb-server',
+    ['--in-memory', '--port', PORT.toString()],
+    { stdio: 'inherit' }
+  )
   await new Promise((resolve) => setTimeout(resolve, 1000)) // Give it time to start
   await needle('put', DB_URL)
   console.log('PouchDB Server started and database created at', DB_URL)
-  t.teardown(() => { server.kill() })
+  t.teardown(() => {
+    server.kill()
+  })
 
   const db = bindConfig(config)
-  t.test('simple get/put', async t => {
+  t.test('simple get/put', async (t) => {
     const doc = await db.put({ _id: 'testdoc', data: 'hello world' })
     t.ok(doc.ok, 'Document created')
     const fetched = await db.get('testdoc')
     t.equal(fetched.data, 'hello world', 'Fetched document matches')
     t.end()
   })
-  t.test('get with no document', async t => {
+  t.test('get/put with slash in id', async (t) => {
+    const id = 'email|areaFarm/area-farm-no-recipients|test@domain.com|1234'
+    const doc = await db.put({ _id: id, data: 'slash id works' })
+    t.ok(doc.ok, 'Document created')
+
+    const fetched = await db.get(id)
+    t.equal(fetched._id, id, 'Fetched document id matches')
+    t.equal(fetched.data, 'slash id works', 'Fetched document matches')
+    t.end()
+  })
+  t.test('remove with slash in id', async (t) => {
+    const id =
+      'email|areaFarm/area-farm-no-recipients|robertom@redmantech.com|delete-1234'
+    await db.put({ _id: id, data: 'to be deleted' })
+
+    const fetched = await db.get(id)
+    t.ok(fetched, 'Document exists')
+
+    const deleteResult = await db.remove(id, fetched._rev)
+    t.ok(deleteResult.ok, 'Document deleted')
+
+    const after = await db.get(id)
+    t.equal(after, null, 'Document no longer exists')
+    t.end()
+  })
+  t.test('get with no document', async (t) => {
     const notThereDoc = await get(config, 'testdoc-not-there')
     t.equal(notThereDoc, null)
     t.end()
   })
-  t.test('override config with different options', async t => {
+  t.test('override config with different options', async (t) => {
     try {
-      await db.options({ throwOnGetNotFound: true }).get('testdoc-not-there-override')
+      await db
+        .options({ throwOnGetNotFound: true })
+        .get('testdoc-not-there-override')
       t.fail('should have thrown')
     } catch (e) {
       t.equal(e.name, 'NotFoundError')
       t.end()
     }
   })
-  t.test('get with no document and throwOnGetNotFound', async t => {
+  t.test('get with no document and throwOnGetNotFound', async (t) => {
     const _config = { couch: DB_URL, throwOnGetNotFound: true }
     try {
       await get(_config, 'testdoc-not-there')
@@ -56,7 +89,7 @@ test.test('full db tests', async t => {
       t.end()
     }
   })
-  t.test('put with bad rev', async t => {
+  t.test('put with bad rev', async (t) => {
     const doc = { _id: 'notThereDoc', _rev: '32-does-not-compute' }
     const notThereDoc = await db.put(doc)
     t.notOk(notThereDoc.ok)
@@ -64,7 +97,7 @@ test.test('full db tests', async t => {
     console.log(notThereDoc)
     t.end()
   })
-  t.test('bulk get, including one doc that does not exist', async t => {
+  t.test('bulk get, including one doc that does not exist', async (t) => {
     const results = await db.bulkGet(['testdoc', 'notThereDoc'])
     t.equal(results.rows.length, 2, 'two rows returned')
     t.equal(results.rows[0].id, 'testdoc')
@@ -73,7 +106,7 @@ test.test('full db tests', async t => {
     t.end()
   })
   let _rev
-  t.test('a transaction', async t => {
+  t.test('a transaction', async (t) => {
     const docs = [{ _id: 'a', data: 'somethig' }]
     const resp = await bulkSaveTransaction(config, 'fsda', docs)
     t.equal(resp.length, 1, 'one response')
@@ -82,9 +115,12 @@ test.test('full db tests', async t => {
     t.ok(resp)
     t.end()
   })
-  t.test('a transaction with a bad initial rev', async t => {
+  t.test('a transaction with a bad initial rev', async (t) => {
     try {
-      const docs = [{ _id: 'a', data: 'somethig' }, { _id: 'b', data: 'new doc' }]
+      const docs = [
+        { _id: 'a', data: 'somethig' },
+        { _id: 'b', data: 'new doc' }
+      ]
       await bulkSaveTransaction(config, 'fsda-1', docs)
       t.fail('should have thrown')
     } catch (e) {
@@ -93,8 +129,11 @@ test.test('full db tests', async t => {
     }
   })
   let brev = null
-  t.test('a new and an existing doc', async t => {
-    const docs = [{ _id: 'a', data: 'somethig', _rev }, { _id: 'b', data: 'new doc' }]
+  t.test('a new and an existing doc', async (t) => {
+    const docs = [
+      { _id: 'a', data: 'somethig', _rev },
+      { _id: 'b', data: 'new doc' }
+    ]
     const resp = await bulkSaveTransaction(config, 'fsda-2', docs)
     t.ok(resp)
     t.equal(resp.length, 2, 'one response')
@@ -106,41 +145,52 @@ test.test('full db tests', async t => {
     t.end()
   })
 
-  t.test('testing a rollback were one doc was interfered with in the transaction', async t => {
-    const _config = config
-    _config.mockDelay = 3000
-    const emitter = new TrackedEmitter({ delay: 300 })
-    config._emitter = emitter
-    const docs = [
-      { _id: 'a', data: 'before-rollback', _rev }, // this doc gets interfered with in-between commit - so will be 'interfered'
-      { _id: 'rollback2', data: 'new doc' }, // this doc will get removed
-      { _id: 'b', _rev: brev, data: 'should-not-be' } // this will not be committed. result will be from b doc above 'new doc'
-    ]
-    emitter.on('transaction-started', async txnDoc => {
-      t.equal(txnDoc._id, 'txn:fsda-3', 'transaction id matches')
-      // lets change something!
-      docs[0].data = 'interfered'
-      const interferResp = await db.put(docs[0])
-      t.ok(interferResp.ok, 'interfered with the transaction')
-    })
-    try {
-      await bulkSaveTransaction(_config, 'fsda-3', docs)
-      t.fail('should have thrown')
-    } catch (e) {
-      t.ok(e)
-      console.log(e)
-      t.equal(e.name, 'TransactionRollbackError', 'correct error type thrown')
+  t.test(
+    'testing a rollback were one doc was interfered with in the transaction',
+    async (t) => {
+      const _config = config
+      _config.mockDelay = 3000
+      const emitter = new TrackedEmitter({ delay: 300 })
+      config._emitter = emitter
+      const docs = [
+        { _id: 'a', data: 'before-rollback', _rev }, // this doc gets interfered with in-between commit - so will be 'interfered'
+        { _id: 'rollback2', data: 'new doc' }, // this doc will get removed
+        { _id: 'b', _rev: brev, data: 'should-not-be' } // this will not be committed. result will be from b doc above 'new doc'
+      ]
+      emitter.on('transaction-started', async (txnDoc) => {
+        t.equal(txnDoc._id, 'txn:fsda-3', 'transaction id matches')
+        // lets change something!
+        docs[0].data = 'interfered'
+        const interferResp = await db.put(docs[0])
+        t.ok(interferResp.ok, 'interfered with the transaction')
+      })
+      try {
+        await bulkSaveTransaction(_config, 'fsda-3', docs)
+        t.fail('should have thrown')
+      } catch (e) {
+        t.ok(e)
+        console.log(e)
+        t.equal(
+          e.name,
+          'TransactionRollbackError',
+          'correct error type thrown'
+        )
 
-      // lets make sure doc a has data from before, and
-      const finalDocs = await db.bulkGet(['a', 'rollback2', 'b'])
-      t.equal(finalDocs.rows.length, 3, 'two rows returned')
-      t.equal(finalDocs.rows[0].doc.data, 'interfered', 'doc has the intereferd data')
-      t.notOk(finalDocs.rows[1].doc, 'doc b was deleted, and not saved')
-      t.equal(finalDocs.rows[2].doc.data, 'new doc', 'doc b was rolled back')
-      t.end()
+        // lets make sure doc a has data from before, and
+        const finalDocs = await db.bulkGet(['a', 'rollback2', 'b'])
+        t.equal(finalDocs.rows.length, 3, 'two rows returned')
+        t.equal(
+          finalDocs.rows[0].doc.data,
+          'interfered',
+          'doc has the intereferd data'
+        )
+        t.notOk(finalDocs.rows[1].doc, 'doc b was deleted, and not saved')
+        t.equal(finalDocs.rows[2].doc.data, 'new doc', 'doc b was rolled back')
+        t.end()
+      }
     }
-  })
-  t.test('TransactionVersionConflictError test', async t => {
+  )
+  t.test('TransactionVersionConflictError test', async (t) => {
     // First create a doc
     await db.put({ _id: 'conflict-test', data: 'original' })
     // Then try to update it with wrong rev
@@ -150,32 +200,47 @@ test.test('full db tests', async t => {
       ])
       t.fail('should have thrown TransactionVersionConflictError')
     } catch (e) {
-      t.equal(e.name, 'TransactionVersionConflictError', 'correct error type thrown')
-      t.same(e.conflictingIds, ['conflict-test'], 'includes conflicting doc ids')
+      t.equal(
+        e.name,
+        'TransactionVersionConflictError',
+        'correct error type thrown'
+      )
+      t.same(
+        e.conflictingIds,
+        ['conflict-test'],
+        'includes conflicting doc ids'
+      )
       t.end()
     }
   })
-  t.test('TransactionVersionConflictError test 2, new doc with _rev', async t => {
-    try {
-      // Try to update a doc that doesn't exist with a rev
-      await bulkSaveTransaction(config, 'bulk-error', [
-        { _id: 'nonexistent', _rev: '1-abc', data: 'test' }
-      ])
-      t.fail('should have thrown TransactionVersionConflictError')
-    } catch (e) {
-      t.equal(e.name, 'TransactionVersionConflictError', 'correct error type thrown')
-      t.end()
+  t.test(
+    'TransactionVersionConflictError test 2, new doc with _rev',
+    async (t) => {
+      try {
+        // Try to update a doc that doesn't exist with a rev
+        await bulkSaveTransaction(config, 'bulk-error', [
+          { _id: 'nonexistent', _rev: '1-abc', data: 'test' }
+        ])
+        t.fail('should have thrown TransactionVersionConflictError')
+      } catch (e) {
+        t.equal(
+          e.name,
+          'TransactionVersionConflictError',
+          'correct error type thrown'
+        )
+        t.end()
+      }
     }
-  })
+  )
 
-  t.test('locking tests', async t => {
+  t.test('locking tests', async (t) => {
     const lockOptions = {
       enableLocking: true,
       username: 'testUser'
     }
 
     // Test successful lock creation
-    t.test('create lock', async t => {
+    t.test('create lock', async (t) => {
       const locked = await db.createLock('doc-to-lock', lockOptions)
       t.ok(locked, 'Lock was created successfully')
 
@@ -189,14 +254,14 @@ test.test('full db tests', async t => {
     })
 
     // Test lock conflict
-    t.test('lock conflict', async t => {
+    t.test('lock conflict', async (t) => {
       const locked = await db.createLock('doc-to-lock', lockOptions)
       t.notOk(locked, 'Second lock attempt failed')
       t.end()
     })
 
     // Test unlock
-    t.test('unlock document', async t => {
+    t.test('unlock document', async (t) => {
       await db.removeLock('doc-to-lock', lockOptions)
       const lockDoc = await db.get('lock-doc-to-lock')
       t.notOk(lockDoc, 'Lock document was removed')
@@ -204,7 +269,7 @@ test.test('full db tests', async t => {
     })
 
     // Test unlock by different user
-    t.test('unlock by different user', async t => {
+    t.test('unlock by different user', async (t) => {
       // Create lock as testUser
       await db.createLock('doc-to-lock', lockOptions)
 
@@ -218,12 +283,16 @@ test.test('full db tests', async t => {
       // Verify lock still exists
       const lockDoc = await db.get('lock-doc-to-lock')
       t.ok(lockDoc, 'Lock still exists')
-      t.equal(lockDoc.lockedBy, 'testUser', 'Lock still owned by original user')
+      t.equal(
+        lockDoc.lockedBy,
+        'testUser',
+        'Lock still owned by original user'
+      )
       t.end()
     })
 
     // Test with locking disabled
-    t.test('disabled locking', async t => {
+    t.test('disabled locking', async (t) => {
       const disabledOptions = {
         ...lockOptions,
         enableLocking: false
@@ -236,21 +305,21 @@ test.test('full db tests', async t => {
       t.end()
     })
 
-    t.test('empty keys on bulkGet', async t => {
+    t.test('empty keys on bulkGet', async (t) => {
       const results = await db.bulkGet([])
       console.log(results)
       t.same(results.rows, [], 'empty array returns empty object')
       t.end()
     })
 
-    t.test('get db info', async t => {
+    t.test('get db info', async (t) => {
       const results = await db.getDBInfo()
       t.ok(results)
       t.equal(results.db_name, 'testdb')
       t.end()
     })
   })
-  t.test('bulkRemove', async t => {
+  t.test('bulkRemove', async (t) => {
     const results = await db.bulkRemove(['test-doc-never51'])
     t.ok(results)
     t.equal(results.length, 0) // not an actual doc
@@ -262,7 +331,7 @@ test.test('full db tests', async t => {
     t.equal(results2.length, 1)
     t.end()
   })
-  t.test('bulkRemoveMap', async t => {
+  t.test('bulkRemoveMap', async (t) => {
     const results = await db.bulkRemoveMap(['test-doc-never52'])
     t.ok(results)
     t.equal(results.length, 0) // not an actual doc
@@ -274,7 +343,7 @@ test.test('full db tests', async t => {
     t.equal(results2.length, 1)
     t.end()
   })
-  t.test('bulk save', async t => {
+  t.test('bulk save', async (t) => {
     // make sure docs with no id are accepted
     const docs = [{ first: true }, { _id: 'bbbbb', second: true }]
     const results = await db.bulkSave(docs)
@@ -283,22 +352,35 @@ test.test('full db tests', async t => {
     t.equal(results[1].id, 'bbbbb', 'id matches')
     t.end()
   })
-  t.test('a view query with only keys', async t => {
-    const docs = [{ _id: 'query-1' }, { _id: 'query-2', included: true }, { _id: 'query-3' }]
+  t.test('a view query with only keys', async (t) => {
+    const docs = [
+      { _id: 'query-1' },
+      { _id: 'query-2', included: true },
+      { _id: 'query-3' }
+    ]
     // create a view
-    await db.put({ _id: '_design/test', views: { test: { map: 'function(doc) { if (!doc.included) return; emit(doc._id, null); }' } } })
+    await db.put({
+      _id: '_design/test',
+      views: {
+        test: {
+          map: 'function(doc) { if (!doc.included) return; emit(doc._id, null); }'
+        }
+      }
+    })
     await db.bulkSave(docs)
-    const queryResults = await db.query('_design/test/_view/test', { keys: ['query-2'] })
+    const queryResults = await db.query('_design/test/_view/test', {
+      keys: ['query-2']
+    })
     t.equal(queryResults.rows.length, 1, 'one row returned')
     t.equal(queryResults.rows[0].key, 'query-2', 'key matches')
     t.end()
   })
-  t.test('all docs query', async t => {
-    const queryresults = await db.query('_all_docs', { })
+  t.test('all docs query', async (t) => {
+    const queryresults = await db.query('_all_docs', {})
     t.ok(queryresults.rows)
     t.end()
   })
-  t.test('not found doc', async t => {
+  t.test('not found doc', async (t) => {
     // should not throw
     const notFound = await db.get('never-51st')
     console.log('found status', notFound)
