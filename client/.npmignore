@@ -6,11 +6,12 @@ build/
 .github/
 .gitignore
 .DS_Store
-*.test.mjs
-*.spec.mjs
+**/*.test.mts
+**/*.spec.mts
 test/
 tests/
 coverage/
 .nyc_output/
 .vscode/
 .idea/
+docs/
