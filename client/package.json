@@ -1,6 +1,6 @@
 {
   "name": "hide-a-bed",
-  "version": "6.0.0-beta.0",
+  "version": "6.0.0",
   "description": "An abstraction over couchdb calls that includes easy mock/stubs with pouchdb",
   "type": "module",
   "main": "./dist/cjs/index.cjs",
@@ -67,6 +67,9 @@
     "typedoc": "0.28.15",
     "typescript": "5.9.3",
     "typescript-eslint": "8.50.1"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org"
   },
   "volta": {
     "node": "24.12.0",
