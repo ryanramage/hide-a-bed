@@ -1,26 +1,21 @@
 import assert from 'node:assert/strict'
 import test, { suite } from 'node:test'
-import needle from 'needle'
 import type { CouchConfigInput } from '../schema/config.mts'
 import { z } from 'zod'
 import { RetryableError } from './utils/errors.mts'
 import { bulkGet, bulkGetDictionary } from './bulkGet.mts'
 import { TEST_DB_URL } from '../test/setup-db.mts'
+import { putJson } from '../test/http.mts'
 
 const config: CouchConfigInput = {
   couch: TEST_DB_URL
 }
 
 async function ensureDoc(id: string, body: Record<string, unknown>) {
-  await needle(
-    'put',
-    `${TEST_DB_URL}/${id}`,
-    {
-      _id: id,
-      ...body
-    },
-    { json: true }
-  )
+  await putJson(`${TEST_DB_URL}/${id}`, {
+    _id: id,
+    ...body
+  })
 }
 
 suite('bulkGet', () => {

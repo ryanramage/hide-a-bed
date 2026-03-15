@@ -1,6 +1,4 @@
-import needle from 'needle'
 import { createLogger } from './utils/logger.mts'
-import { mergeNeedleOpts } from './utils/mergeNeedleOpts.mts'
 import { bulkGetDictionary } from './bulkGet.mts'
 import { setupEmitter } from './utils/trackedEmitter.mts'
 import {
@@ -14,10 +12,11 @@ import {
   CouchDoc,
   type CouchDocInput
 } from '../schema/couch/couch.output.schema.ts'
-import type { CouchConfigInput } from '../schema/config.mts'
+import { CouchConfig, type CouchConfigInput } from '../schema/config.mts'
 import { RetryableError } from './utils/errors.mts'
 import { withRetry } from './retry.mts'
 import { put } from './put.mts'
+import { fetchCouchJson } from './utils/fetch.mts'
 
 /**
  * Bulk saves documents to CouchDB using the _bulk_docs endpoint.
@@ -33,7 +32,8 @@ import { put } from './put.mts'
  * @throws {Error} When CouchDB returns a non-retryable error payload.
  */
 export const bulkSave = async (config: CouchConfigInput, docs: CouchDocInput[]) => {
-  const logger = createLogger(config)
+  const parsedConfig = CouchConfig.parse(config)
+  const logger = createLogger(parsedConfig)
 
   if (docs == null || !docs.length) {
     logger.error('bulkSave called with no docs')
@@ -41,18 +41,16 @@ export const bulkSave = async (config: CouchConfigInput, docs: CouchDocInput[]) 
   }
 
   logger.info(`Starting bulk save of ${docs.length} documents`)
-  const url = `${config.couch}/_bulk_docs`
+  const url = `${parsedConfig.couch}/_bulk_docs`
   const body = { docs }
-  const opts = {
-    json: true,
-    headers: {
-      'Content-Type': 'application/json'
-    }
-  }
-  const mergedOpts = mergeNeedleOpts(config, opts)
   let resp
   try {
-    resp = await needle('post', url, body, mergedOpts)
+    resp = await fetchCouchJson({
+      auth: parsedConfig.auth,
+      method: 'POST',
+      url,
+      body
+    })
   } catch (err) {
     logger.error('Network error during bulk save:', err)
     RetryableError.handleNetworkError(err)

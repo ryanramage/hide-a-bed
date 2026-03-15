@@ -1,5 +1,5 @@
 /**
- * Represents a network-level error emitted by Node.js or libraries such as `needle`.
+ * Represents a network-level error emitted by Node.js or HTTP client libraries.
  *
  * @public
  */
@@ -13,6 +13,10 @@ export interface NetworkError {
    * Optional human-readable message supplied by the underlying library.
    */
   message?: string
+}
+
+type ErrorWithCause = {
+  cause?: unknown
 }
 
 const RETRYABLE_STATUS_CODES = new Set([408, 429, 500, 502, 503, 504])
@@ -34,6 +38,21 @@ const isNetworkError = (value: unknown): value is NetworkError & { code: Network
   if (typeof value !== 'object' || value === null) return false
   const candidate = value as { code?: unknown }
   return typeof candidate.code === 'string' && candidate.code in NETWORK_ERROR_STATUS_MAP
+}
+
+const getNestedNetworkError = (
+  value: unknown
+): (NetworkError & { code: NetworkErrorCode }) | null => {
+  if (isNetworkError(value)) {
+    return value
+  }
+
+  if (typeof value !== 'object' || value === null) {
+    return null
+  }
+
+  const candidate = value as ErrorWithCause
+  return isNetworkError(candidate.cause) ? candidate.cause : null
 }
 
 /**
@@ -112,10 +131,12 @@ export class RetryableError extends Error {
    * @throws {*} Re-throws the original error when it cannot be mapped.
    */
   static handleNetworkError(err: unknown): never {
-    if (isNetworkError(err)) {
-      const statusCode = NETWORK_ERROR_STATUS_MAP[err.code]
+    const networkError = getNestedNetworkError(err)
+
+    if (networkError) {
+      const statusCode = NETWORK_ERROR_STATUS_MAP[networkError.code]
       if (statusCode) {
-        throw new RetryableError(`Network error: ${err.code}`, statusCode)
+        throw new RetryableError(`Network error: ${networkError.code}`, statusCode)
       }
     }
 

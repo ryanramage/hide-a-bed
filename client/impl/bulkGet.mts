@@ -1,7 +1,5 @@
-import needle from 'needle'
 import { CouchConfig, type CouchConfigInput } from '../schema/config.mts'
 import { createLogger } from './utils/logger.mts'
-import { mergeNeedleOpts } from './utils/mergeNeedleOpts.mts'
 import { RetryableError } from './utils/errors.mts'
 import {
   ViewQueryResponse,
@@ -11,6 +9,13 @@ import {
 } from '../schema/couch/couch.output.schema.ts'
 import type { StandardSchemaV1 } from '../types/standard-schema.ts'
 import { parseRows, type OnInvalidDocAction } from './utils/parseRows.mts'
+import { fetchCouchJson } from './utils/fetch.mts'
+
+type BulkGetBody = {
+  error?: string
+  reason?: string
+  rows?: unknown[]
+} & Record<string, unknown>
 
 export type BulkGetResponse<DocSchema extends StandardSchemaV1 = StandardSchemaV1<CouchDoc>> =
   ViewQueryResponseValidated<
@@ -45,7 +50,7 @@ async function executeBulkGet(
   _config: CouchConfigInput,
   ids: Array<string | undefined>,
   includeDocs: boolean
-) {
+): Promise<BulkGetBody | undefined> {
   const configParseResult = CouchConfig.safeParse(_config)
   const logger = createLogger(_config)
   logger.info(`Starting bulk get for ${ids.length} documents`)
@@ -58,16 +63,14 @@ async function executeBulkGet(
   const config = configParseResult.data
   const url = `${config.couch}/_all_docs${includeDocs ? '?include_docs=true' : ''}`
   const payload = { keys: ids }
-  const opts = {
-    json: true,
-    headers: {
-      'Content-Type': 'application/json'
-    }
-  }
-  const mergedOpts = mergeNeedleOpts(config, opts)
 
   try {
-    const resp = await needle('post', url, payload, mergedOpts)
+    const resp = await fetchCouchJson<BulkGetBody>({
+      auth: config.auth,
+      method: 'POST',
+      url,
+      body: payload
+    })
     if (RetryableError.isRetryableStatusCode(resp.statusCode)) {
       logger.warn(`Retryable status code received: ${resp.statusCode}`)
       throw new RetryableError('retryable error during bulk get', resp.statusCode)

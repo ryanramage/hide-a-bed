@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict'
 import test, { suite } from 'node:test'
-import needle from 'needle'
 import type { CouchConfigInput } from '../schema/config.mts'
 import { bulkRemove, bulkRemoveMap } from './bulkRemove.mts'
 import { TEST_DB_URL } from '../test/setup-db.mts'
+import { getJson, putJson } from '../test/http.mts'
 
 const config: CouchConfigInput = {
   couch: TEST_DB_URL
@@ -12,25 +12,20 @@ const config: CouchConfigInput = {
 type DocBody = Record<string, unknown>
 
 async function saveDoc(id: string, body: DocBody) {
-  const response = await needle(
-    'put',
-    `${TEST_DB_URL}/${id}`,
-    {
-      _id: id,
-      ...body
-    },
-    { json: true }
-  )
+  const response = await putJson<{ rev: string }>(`${TEST_DB_URL}/${id}`, {
+    _id: id,
+    ...body
+  })
 
   if (response.statusCode !== 201 && response.statusCode !== 200) {
     throw new Error(`Failed to save document ${id}: ${response.statusCode}`)
   }
 
-  return response.body as { rev: string }
+  return response.body
 }
 
 async function getDoc(id: string) {
-  return needle('get', `${TEST_DB_URL}/${id}`, null, { json: true })
+  return getJson(`${TEST_DB_URL}/${id}`)
 }
 
 suite('bulkRemove', () => {

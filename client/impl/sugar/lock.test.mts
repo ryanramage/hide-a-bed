@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict'
 import test, { suite } from 'node:test'
-import needle from 'needle'
 import type { CouchConfigInput } from '../../schema/config.mts'
 import { createLock, removeLock } from './lock.mts'
 import { TEST_DB_URL } from '../../test/setup-db.mts'
+import { getJson } from '../../test/http.mts'
 
 const baseConfig: CouchConfigInput = {
   couch: TEST_DB_URL,
@@ -11,9 +11,7 @@ const baseConfig: CouchConfigInput = {
 }
 
 async function fetchLockDoc(docId: string) {
-  return await needle('get', `${TEST_DB_URL}/lock-${docId}`, null, {
-    json: true
-  })
+  return getJson(`${TEST_DB_URL}/lock-${docId}`)
 }
 
 suite('lock', () => {

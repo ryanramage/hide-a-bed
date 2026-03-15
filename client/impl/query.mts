@@ -1,15 +1,20 @@
-import needle, { type BodyData, type NeedleHttpVerbs } from 'needle'
 import { createLogger } from './utils/logger.mts'
 
 import { CouchConfig, type CouchConfigInput } from '../schema/config.mts'
 import { z, ZodAny, ZodNever } from 'zod'
 import { queryString } from './utils/queryString.mts'
-import { mergeNeedleOpts } from './utils/mergeNeedleOpts.mts'
 import { RetryableError } from './utils/errors.mts'
 import { ViewOptions, type ViewString } from '../schema/couch/couch.input.schema.ts'
 import type { CouchDoc, ViewQueryResponseValidated } from '../schema/couch/couch.output.schema.ts'
 import type { StandardSchemaV1 } from '../types/standard-schema.ts'
 import { parseRows, type OnInvalidDocAction } from './utils/parseRows.mts'
+import { fetchCouchJson } from './utils/fetch.mts'
+
+type QueryBody = {
+  error?: string
+  reason?: string
+  rows?: unknown[]
+} & Record<string, unknown>
 
 export async function query<
   DocSchema extends StandardSchemaV1 = typeof CouchDoc,
@@ -103,17 +108,8 @@ export async function query<
   const config = configParseResult.data
 
   let qs = queryString(options)
-  let method: NeedleHttpVerbs = 'get'
-  let payload: BodyData = null
-
-  const opts = {
-    json: true,
-    headers: {
-      'Content-Type': 'application/json'
-    }
-  }
-
-  const mergedOpts = mergeNeedleOpts(config, opts)
+  let method: 'GET' | 'POST' = 'GET'
+  let payload: Record<string, unknown> | null = null
 
   // If keys are supplied, issue a POST to circumvent GET query string limits
   // see http://wiki.apache.org/couchdb/HTTP_view_API#Querying_Options
@@ -131,12 +127,12 @@ export async function query<
     if (keysAsString.length + qs.length + 1 <= MAX_URL_LENGTH) {
       // If the keys are short enough, do a GET. we do this to work around
       // Safari not understanding 304s on POSTs (see pouchdb/pouchdb#1239)
-      method = 'get'
+      method = 'GET'
       if (qs.length > 0) qs += '&'
       else qs = ''
       qs += keysAsString
     } else {
-      method = 'post'
+      method = 'POST'
       payload = { keys: options.keys }
     }
   }
@@ -147,10 +143,12 @@ export async function query<
 
   try {
     logger.debug(`Sending ${method} request to: ${url}`)
-    results =
-      method === 'get'
-        ? await needle('get', url, mergedOpts)
-        : await needle('post', url, payload, mergedOpts)
+    results = await fetchCouchJson<QueryBody>({
+      auth: config.auth,
+      method,
+      url,
+      body: method === 'POST' ? payload : undefined
+    })
   } catch (err) {
     logger.error('Network error during query:', err)
     RetryableError.handleNetworkError(err)
@@ -181,7 +179,7 @@ export async function query<
   logger.info(`Successfully executed view query: ${view}`)
   logger.debug('Query response:', body)
 
-  return body
+  return body as ViewQueryResponseValidated<DocSchema, KeySchema, ValueSchema>
 }
 
 export type QueryBound = {

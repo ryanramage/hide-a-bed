@@ -1,9 +1,9 @@
-import needle, { type NeedleResponse } from 'needle'
 import { RetryableError } from './utils/errors.mts'
 import { createLogger } from './utils/logger.mts'
-import { mergeNeedleOpts } from './utils/mergeNeedleOpts.mts'
 import { CouchConfig, type CouchConfigInput } from '../schema/config.mts'
 import { CouchDBInfo } from '../schema/couch/couch.output.schema.ts'
+import { fetchCouchJson } from './utils/fetch.mts'
+import { getReason } from './utils/response.mts'
 
 /**
  * Fetches and returns CouchDB database information.
@@ -35,18 +35,13 @@ export const getDBInfo = async (configInput: CouchConfigInput) => {
   const logger = createLogger(config)
   const url = `${config.couch}`
 
-  let resp: NeedleResponse | undefined
+  let resp
   try {
-    resp = await needle(
-      'get',
-      url,
-      mergeNeedleOpts(config, {
-        json: true,
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      })
-    )
+    resp = await fetchCouchJson({
+      auth: config.auth,
+      method: 'GET',
+      url
+    })
   } catch (err) {
     logger.error('Error during get operation:', err)
     RetryableError.handleNetworkError(err)
@@ -57,11 +52,11 @@ export const getDBInfo = async (configInput: CouchConfigInput) => {
     throw new RetryableError('no response', 503)
   }
 
-  const result = resp.body
   if (RetryableError.isRetryableStatusCode(resp.statusCode)) {
     logger.warn(`Retryable status code received: ${resp.statusCode}`)
-    throw new RetryableError(result.reason ?? 'retryable error', resp.statusCode)
+    const reason = getReason(resp.body, 'retryable error')
+    throw new RetryableError(reason, resp.statusCode)
   }
 
-  return CouchDBInfo.parse(result)
+  return CouchDBInfo.parse(resp.body)
 }

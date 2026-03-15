@@ -1,11 +1,11 @@
-import needle from 'needle'
 import { z } from 'zod'
 import type { CouchConfigInput } from '../schema/config.mts'
 import { createLogger } from './utils/logger.mts'
-import { mergeNeedleOpts } from './utils/mergeNeedleOpts.mts'
 import { RetryableError, NotFoundError } from './utils/errors.mts'
 import type { StandardSchemaV1 } from '../types/standard-schema.ts'
 import { CouchDoc } from '../schema/couch/couch.output.schema.ts'
+import { fetchCouchJson } from './utils/fetch.mts'
+import { getReason } from './utils/response.mts'
 
 export type GetOptions<DocSchema extends StandardSchemaV1> = {
   validate?: {
@@ -50,19 +50,14 @@ async function _getWithOptions<DocSchema extends StandardSchemaV1>(
   const rev = parsedOptions.rev
   const path = rev ? `${id}?rev=${rev}` : id
   const url = `${config.couch}/${path}`
-
-  const httpOptions = {
-    json: true,
-    headers: {
-      'Content-Type': 'application/json'
-    }
-  }
-
-  const requestOptions = mergeNeedleOpts(config, httpOptions)
   logger.info(`Getting document with id: ${id}, rev ${rev ?? 'latest'}`)
 
   try {
-    const resp = await needle('get', url, null, requestOptions)
+    const resp = await fetchCouchJson({
+      auth: config.auth,
+      method: 'GET',
+      url
+    })
     if (!resp) {
       logger.error('No response received from get request')
       throw new RetryableError('no response', 503)
@@ -72,7 +67,7 @@ async function _getWithOptions<DocSchema extends StandardSchemaV1>(
 
     if (resp.statusCode === 404) {
       if (config.throwOnGetNotFound) {
-        const reason = typeof body?.reason === 'string' ? body.reason : 'not_found'
+        const reason = getReason(body, 'not_found')
         logger.warn(`Document not found (throwing error): ${id}, rev ${rev ?? 'latest'}`)
         throw new NotFoundError(id, reason)
       }
@@ -82,13 +77,13 @@ async function _getWithOptions<DocSchema extends StandardSchemaV1>(
     }
 
     if (RetryableError.isRetryableStatusCode(resp.statusCode)) {
-      const reason = typeof body?.reason === 'string' ? body.reason : 'retryable error'
+      const reason = getReason(body, 'retryable error')
       logger.warn(`Retryable status code received: ${resp.statusCode}`)
       throw new RetryableError(reason, resp.statusCode)
     }
 
     if (resp.statusCode !== 200) {
-      const reason = typeof body?.reason === 'string' ? body.reason : 'failed'
+      const reason = getReason(body, 'failed')
       logger.error(`Unexpected status code: ${resp.statusCode}`)
       throw new Error(reason)
     }

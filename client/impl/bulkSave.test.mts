@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict'
 import test, { suite } from 'node:test'
-import needle from 'needle'
 import type { CouchConfigInput } from '../schema/config.mts'
 import { bulkSave, bulkSaveTransaction } from './bulkSave.mts'
 import { RetryableError } from './utils/errors.mts'
@@ -9,6 +8,7 @@ import {
   TransactionVersionConflictError
 } from './utils/transactionErrors.mts'
 import { TEST_DB_URL } from '../test/setup-db.mts'
+import { getJson, putJson } from '../test/http.mts'
 
 const baseConfig: CouchConfigInput = {
   couch: TEST_DB_URL,
@@ -46,17 +46,17 @@ function createTestEmitter() {
 }
 
 async function saveDoc(dbUrl: string, id: string, body: Record<string, unknown>) {
-  const response = await needle('put', `${dbUrl}/${id}`, { _id: id, ...body }, { json: true })
+  const response = await putJson<{ rev: string }>(`${dbUrl}/${id}`, { _id: id, ...body })
 
   if (response.statusCode !== 201 && response.statusCode !== 200) {
     throw new Error(`Failed to save document ${id}: ${response.statusCode}`)
   }
 
-  return response.body as { rev: string }
+  return response.body
 }
 
 async function getDocFrom(dbUrl: string, id: string) {
-  return needle('get', `${dbUrl}/${id}`, null, { json: true })
+  return getJson(`${dbUrl}/${id}`)
 }
 
 async function getDoc(id: string) {
@@ -274,17 +274,12 @@ suite('bulkSaveTransaction', () => {
       })
 
       emitter.on('transaction-revs-checked', async () => {
-        await needle(
-          'put',
-          `${TEST_DB_URL}/${conflictId}`,
-          {
-            _id: conflictId,
-            _rev: conflicting.rev,
-            type: 'rollback',
-            count: 99
-          },
-          { json: true }
-        )
+        await putJson(`${TEST_DB_URL}/${conflictId}`, {
+          _id: conflictId,
+          _rev: conflicting.rev,
+          type: 'rollback',
+          count: 99
+        })
       })
 
       await assert.rejects(

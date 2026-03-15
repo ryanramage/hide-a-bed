@@ -35,9 +35,21 @@ const { get, put, query } = require('hide-a-bed')
 ### Config
 
 Anywhere you see a config, it is an object with the following setup
-`{ couch: 'https://username:pass@the.couch.url.com:5984' }`
+`{ couch: 'https://the.couch.url.com:5984' }`
 And it is passed in as the first argument of all the functions
 `const doc = await get(config, 'doc-123')`
+
+If your CouchDB requires basic auth, pass `auth` on the config:
+
+```javascript
+const config = {
+  couch: 'https://the.couch.url.com:5984/mydb',
+  auth: {
+    username: process.env.COUCHDB_USER,
+    password: process.env.COUCHDB_PASSWORD
+  }
+}
+```
 
 See [Advanced Config Options](#advanced-config-options) for more advanced settings.
 
@@ -632,7 +644,7 @@ feed.on('error', console.error)
 feed.stop()
 ```
 
-`hide-a-bed-changes` reuses the same config structure, merges `config.needleOpts`, and resolves `since: 'now'` to the current `update_seq` before starting the feed.
+`hide-a-bed-changes` reuses the same config structure and resolves `since: 'now'` to the current `update_seq` before starting the feed.
 
 #### watchDocs ()
 
@@ -703,6 +715,7 @@ The config object supports the following properties:
 | Property           | Type            | Default   | Description                                                             |
 | ------------------ | --------------- | --------- | ----------------------------------------------------------------------- |
 | couch              | string          | required  | The URL of the CouchDB database                                         |
+| auth               | object          | undefined | Basic auth credentials for CouchDB requests                             |
 | throwOnGetNotFound | boolean         | false     | If true, throws an error when get() returns 404. If false, returns null |
 | bindWithRetry      | boolean         | true      | When using bindConfig(), adds retry logic to bound methods              |
 | maxRetries         | number          | 3         | Maximum number of retry attempts for retryable operations               |
@@ -716,6 +729,10 @@ Example configuration with all options:
 ```javascript
 const config = {
   couch: 'http://localhost:5984/mydb',
+  auth: {
+    username: process.env.COUCHDB_USER,
+    password: process.env.COUCHDB_PASSWORD
+  },
   throwOnGetNotFound: true,
   bindWithRetry: true,
   maxRetries: 5,
@@ -725,6 +742,10 @@ const config = {
   logger: (level, ...args) => console.log(level, ...args)
 }
 ```
+
+### Migration Note
+
+`needleOpts` has been removed from the main `client` package. If you were passing transport-specific `needle` options through `config.needleOpts`, remove that configuration when upgrading. If you used `needleOpts.username` or `needleOpts.password`, move them to `config.auth.username` and `config.auth.password`. Couch URLs with embedded credentials are no longer supported and will fail validation. The package now uses native `fetch` internally and only supports the documented top-level config fields above.
 
 ### Logging Support
 

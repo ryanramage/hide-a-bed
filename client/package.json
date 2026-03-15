@@ -1,6 +1,6 @@
 {
   "name": "hide-a-bed",
-  "version": "6.0.0",
+  "version": "7.0.0-beta.0",
   "description": "An abstraction over couchdb calls that includes easy mock/stubs with pouchdb",
   "type": "module",
   "main": "./dist/cjs/index.cjs",
@@ -50,14 +50,12 @@
   },
   "homepage": "https://github.com/ryanramage/hide-a-bed#readme",
   "dependencies": {
-    "needle": "3.3.1",
     "stream-chain": "3.4.0",
     "stream-json": "1.9.1",
     "zod": "4.2.1"
   },
   "devDependencies": {
     "@eslint/js": "9.39.2",
-    "@types/needle": "3.3.0",
     "@types/node": "22.19.3",
     "@types/stream-json": "1.7.8",
     "eslint": "9.39.2",

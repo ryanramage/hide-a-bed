@@ -17,7 +17,7 @@ suite('CouchConfig', () => {
     assert.strictEqual(parsed.useConsoleLogger, false)
   })
 
-  test('accepts object logger and needle options', () => {
+  test('accepts object logger', () => {
     const logger = {
       error: () => {},
       warn: () => {},
@@ -27,13 +27,7 @@ suite('CouchConfig', () => {
 
     const parsed = CouchConfig.parse({
       couch: 'http://localhost:5984',
-      logger,
-      needleOpts: {
-        timeout: 1234,
-        headers: {
-          authorization: 'Bearer token'
-        }
-      }
+      logger
     })
 
     assert.ok(parsed.logger)
@@ -45,10 +39,6 @@ suite('CouchConfig', () => {
     assert.strictEqual(typeof parsed.logger.warn, 'function')
     assert.strictEqual(typeof parsed.logger.info, 'function')
     assert.strictEqual(typeof parsed.logger.debug, 'function')
-    assert.strictEqual(parsed.needleOpts?.timeout, 1234)
-    assert.deepStrictEqual(parsed.needleOpts?.headers, {
-      authorization: 'Bearer token'
-    })
   })
 
   test('accepts function logger and internal emitter', () => {
@@ -63,6 +53,29 @@ suite('CouchConfig', () => {
 
     assert.strictEqual(typeof parsed.logger, 'function')
     assert.strictEqual(parsed['~emitter'], emitter)
+  })
+
+  test('accepts auth credentials', () => {
+    const parsed = CouchConfig.parse({
+      couch: 'http://localhost:5984',
+      auth: {
+        username: 'alice',
+        password: 'secret'
+      }
+    })
+
+    assert.deepStrictEqual(parsed.auth, {
+      username: 'alice',
+      password: 'secret'
+    })
+  })
+
+  test('rejects couch URLs with embedded credentials', () => {
+    assert.throws(() => {
+      CouchConfig.parse({
+        couch: 'http://alice:secret@localhost:5984/mydb'
+      })
+    })
   })
 
   test('rejects unknown keys', () => {
@@ -81,5 +94,16 @@ suite('CouchConfig', () => {
         )
       }
     )
+  })
+
+  test('rejects removed needle options', () => {
+    assert.throws(() => {
+      CouchConfig.parse({
+        couch: 'http://localhost:5984',
+        needleOpts: {
+          timeout: 1234
+        }
+      })
+    })
   })
 })
