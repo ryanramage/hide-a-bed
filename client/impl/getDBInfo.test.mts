@@ -3,7 +3,7 @@ import { createServer } from 'node:http'
 import test, { suite } from 'node:test'
 import type { CouchConfigInput } from '../schema/config.mts'
 import { getDBInfo } from './getDBInfo.mts'
-import { RetryableError } from './utils/errors.mts'
+import { OperationError, RetryableError } from './utils/errors.mts'
 import { TEST_DB_URL } from '../test/setup-db.mts'
 
 suite('getDBInfo', () => {
@@ -47,9 +47,34 @@ suite('getDBInfo', () => {
       (err: unknown) => {
         assert.ok(err instanceof RetryableError)
         assert.strictEqual(err.statusCode, 503)
-        assert.strictEqual(err.message, 'maintenance')
+        assert.strictEqual(err.message, 'Failed to fetch database info')
         return true
       }
+    )
+  })
+
+  test('throws OperationError for non-retryable response failures', async t => {
+    const port = 8994
+    const server = createServer((_req, res) => {
+      res.statusCode = 403
+      res.setHeader('Content-Type', 'application/json')
+      res.end(JSON.stringify({ error: 'forbidden', reason: 'no access' }))
+    })
+
+    await new Promise<void>(resolve => {
+      server.listen(port, resolve)
+    })
+    t.after(() => {
+      server.close()
+    })
+
+    await assert.rejects(
+      () => getDBInfo({ couch: `http://localhost:${port}/forbidden` }),
+      (err: unknown) =>
+        err instanceof OperationError &&
+        err.statusCode === 403 &&
+        err.message === 'Failed to fetch database info' &&
+        err.couchError === 'forbidden'
     )
   })
 

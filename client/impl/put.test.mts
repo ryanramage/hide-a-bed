@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test, { suite } from 'node:test'
 import type { CouchConfigInput } from '../schema/config.mts'
 import { put } from './put.mts'
-import { RetryableError } from './utils/errors.mts'
+import { ConflictError, RetryableError } from './utils/errors.mts'
 import { TEST_DB_URL } from '../test/setup-db.mts'
 import { getJson, putJson } from '../test/http.mts'
 
@@ -86,7 +86,7 @@ suite('put', () => {
       initialRev = updateResult.rev
     })
 
-    await t.test('reports conflicts when revision is stale', async () => {
+    await t.test('throws ConflictError when revision is stale', async () => {
       if (!initialRev) throw new Error('Expected revision to be captured')
       const staleRev = initialRev
       const latest = await saveDoc(put_doc_id, {
@@ -95,16 +95,20 @@ suite('put', () => {
         count: 3
       })
 
-      const result = await put(baseConfig, {
-        _id: put_doc_id,
-        _rev: staleRev,
-        type: 'integration',
-        count: 4
-      })
-      assert.ok(result)
-      assert.strictEqual(result.ok, false)
-      assert.strictEqual(result.error, 'conflict')
-      assert.strictEqual(result.statusCode, 409)
+      await assert.rejects(
+        () =>
+          put(baseConfig, {
+            _id: put_doc_id,
+            _rev: staleRev,
+            type: 'integration',
+            count: 4
+          }),
+        (err: unknown) =>
+          err instanceof ConflictError &&
+          err.docId === put_doc_id &&
+          err.statusCode === 409 &&
+          err.message === 'Document update conflict'
+      )
 
       const { body } = await getDoc(put_doc_id)
       assert.strictEqual(body?.count, 3)

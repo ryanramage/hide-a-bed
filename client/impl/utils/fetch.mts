@@ -29,6 +29,18 @@ export type FetchRequestOptions = {
   body?: FetchBody
   headers?: Record<string, string>
   method: HttpMethod
+  operation?:
+    | 'get'
+    | 'getAtRev'
+    | 'getDBInfo'
+    | 'patch'
+    | 'patchDangerously'
+    | 'put'
+    | 'query'
+    | 'queryStream'
+    | 'remove'
+    | 'request'
+    | 'watchDocs'
   request?: RequestOptions
   signal?: AbortSignal
   url: string
@@ -113,18 +125,24 @@ export async function fetchCouchJson<TBody = unknown>(
     })
   } catch (err) {
     if (timedOut() || isTimeoutError(err)) {
-      throw new RetryableError('Request timed out', 503)
+      throw new RetryableError('Request timed out', 503, {
+        category: 'network',
+        cause: err,
+        operation: options.operation
+      })
     }
 
     if (isAbortError(err)) {
       throw err
     }
 
-    RetryableError.handleNetworkError(err)
+    RetryableError.handleNetworkError(err, options.operation)
   }
 
+  const body = (await parseJsonResponse(response)) as TBody
+
   return {
-    body: (await parseJsonResponse(response)) as TBody,
+    body,
     headers: response.headers,
     statusCode: response.status
   }
@@ -147,14 +165,18 @@ export async function fetchCouchStream(
     })
   } catch (err) {
     if (timedOut() || isTimeoutError(err)) {
-      throw new RetryableError('Request timed out', 503)
+      throw new RetryableError('Request timed out', 503, {
+        category: 'network',
+        cause: err,
+        operation: options.operation
+      })
     }
 
     if (isAbortError(err)) {
       throw err
     }
 
-    RetryableError.handleNetworkError(err)
+    RetryableError.handleNetworkError(err, options.operation)
   }
 
   return {

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test, { suite } from 'node:test'
 import type { CouchConfigInput } from '../schema/config.mts'
 import { bulkSave, bulkSaveTransaction } from './bulkSave.mts'
-import { RetryableError } from './utils/errors.mts'
+import { OperationError, RetryableError } from './utils/errors.mts'
 import {
   TransactionRollbackError,
   TransactionVersionConflictError
@@ -74,13 +74,21 @@ suite('bulkSave', () => {
   })
 
   test('throws error if called with no docs', async () => {
-    await assert.rejects(async () => {
-      // @ts-expect-error testing no docs
-      await bulkSave(baseConfig, null)
-    })
-    await assert.rejects(async () => {
-      await bulkSave(baseConfig, [])
-    })
+    await assert.rejects(
+      async () => {
+        // @ts-expect-error testing no docs
+        await bulkSave(baseConfig, null)
+      },
+      (err: unknown) =>
+        err instanceof OperationError && err.message === 'Bulk save requires at least one document'
+    )
+    await assert.rejects(
+      async () => {
+        await bulkSave(baseConfig, [])
+      },
+      (err: unknown) =>
+        err instanceof OperationError && err.message === 'Bulk save requires at least one document'
+    )
   })
 
   test('propagates retryable network failures', async () => {
@@ -91,6 +99,28 @@ suite('bulkSave', () => {
     await assert.rejects(
       () => bulkSave(offlineConfig, [{ _id: 'offline-doc', count: 1 }]),
       (err: unknown) => err instanceof RetryableError && err.statusCode === 503
+    )
+  })
+
+  test('throws OperationError for non-retryable response failures', async t => {
+    const fetchMock = t.mock.method(globalThis, 'fetch', async () => {
+      return new Response(JSON.stringify({ error: 'forbidden', reason: 'blocked' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    })
+
+    t.after(() => {
+      fetchMock.mock.restore()
+    })
+
+    await assert.rejects(
+      () => bulkSave({ couch: 'http://localhost:5984/mock-db' }, [{ _id: 'doc-1' }]),
+      (err: unknown) =>
+        err instanceof OperationError &&
+        err.statusCode === 403 &&
+        err.message === 'Bulk save failed' &&
+        err.couchError === 'forbidden'
     )
   })
 

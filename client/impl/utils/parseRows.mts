@@ -2,6 +2,7 @@
 import { ViewRow } from '../../schema/couch/couch.output.schema.ts'
 import type { StandardSchemaV1 } from '../../types/standard-schema.ts'
 import { z } from 'zod'
+import { OperationError, type ErrorOperation } from './errors.mts'
 
 export type OnInvalidDocAction = 'throw' | 'skip'
 
@@ -12,14 +13,18 @@ export async function parseRows<
 >(
   rows: unknown,
   options: {
+    defaultMessage?: string
     onInvalidDoc?: OnInvalidDocAction
     docSchema?: DocSchema
     keySchema?: KeySchema
+    operation?: ErrorOperation
     valueSchema?: ValueSchema
   }
 ) {
   if (!Array.isArray(rows)) {
-    throw new Error('invalid rows format')
+    throw new OperationError(options.defaultMessage ?? 'Request failed', {
+      operation: options.operation ?? 'request'
+    })
   }
 
   type ParsedRow = {

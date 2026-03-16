@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test, { suite } from 'node:test'
 import { TrackedEmitter } from './impl/utils/trackedEmitter.mts'
-import { bulkSaveTransaction, get } from './index.mts'
+import { ConflictError, bulkSaveTransaction, get } from './index.mts'
 import { bindConfig } from './impl/bindConfig.mts'
 import z from 'zod'
 import { TEST_DB_URL } from './test/setup-db.mts'
@@ -57,10 +57,10 @@ suite('Database Tests', () => {
     })
     await t.test('put with bad rev', async () => {
       const doc = { _id: 'notThereDoc', _rev: '32-does-not-compute' }
-      const notThereDoc = await db.put(doc)
-      assert.ok(!notThereDoc.ok)
-      assert.strictEqual(notThereDoc.error, 'conflict')
-      console.log(notThereDoc)
+      await assert.rejects(
+        () => db.put(doc),
+        (e: unknown) => e instanceof ConflictError && e.statusCode === 409
+      )
     })
     await t.test('bulk get, including one doc that does not exist', async () => {
       const results = await db.bulkGet([test_doc_id, 'notThereDoc'])
@@ -388,9 +388,8 @@ suite('Database Tests', () => {
       assert.ok(query_results.rows)
     })
     await t.test('not found doc', async () => {
-      // should not throw
       const notFound = await db.get('never-51st')
-      console.log('found status', notFound)
+      assert.strictEqual(notFound, null)
     })
 
     await t.test('remove test', async () => {

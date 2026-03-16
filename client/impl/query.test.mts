@@ -7,7 +7,7 @@ import { z } from 'zod'
 import type { CouchConfigInput } from '../schema/config.mts'
 import { TEST_DB_URL } from '../test/setup-db.mts'
 import { query } from './query.mts'
-import { RetryableError } from './utils/errors.mts'
+import { OperationError, RetryableError } from './utils/errors.mts'
 import { putJson } from '../test/http.mts'
 
 const config: CouchConfigInput = {
@@ -270,6 +270,28 @@ suite('query', () => {
     await assert.rejects(
       () => query(offlineConfig, '_all_docs', {}),
       (err: unknown) => err instanceof RetryableError && err.statusCode === 503
+    )
+  })
+
+  test('throws OperationError on non-retryable response failure', async t => {
+    const fetchMock = t.mock.method(globalThis, 'fetch', async () => {
+      return new Response(JSON.stringify({ error: 'forbidden', reason: 'not allowed' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    })
+
+    t.after(() => {
+      fetchMock.mock.restore()
+    })
+
+    await assert.rejects(
+      () => query({ couch: 'http://localhost:5984/mock-db' }, '_all_docs', {}),
+      (err: unknown) =>
+        err instanceof OperationError &&
+        err.statusCode === 403 &&
+        err.message === 'Query failed' &&
+        err.couchError === 'forbidden'
     )
   })
 })

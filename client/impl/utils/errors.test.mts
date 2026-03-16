@@ -1,6 +1,13 @@
 import assert from 'node:assert/strict'
 import test, { suite } from 'node:test'
-import { NotFoundError, RetryableError, isConflictError } from './errors.mts'
+import {
+  ConflictError,
+  NotFoundError,
+  OperationError,
+  RetryableError,
+  createResponseError,
+  isConflictError
+} from './errors.mts'
 
 suite('errors', () => {
   test('NotFoundError exposes docId and message', () => {
@@ -8,11 +15,17 @@ suite('errors', () => {
     assert.strictEqual(err.name, 'NotFoundError')
     assert.strictEqual(err.message, 'Document not found')
     assert.strictEqual(err.docId, 'doc-123')
+    assert.strictEqual(err.statusCode, 404)
+    assert.strictEqual(err.retryable, false)
   })
 
-  test('NotFoundError accepts custom message', () => {
-    const err = new NotFoundError('doc-456', 'missing doc')
-    assert.strictEqual(err.message, 'missing doc')
+  test('ConflictError exposes machine-readable fields', () => {
+    const err = new ConflictError('doc-456', { operation: 'put' })
+    assert.strictEqual(err.message, 'Document update conflict')
+    assert.strictEqual(err.docId, 'doc-456')
+    assert.strictEqual(err.statusCode, 409)
+    assert.strictEqual(err.couchError, 'conflict')
+    assert.strictEqual(err.operation, 'put')
   })
 
   test('RetryableError.isRetryableStatusCode identifies retryable statuses', () => {
@@ -26,11 +39,12 @@ suite('errors', () => {
 
   test('handleNetworkError wraps known network failures', () => {
     assert.throws(
-      () => RetryableError.handleNetworkError({ code: 'ECONNRESET' }),
+      () => RetryableError.handleNetworkError({ code: 'ECONNRESET' }, 'query'),
       (err: unknown) =>
         err instanceof RetryableError &&
         err.statusCode === 503 &&
-        err.message.includes('ECONNRESET')
+        err.message === 'Network request failed' &&
+        err.operation === 'query'
     )
   })
 
@@ -51,8 +65,35 @@ suite('errors', () => {
   })
 
   test('isConflictError detects statusCode 409', () => {
+    assert.strictEqual(isConflictError(new ConflictError('doc-123')), true)
     assert.strictEqual(isConflictError({ statusCode: 409 }), true)
     assert.strictEqual(isConflictError({ statusCode: 412 }), false)
     assert.strictEqual(isConflictError(null), false)
+  })
+
+  test('createResponseError sanitizes retryable and non-retryable errors', () => {
+    const retryable = createResponseError({
+      body: { error: 'maintenance_mode', reason: 'cluster is rebooting' },
+      defaultMessage: 'Query failed',
+      operation: 'query',
+      statusCode: 503
+    })
+    assert.ok(retryable instanceof RetryableError)
+    assert.strictEqual(retryable.message, 'Query failed')
+    assert.strictEqual(retryable.couchError, 'maintenance_mode')
+    assert.strictEqual(retryable.statusCode, 503)
+
+    const operationError = createResponseError({
+      body: { error: 'forbidden', reason: 'validation failed' },
+      defaultMessage: 'Put failed',
+      docId: 'doc-789',
+      operation: 'put',
+      statusCode: 403
+    })
+    assert.ok(operationError instanceof OperationError)
+    assert.strictEqual(operationError.message, 'Put failed')
+    assert.strictEqual(operationError.statusCode, 403)
+    assert.strictEqual(operationError.couchError, 'forbidden')
+    assert.strictEqual(operationError.docId, 'doc-789')
   })
 })

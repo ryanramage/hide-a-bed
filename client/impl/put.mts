@@ -1,10 +1,10 @@
 import { createLogger } from './utils/logger.mts'
-import { RetryableError } from './utils/errors.mts'
+import { ConflictError, RetryableError, createResponseError } from './utils/errors.mts'
 import { CouchConfig, type CouchConfigInput } from '../schema/config.mts'
 import { CouchPutResponse, type CouchDoc } from '../schema/couch/couch.output.schema.ts'
 import { z } from 'zod'
 import { fetchCouchJson } from './utils/fetch.mts'
-import { getReason, isRecord } from './utils/response.mts'
+import { isRecord, isSuccessStatusCode } from './utils/response.mts'
 
 type CouchMutationBody = {
   error?: string
@@ -28,18 +28,19 @@ export const put = async (
     resp = await fetchCouchJson({
       auth: config.auth,
       method: 'PUT',
+      operation: 'put',
       request: config.request,
       url,
       body
     })
   } catch (err) {
     logger.error('Error during put operation:', err)
-    RetryableError.handleNetworkError(err)
+    RetryableError.handleNetworkError(err, 'put')
   }
 
   if (!resp) {
     logger.error('No response received from put request')
-    throw new RetryableError('no response', 503)
+    throw new RetryableError('Put failed', 503, { operation: 'put' })
   }
 
   const result: CouchMutationBody = {
@@ -49,14 +50,22 @@ export const put = async (
 
   if (resp.statusCode === 409) {
     logger.warn(`Conflict detected for document: ${doc._id}`)
-    result.ok = false
-    result.error = 'conflict'
-    return CouchPutResponse.parse(result)
+    throw new ConflictError(doc._id, {
+      couchError: typeof result.error === 'string' ? result.error : undefined,
+      operation: 'put',
+      statusCode: resp.statusCode
+    })
   }
 
-  if (RetryableError.isRetryableStatusCode(resp.statusCode)) {
-    logger.warn(`Retryable status code received: ${resp.statusCode}`)
-    throw new RetryableError(getReason(resp.body, 'retryable error'), resp.statusCode)
+  if (!isSuccessStatusCode('documentWrite', resp.statusCode) || !result.ok) {
+    logger.error(`Unexpected status code: ${resp.statusCode}`)
+    throw createResponseError({
+      body: resp.body,
+      defaultMessage: 'Put failed',
+      docId: doc._id,
+      operation: 'put',
+      statusCode: resp.statusCode
+    })
   }
 
   logger.info(`Successfully saved document: ${doc._id}`)

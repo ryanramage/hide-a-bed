@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test, { suite, type TestContext } from 'node:test'
 import type { CouchConfigInput } from '../../schema/config.mts'
 import { watchDocs } from './watch.mts'
+import { OperationError } from '../utils/errors.mts'
 
 type FetchInput = Parameters<typeof globalThis.fetch>[0]
 type FetchInit = Parameters<typeof globalThis.fetch>[1]
@@ -64,16 +65,32 @@ const mockFetch = (
 
 suite('watchDocs', () => {
   test('requires at least one document id', () => {
-    assert.throws(() => {
-      watchDocs(baseConfig(), [], () => {})
-    }, /non-empty array/)
+    assert.throws(
+      () => {
+        watchDocs(baseConfig(), [], () => {})
+      },
+      (err: unknown) => {
+        assert.ok(err instanceof OperationError)
+        assert.strictEqual(err.message, 'docIds must be a non-empty array')
+        assert.strictEqual(err.operation, 'watchDocs')
+        return true
+      }
+    )
   })
 
   test('rejects more than 100 document ids', () => {
     const ids = Array.from({ length: 101 }, (_, index) => `doc-${index}`)
-    assert.throws(() => {
-      watchDocs(baseConfig(), ids, () => {})
-    }, /100 or fewer elements/)
+    assert.throws(
+      () => {
+        watchDocs(baseConfig(), ids, () => {})
+      },
+      (err: unknown) => {
+        assert.ok(err instanceof OperationError)
+        assert.strictEqual(err.message, 'docIds must be an array of 100 or fewer elements')
+        assert.strictEqual(err.operation, 'watchDocs')
+        return true
+      }
+    )
   })
 
   test('emits change events for streamed chunks', async t => {
@@ -170,7 +187,7 @@ suite('watchDocs', () => {
 
     await waitFor(() => requests.length === 3)
     await waitFor(() => errors.length === 1)
-    assert.strictEqual(errors[0].message, 'Max retries reached')
+    assert.strictEqual(errors[0].message, 'Watch retries exhausted')
 
     watcher.stop()
   })

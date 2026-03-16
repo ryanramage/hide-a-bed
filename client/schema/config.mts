@@ -47,7 +47,7 @@ export const CouchConfig = z
       .boolean()
       .optional()
       .default(false)
-      .describe('if a get is 404 should we throw or return undefined'),
+      .describe('if true, get() throws NotFoundError on 404; otherwise it returns null'),
     useConsoleLogger: z
       .boolean()
       .optional()

@@ -1,24 +1,28 @@
-export class TransactionSetupError extends Error {
+import { OperationError } from './errors.mts'
+
+export class TransactionSetupError extends OperationError {
   details: Record<string, unknown>
 
   constructor(message: string, details: Record<string, unknown> = {}) {
-    super(message)
+    super(message, { category: 'transaction' })
     this.name = 'TransactionSetupError'
     this.details = details
   }
 }
 
-export class TransactionVersionConflictError extends Error {
+export class TransactionVersionConflictError extends OperationError {
   conflictingIds: string[]
 
   constructor(conflictingIds: string[]) {
-    super(`Revision mismatch for documents: ${conflictingIds.join(', ')}`)
+    super(`Revision mismatch for documents: ${conflictingIds.join(', ')}`, {
+      category: 'transaction'
+    })
     this.name = 'TransactionVersionConflictError'
     this.conflictingIds = conflictingIds
   }
 }
 
-export class TransactionBulkOperationError extends Error {
+export class TransactionBulkOperationError extends OperationError {
   failedDocs: {
     ok?: boolean | null
     id?: string | null
@@ -36,13 +40,15 @@ export class TransactionBulkOperationError extends Error {
       reason?: string | null
     }>
   ) {
-    super(`Failed to save documents: ${failedDocs.map(d => d.id).join(', ')}`)
+    super(`Failed to save documents: ${failedDocs.map(d => d.id).join(', ')}`, {
+      category: 'transaction'
+    })
     this.name = 'TransactionBulkOperationError'
     this.failedDocs = failedDocs
   }
 }
 
-export class TransactionRollbackError extends Error {
+export class TransactionRollbackError extends OperationError {
   originalError: Error
   rollbackResults: {
     ok?: boolean | null
@@ -63,7 +69,7 @@ export class TransactionRollbackError extends Error {
       reason?: string | null
     }>
   ) {
-    super(message)
+    super(message, { category: 'transaction' })
     this.name = 'TransactionRollbackError'
     this.originalError = originalError
     this.rollbackResults = rollbackResults

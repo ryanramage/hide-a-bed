@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test, { suite } from 'node:test'
 import type { CouchConfigInput } from '../schema/config.mts'
 import { remove } from './remove.mts'
-import { RetryableError } from './utils/errors.mts'
+import { NotFoundError, RetryableError } from './utils/errors.mts'
 import { TEST_DB_URL } from '../test/setup-db.mts'
 import { getJson, putJson } from '../test/http.mts'
 
@@ -56,11 +56,15 @@ suite('remove', () => {
       assert.strictEqual(body?.error, 'not_found')
     })
 
-    await t.test('returns not found metadata when document is missing', async () => {
-      const result = await remove(baseConfig, 'remove-doc-missing', '1-missing')
-      assert.strictEqual(result.ok, false)
-      assert.strictEqual(result.error, 'not_found')
-      assert.strictEqual(result.statusCode, 404)
+    await t.test('throws NotFoundError when document is missing', async () => {
+      await assert.rejects(
+        () => remove(baseConfig, 'remove-doc-missing', '1-missing'),
+        (err: unknown) =>
+          err instanceof NotFoundError &&
+          err.docId === 'remove-doc-missing' &&
+          err.statusCode === 404 &&
+          err.message === 'Document not found'
+      )
     })
 
     await t.test('propagates retryable network errors', async () => {

@@ -1,12 +1,19 @@
 import { EventEmitter } from 'events'
-import { RetryableError } from '../utils/errors.mts'
+import { OperationError, RetryableError, createResponseError } from '../utils/errors.mts'
 import { createLogger } from '../utils/logger.mts'
 import { WatchOptions, type WatchOptionsInput } from '../../schema/sugar/watch.mts'
 import { setTimeout } from 'node:timers/promises'
 import { CouchConfig, type CouchConfigInput } from '../../schema/config.mts'
 import { fetchCouchStream } from '../utils/fetch.mts'
+import { isSuccessStatusCode } from '../utils/response.mts'
 
-type WatchListener = (...args: Array<unknown>) => void
+export type WatchListener = (...args: Array<unknown>) => void
+
+export type WatchHandle = {
+  on: (event: string, listener: WatchListener) => EventEmitter
+  removeListener: (event: string, listener: WatchListener) => EventEmitter
+  stop: () => void
+}
 
 /**
  * Watch for changes to specified document IDs in CouchDB.
@@ -26,7 +33,7 @@ export function watchDocs(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onChange: (change: any) => void,
   optionsInput: WatchOptionsInput = {}
-) {
+): WatchHandle {
   const config = CouchConfig.parse(configInput)
   const options = WatchOptions.parse(optionsInput)
   const logger = createLogger(config)
@@ -43,8 +50,16 @@ export function watchDocs(
   const maxDelay = options.maxDelay || 30000
 
   const _docIds = Array.isArray(docIds) ? docIds : [docIds]
-  if (_docIds.length === 0) throw new Error('docIds must be a non-empty array')
-  if (_docIds.length > 100) throw new Error('docIds must be an array of 100 or fewer elements')
+  if (_docIds.length === 0) {
+    throw new OperationError('docIds must be a non-empty array', {
+      operation: 'watchDocs'
+    })
+  }
+  if (_docIds.length > 100) {
+    throw new OperationError('docIds must be an array of 100 or fewer elements', {
+      operation: 'watchDocs'
+    })
+  }
 
   const emitStopEnd = () => {
     if (stopEndEmitted) return
@@ -98,6 +113,7 @@ export function watchDocs(
       const response = await fetchCouchStream({
         auth: config.auth,
         method: 'GET',
+        operation: 'watchDocs',
         url,
         headers: {
           'Content-Type': 'application/json'
@@ -116,15 +132,22 @@ export function watchDocs(
         return
       }
 
-      if (response.statusCode !== 200) {
-        emitter.emit('error', new Error(`Unexpected status code: ${response.statusCode}`))
+      if (!isSuccessStatusCode('changesFeed', response.statusCode)) {
+        emitter.emit(
+          'error',
+          createResponseError({
+            defaultMessage: 'Watch request failed',
+            operation: 'watchDocs',
+            statusCode: response.statusCode
+          })
+        )
         return
       }
 
       retryCount = 0
 
       if (!response.body) {
-        throw new RetryableError('no response', 503)
+        throw new RetryableError('Watch request failed', 503, { operation: 'watchDocs' })
       }
 
       const reader = response.body.getReader()
@@ -164,7 +187,7 @@ export function watchDocs(
 
       logger.error(`Network error during stream, watching [${_docIds}]:`, String(err))
       try {
-        RetryableError.handleNetworkError(err)
+        RetryableError.handleNetworkError(err, 'watchDocs')
       } catch (filteredError) {
         if (filteredError instanceof RetryableError) {
           logger.info(`Retryable error, watching [${_docIds}]:`, filteredError.toString())
@@ -181,7 +204,12 @@ export function watchDocs(
     if (stopping || retryCount >= maxRetries) {
       if (retryCount >= maxRetries) {
         logger.error(`Max retries (${maxRetries}) reached, giving up`)
-        emitter.emit('error', new Error('Max retries reached'))
+        emitter.emit(
+          'error',
+          new OperationError('Watch retries exhausted', {
+            operation: 'watchDocs'
+          })
+        )
       }
       return
     }

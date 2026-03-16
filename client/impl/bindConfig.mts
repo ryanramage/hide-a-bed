@@ -20,7 +20,34 @@ import { remove } from './remove.mts'
 import { createLock, removeLock } from './sugar/lock.mts'
 import { watchDocs } from './sugar/watch.mts'
 
-export type BoundInstance = ReturnType<typeof doBind> & {
+type BoundConfigMethod<T> = T extends (...args: infer Args) => infer Result
+  ? Args extends [unknown, ...infer Rest]
+    ? (...args: Rest) => Result
+    : never
+  : never
+
+type BoundMethods = {
+  bulkGet: BulkGetBound
+  bulkGetDictionary: BulkGetDictionaryBound
+  get: GetBound
+  getAtRev: GetAtRevBound
+  query: QueryBound
+  bulkRemove: BoundConfigMethod<typeof bulkRemove>
+  bulkRemoveMap: BoundConfigMethod<typeof bulkRemoveMap>
+  bulkSave: BoundConfigMethod<typeof bulkSave>
+  bulkSaveTransaction: BoundConfigMethod<typeof bulkSaveTransaction>
+  getDBInfo: BoundConfigMethod<typeof getDBInfo>
+  patch: BoundConfigMethod<typeof patch>
+  patchDangerously: BoundConfigMethod<typeof patchDangerously>
+  put: BoundConfigMethod<typeof put>
+  queryStream: BoundConfigMethod<typeof queryStream>
+  remove: BoundConfigMethod<typeof remove>
+  createLock: BoundConfigMethod<typeof createLock>
+  removeLock: BoundConfigMethod<typeof removeLock>
+  watchDocs: BoundConfigMethod<typeof watchDocs>
+}
+
+export type BoundInstance = BoundMethods & {
   options(overrides: Partial<z.input<typeof CouchConfig>>): BoundInstance
 }
 
@@ -81,7 +108,7 @@ export function getBoundWithRetry<
  * @param config The CouchDB configuration
  * @returns An object with CouchDB operations bound to the provided configuration
  */
-function doBind(config: CouchConfig) {
+function doBind(config: CouchConfig): BoundMethods {
   // Default retry options
   const retryOptions = {
     maxRetries: config.maxRetries ?? 10,
@@ -90,7 +117,7 @@ function doBind(config: CouchConfig) {
   }
 
   // Create the object without the config property first
-  const result = {
+  const result: BoundMethods = {
     /**
      * These functions use overloaded signatures when bound.
      * To preserve the overloads we need dedicated Bound types

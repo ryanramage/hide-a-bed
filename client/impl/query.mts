@@ -3,12 +3,13 @@ import { createLogger } from './utils/logger.mts'
 import { CouchConfig, type CouchConfigInput } from '../schema/config.mts'
 import { z, ZodAny, ZodNever } from 'zod'
 import { queryString } from './utils/queryString.mts'
-import { RetryableError } from './utils/errors.mts'
+import { RetryableError, createResponseError } from './utils/errors.mts'
 import { ViewOptions, type ViewString } from '../schema/couch/couch.input.schema.ts'
 import type { CouchDoc, ViewQueryResponseValidated } from '../schema/couch/couch.output.schema.ts'
 import type { StandardSchemaV1 } from '../types/standard-schema.ts'
 import { parseRows, type OnInvalidDocAction } from './utils/parseRows.mts'
 import { fetchCouchJson } from './utils/fetch.mts'
+import { isSuccessStatusCode } from './utils/response.mts'
 
 type QueryBody = {
   error?: string
@@ -101,7 +102,7 @@ export async function query(
  *
  * @throws {RetryableError} When a retryable HTTP status code is encountered or no response is received.
  * @throws {Error<Array<StandardSchemaV1.Issue>>} When the configuration or validation schemas fail to parse.
- * @throws {Error} When CouchDB returns a non-retryable error payload.
+ * @throws {OperationError} When CouchDB returns a non-retryable response or malformed row payload.
  */
 export async function query<
   DocSchema extends StandardSchemaV1,
@@ -162,36 +163,46 @@ export async function query<
     results = await fetchCouchJson<QueryBody>({
       auth: config.auth,
       method,
+      operation: 'query',
       request: config.request,
       url,
       body: method === 'POST' ? payload : undefined
     })
   } catch (err) {
     logger.error('Network error during query:', err)
-    RetryableError.handleNetworkError(err)
+    RetryableError.handleNetworkError(err, 'query')
   }
 
   if (!results) {
     logger.error('No response received from query request')
-    throw new RetryableError('no response', 503)
+    throw new RetryableError('Query failed', 503, { operation: 'query' })
   }
 
   const body = results.body
 
-  if (RetryableError.isRetryableStatusCode(results.statusCode)) {
-    logger.warn(`Retryable status code received: ${results.statusCode}`)
-    throw new RetryableError(body.error || 'retryable error during query', results.statusCode)
-  }
+  if (!isSuccessStatusCode('viewQuery', results.statusCode) || body.error) {
+    if (body.error) {
+      logger.error(`Query error: ${JSON.stringify(body)}`)
+    } else {
+      logger.error(`Unexpected status code: ${results.statusCode}`)
+    }
 
-  if (body.error) {
-    logger.error(`Query error: ${JSON.stringify(body)}`)
-    throw new Error(`CouchDB query error: ${body.error} - ${body.reason || ''}`)
+    throw createResponseError({
+      body,
+      defaultMessage: 'Query failed',
+      operation: 'query',
+      statusCode: results.statusCode
+    })
   }
 
   // If validation schemas are provided, validate each row accordingly
   const rows: ViewQueryResponseValidated<DocSchema, KeySchema, ValueSchema>['rows'] =
     options.validate && body.rows
-      ? await parseRows<DocSchema, KeySchema, ValueSchema>(body.rows, options.validate)
+      ? await parseRows<DocSchema, KeySchema, ValueSchema>(body.rows, {
+          ...options.validate,
+          defaultMessage: 'Query failed',
+          operation: 'query'
+        })
       : ((body.rows ?? []) as ViewQueryResponseValidated<DocSchema, KeySchema, ValueSchema>['rows'])
 
   logger.info(`Successfully executed view query: ${view}`)

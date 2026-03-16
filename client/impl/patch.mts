@@ -4,6 +4,7 @@ import { createLogger } from './utils/logger.mts'
 import { setTimeout } from 'node:timers/promises'
 import { CouchConfig, type CouchConfigInput } from '../schema/config.mts'
 import { z } from 'zod'
+import { ConflictError, HideABedError, OperationError, RetryableError } from './utils/errors.mts'
 
 const PatchProperties = z
   .looseObject({
@@ -20,7 +21,10 @@ const PatchProperties = z
  * @param _properties - Properties to merge into the document (must include _rev)
  * @returns The result of the put operation
  *
- * @throws Error if the _rev does not match or other errors occur
+ * @throws {ConflictError} When the supplied `_rev` does not match the current document revision.
+ * @throws {NotFoundError} When the document does not exist.
+ * @throws {RetryableError} When a retryable transport or HTTP failure occurs while reading or saving.
+ * @throws {OperationError} When a non-retryable operational failure occurs.
  */
 export const patch = async (
   configInput: CouchConfigInput,
@@ -33,13 +37,15 @@ export const patch = async (
 
   logger.info(`Starting patch operation for document ${id}`)
   logger.debug('Patch properties:', properties)
-  const doc = await get(config, id)
-  if (doc?._rev !== properties._rev) {
-    return {
-      statusCode: 409,
-      ok: false,
-      error: 'conflict'
-    }
+  const doc = await get({ ...config, throwOnGetNotFound: true }, id)
+  if (!doc) {
+    throw new OperationError('Patch failed', {
+      docId: id,
+      operation: 'patch'
+    })
+  }
+  if (doc._rev !== properties._rev) {
+    throw new ConflictError(id, { operation: 'patch' })
   }
 
   const updatedDoc = { ...doc, ...properties }
@@ -60,7 +66,9 @@ export const patch = async (
  * @param properties - Properties to merge into the document
  * @returns The result of the put operation or an error if max retries are exceeded
  *
- * @throws Error if max retries are exceeded or other errors occur
+ * @throws {NotFoundError} When the document does not exist.
+ * @throws {RetryableError} When a retryable transport or HTTP failure occurs before retries are exhausted.
+ * @throws {OperationError} When retries are exhausted or a non-retryable operational failure occurs.
  */
 export const patchDangerously = async (
   configInput: CouchConfigInput,
@@ -75,60 +83,56 @@ export const patchDangerously = async (
 
   logger.info(`Starting patch operation for document ${id}`)
   logger.debug('Patch properties:', properties)
+  let lastError: unknown
 
   while (attempts <= maxRetries) {
     logger.debug(`Attempt ${attempts + 1} of ${maxRetries + 1}`)
     try {
-      const doc = await get(config, id)
+      const doc = await get({ ...config, throwOnGetNotFound: true }, id)
       if (!doc) {
-        logger.warn(`Document ${id} not found`)
-        return { ok: false, statusCode: 404, error: 'not_found' }
+        throw new OperationError('Patch failed', {
+          docId: id,
+          operation: 'patchDangerously'
+        })
       }
-
       const updatedDoc = { ...doc, ...properties }
       logger.debug('Merged document:', updatedDoc)
 
       const result = await put(config, updatedDoc)
-
-      // Check if the response indicates a conflict
-      if (result.ok) {
-        logger.info(`Successfully patched document ${id}, rev: ${result.rev}`)
-        return result
-      }
-
-      // If not ok, treat as conflict and retry
-      attempts++
-      if (attempts > maxRetries) {
-        logger.error(`Failed to patch ${id} after ${maxRetries} attempts`)
-        throw new Error(`Failed to patch after ${maxRetries} attempts`)
-      }
-
-      logger.warn(`Conflict detected for ${id}, retrying (attempt ${attempts})`)
-      await setTimeout(delay)
-      delay *= config.backoffFactor || 2
-      logger.debug(`Next retry delay: ${delay}ms`)
+      logger.info(`Successfully patched document ${id}, rev: ${result.rev}`)
+      return result
     } catch (err) {
-      if (
-        typeof err === 'object' &&
-        err !== null &&
-        'message' in err &&
-        err.message === 'not_found'
-      ) {
-        logger.warn(`Document ${id} not found during patch operation`)
-        return { ok: false, statusCode: 404, error: 'not_found' }
+      if (!(err instanceof Error)) {
+        throw err
       }
 
-      // Handle other errors (network, etc)
+      if (!(err instanceof ConflictError) && !(err instanceof RetryableError)) {
+        throw err
+      }
+
+      lastError = err
       attempts++
       if (attempts > maxRetries) {
-        const error = `Failed to patch after ${maxRetries} attempts: ${err}`
-        logger.error(error)
-        return { ok: false, statusCode: 500, error }
+        logger.error(`Failed to patch ${id} after ${maxRetries} attempts`, err)
+        throw new OperationError('Patch failed', {
+          cause: err,
+          couchError: err instanceof HideABedError ? err.couchError : undefined,
+          docId: id,
+          operation: 'patchDangerously',
+          statusCode: err instanceof HideABedError ? err.statusCode : undefined
+        })
       }
 
       logger.warn(`Error during patch attempt ${attempts}: ${err}`)
       await setTimeout(delay)
+      delay *= config.backoffFactor || 2
       logger.debug(`Retrying after ${delay}ms`)
     }
   }
+
+  throw new OperationError('Patch failed', {
+    cause: lastError,
+    docId: id,
+    operation: 'patchDangerously'
+  })
 }

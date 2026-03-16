@@ -4,13 +4,14 @@ import Parser from 'stream-json/Parser.js'
 import Pick from 'stream-json/filters/Pick.js'
 import StreamArray from 'stream-json/streamers/StreamArray.js'
 import { CouchConfig, type CouchConfigInput } from '../schema/config.mts'
-import { RetryableError } from './utils/errors.mts'
+import { OperationError, RetryableError, createResponseError } from './utils/errors.mts'
 import { createLogger } from './utils/logger.mts'
 import { queryString } from './utils/queryString.mts'
 import type { ViewRow } from '../schema/couch/couch.output.schema.ts'
 import { ViewOptions } from '../schema/couch/couch.input.schema.ts'
 import { fetchCouchStream } from './utils/fetch.mts'
 import type { ReadableStream } from 'node:stream/web'
+import { isSuccessStatusCode } from './utils/response.mts'
 
 type StreamArrayChunk<Row> = {
   key: number
@@ -116,7 +117,12 @@ export async function queryStream(
       parserPipeline.on('error', (err: Error) => {
         logger.error('Stream parsing error:', err)
         parserPipeline.destroy()
-        settleReject(new Error(`Stream parsing error: ${err.message}`, { cause: err }))
+        settleReject(
+          new OperationError('Stream parsing failed', {
+            cause: err,
+            operation: 'queryStream'
+          })
+        )
       })
 
       parserPipeline.on('end', () => {
@@ -128,6 +134,7 @@ export async function queryStream(
         const response = await fetchCouchStream({
           auth: config.auth,
           method,
+          operation: 'queryStream',
           url,
           body: method === 'POST' ? payload : undefined,
           headers: requestHeaders,
@@ -141,19 +148,27 @@ export async function queryStream(
           logger.warn(`Retryable status code received: ${response.statusCode}`)
           abortController.abort()
           settleReject(
-            new RetryableError('retryable error during stream query', response.statusCode)
+            new RetryableError('Stream query failed', response.statusCode, {
+              operation: 'queryStream'
+            })
           )
           return
         }
 
-        if (response.statusCode !== 200) {
+        if (!isSuccessStatusCode('viewStream', response.statusCode)) {
           abortController.abort()
-          settleReject(new Error(`could not fetch (status ${response.statusCode})`))
+          settleReject(
+            createResponseError({
+              defaultMessage: 'Stream query failed',
+              operation: 'queryStream',
+              statusCode: response.statusCode
+            })
+          )
           return
         }
 
         if (!response.body) {
-          settleReject(new RetryableError('no response', 503))
+          settleReject(new RetryableError('Stream query failed', 503, { operation: 'queryStream' }))
           return
         }
 
@@ -163,12 +178,10 @@ export async function queryStream(
           logger.error('Network error during stream query:', err)
           parserPipeline.destroy(err as Error)
           try {
-            RetryableError.handleNetworkError(err)
+            RetryableError.handleNetworkError(err, 'queryStream')
           } catch (retryErr) {
             settleReject(retryErr)
             return
-          } finally {
-            settleReject(err)
           }
         })
 
@@ -177,12 +190,10 @@ export async function queryStream(
         logger.error('Network error during stream query:', err)
         parserPipeline.destroy(err as Error)
         try {
-          RetryableError.handleNetworkError(err)
+          RetryableError.handleNetworkError(err, 'queryStream')
         } catch (retryErr) {
           settleReject(retryErr)
           return
-        } finally {
-          settleReject(err)
         }
       }
     })()

@@ -1,10 +1,5 @@
 {
-  "exclude": [
-    "node_modules",
-    "dist",
-    "types/output",
-    "docs"
-  ],
+  "exclude": ["node_modules", "dist", "types/output", "docs"],
   "compilerOptions": {
     "module": "nodenext",
     "target": "es2024",

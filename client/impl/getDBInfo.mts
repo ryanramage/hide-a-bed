@@ -1,9 +1,9 @@
-import { RetryableError } from './utils/errors.mts'
+import { RetryableError, createResponseError } from './utils/errors.mts'
 import { createLogger } from './utils/logger.mts'
 import { CouchConfig, type CouchConfigInput } from '../schema/config.mts'
 import { CouchDBInfo } from '../schema/couch/couch.output.schema.ts'
 import { fetchCouchJson } from './utils/fetch.mts'
-import { getReason } from './utils/response.mts'
+import { isSuccessStatusCode } from './utils/response.mts'
 
 /**
  * Fetches and returns CouchDB database information.
@@ -13,7 +13,7 @@ import { getReason } from './utils/response.mts'
  * @param configInput - The CouchDB configuration input.
  * @returns A promise that resolves to the CouchDB database information.
  * @throws {RetryableError} `RetryableError` If a retryable error occurs during the request.
- * @throws {Error} `Error` For other non-retryable errors.
+ * @throws {OperationError} `OperationError` For other non-retryable response failures.
  *
  * @example
  * ```ts
@@ -40,37 +40,29 @@ export const getDBInfo = async (configInput: CouchConfigInput) => {
     resp = await fetchCouchJson({
       auth: config.auth,
       method: 'GET',
+      operation: 'getDBInfo',
       request: config.request,
       url
     })
 
-    if (resp.statusCode < 200 || resp.statusCode >= 300) {
-      if (RetryableError.isRetryableStatusCode(resp.statusCode)) {
-        logger.warn(`Retryable status code received: ${resp.statusCode}`)
-        const reason = getReason(resp.body, 'retryable error')
-        throw new RetryableError(reason, resp.statusCode)
-      } else {
-        logger.error(`Non-retryable status code received: ${resp.statusCode}`)
-        const reason = getReason(resp.body, 'error fetching database info')
-        throw new Error(reason)
-      }
+    if (!isSuccessStatusCode('database', resp.statusCode)) {
+      logger.error(`Non-success status code received: ${resp.statusCode}`)
+      throw createResponseError({
+        body: resp.body,
+        defaultMessage: 'Failed to fetch database info',
+        operation: 'getDBInfo',
+        statusCode: resp.statusCode
+      })
     }
   } catch (err) {
     logger.error('Error during get operation:', err)
-    RetryableError.handleNetworkError(err)
+    RetryableError.handleNetworkError(err, 'getDBInfo')
   }
 
   if (!resp) {
     logger.error('No response received from get request')
-    throw new RetryableError('no response', 503)
+    throw new RetryableError('Failed to fetch database info', 503, { operation: 'getDBInfo' })
   }
 
-  if (RetryableError.isRetryableStatusCode(resp.statusCode)) {
-    logger.warn(`Retryable status code received: ${resp.statusCode}`)
-    const reason = getReason(resp.body, 'retryable error')
-    throw new RetryableError(reason, resp.statusCode)
-  }
-
-  debugger
   return CouchDBInfo.parse(resp.body)
 }

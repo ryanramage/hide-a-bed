@@ -61,20 +61,26 @@ suite('get', () => {
       )
     })
 
-    await t.test('returns null when not found by default', async () => {
+    await t.test('returns null when document is missing by default', async () => {
       const missing = await get(baseConfig, 'doc-missing')
       assert.strictEqual(missing, null)
     })
 
     await t.test('throws NotFoundError when configured', async () => {
-      const strictConfig: CouchConfigInput = {
-        ...baseConfig,
-        throwOnGetNotFound: true
-      }
-
       await assert.rejects(
-        () => get(strictConfig, 'doc-missing'),
-        (err: unknown) => err instanceof NotFoundError && err.docId === 'doc-missing'
+        () =>
+          get(
+            {
+              ...baseConfig,
+              throwOnGetNotFound: true
+            },
+            'doc-missing'
+          ),
+        (err: unknown) =>
+          err instanceof NotFoundError &&
+          err.docId === 'doc-missing' &&
+          err.statusCode === 404 &&
+          err.message === 'Document not found'
       )
     })
 

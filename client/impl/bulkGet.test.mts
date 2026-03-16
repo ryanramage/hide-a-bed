@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test, { suite } from 'node:test'
 import type { CouchConfigInput } from '../schema/config.mts'
 import { z } from 'zod'
-import { RetryableError } from './utils/errors.mts'
+import { OperationError, RetryableError } from './utils/errors.mts'
 import { bulkGet, bulkGetDictionary } from './bulkGet.mts'
 import { TEST_DB_URL } from '../test/setup-db.mts'
 import { putJson } from '../test/http.mts'
@@ -102,6 +102,28 @@ suite('bulkGet', () => {
       await assert.rejects(
         () => bulkGet(offlineConfig, ['doc-1']),
         (err: unknown) => err instanceof RetryableError && err.statusCode === 503
+      )
+    })
+
+    await t.test('throws OperationError for non-retryable response failures', async t => {
+      const fetchMock = t.mock.method(globalThis, 'fetch', async () => {
+        return new Response(JSON.stringify({ error: 'forbidden', reason: 'no access' }), {
+          status: 403,
+          headers: { 'Content-Type': 'application/json' }
+        })
+      })
+
+      t.after(() => {
+        fetchMock.mock.restore()
+      })
+
+      await assert.rejects(
+        () => bulkGet({ couch: 'http://localhost:5984/mock-db' }, ['doc-1']),
+        (err: unknown) =>
+          err instanceof OperationError &&
+          err.statusCode === 403 &&
+          err.message === 'Bulk get failed' &&
+          err.couchError === 'forbidden'
       )
     })
 

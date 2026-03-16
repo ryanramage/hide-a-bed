@@ -1,9 +1,9 @@
 import { createLogger } from './utils/logger.mts'
-import { RetryableError } from './utils/errors.mts'
+import { NotFoundError, RetryableError, createResponseError } from './utils/errors.mts'
 import { CouchPutResponse } from '../schema/couch/couch.output.schema.ts'
 import { CouchConfig, type CouchConfigInput } from '../schema/config.mts'
 import { fetchCouchJson } from './utils/fetch.mts'
-import { getReason, isRecord } from './utils/response.mts'
+import { isRecord, isSuccessStatusCode } from './utils/response.mts'
 
 type CouchMutationBody = {
   error?: string
@@ -12,11 +12,7 @@ type CouchMutationBody = {
   statusCode?: number
 } & Record<string, unknown>
 
-export const remove = async (
-  configInput: CouchConfigInput,
-  id: string,
-  rev: string
-) => {
+export const remove = async (configInput: CouchConfigInput, id: string, rev: string) => {
   const config = CouchConfig.parse(configInput)
   const logger = createLogger(config)
   const url = `${config.couch}/${id}?rev=${rev}`
@@ -27,17 +23,18 @@ export const remove = async (
     resp = await fetchCouchJson({
       auth: config.auth,
       method: 'DELETE',
+      operation: 'remove',
       request: config.request,
       url
     })
   } catch (err) {
     logger.error('Error during delete operation:', err)
-    RetryableError.handleNetworkError(err)
+    RetryableError.handleNetworkError(err, 'remove')
   }
 
   if (!resp) {
     logger.error('No response received from delete request')
-    throw new RetryableError('no response', 503)
+    throw new RetryableError('Remove failed', 503, { operation: 'remove' })
   }
 
   const result: CouchMutationBody = {
@@ -47,19 +44,18 @@ export const remove = async (
 
   if (resp.statusCode === 404) {
     logger.warn(`Document not found for deletion: ${id}`)
-    result.ok = false
-    result.error = 'not_found'
-    return CouchPutResponse.parse(result)
+    throw new NotFoundError(id, { operation: 'remove', statusCode: resp.statusCode })
   }
 
-  if (RetryableError.isRetryableStatusCode(resp.statusCode)) {
-    logger.warn(`Retryable status code received: ${resp.statusCode}`)
-    throw new RetryableError(getReason(resp.body, 'retryable error'), resp.statusCode)
-  }
-
-  if (resp.statusCode !== 200) {
+  if (!isSuccessStatusCode('documentDelete', resp.statusCode) || !result.ok) {
     logger.error(`Unexpected status code: ${resp.statusCode}`)
-    throw new Error(getReason(resp.body, 'failed'))
+    throw createResponseError({
+      body: resp.body,
+      defaultMessage: 'Remove failed',
+      docId: id,
+      operation: 'remove',
+      statusCode: resp.statusCode
+    })
   }
 
   logger.info(`Successfully deleted document: ${id}`)

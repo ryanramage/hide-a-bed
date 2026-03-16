@@ -80,13 +80,9 @@ suite('request controls', () => {
   test('get rejects per-call request controls in options', async () => {
     await assert.rejects(
       () =>
-        get(
-          { couch: 'http://localhost:5984/request-get-invalid' },
-          'get-doc',
-          {
-            request: { timeout: 10 }
-          } as Parameters<typeof get>[2]
-        ),
+        get({ couch: 'http://localhost:5984/request-get-invalid' }, 'get-doc', {
+          request: { timeout: 10 }
+        } as Parameters<typeof get>[2]),
       /request/
     )
   })
