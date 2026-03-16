@@ -1,4 +1,5 @@
 import { getCouchError } from './response.mts'
+import type { StandardSchemaV1 } from '../../types/standard-schema.ts'
 
 /**
  * Represents a network-level error emitted by Node.js or HTTP client libraries.
@@ -27,6 +28,7 @@ export type ErrorCategory =
   | 'not_found'
   | 'operation'
   | 'retryable'
+  | 'validation'
   | 'transaction'
 
 export type ErrorOperation =
@@ -118,6 +120,14 @@ export class HideABedError extends Error {
   }
 }
 
+export type ValidationErrorOptions = Omit<
+  Partial<HideABedErrorOptions>,
+  'category' | 'retryable'
+> & {
+  issues: ReadonlyArray<StandardSchemaV1.Issue>
+  message?: string
+}
+
 /**
  * Error thrown when a requested CouchDB document cannot be found.
  *
@@ -194,6 +204,29 @@ export class OperationError extends HideABedError {
       statusCode: options.statusCode
     })
     this.name = 'OperationError'
+  }
+}
+
+/**
+ * Error thrown when schema validation fails for a document, row, key, or value.
+ *
+ * @public
+ */
+export class ValidationError extends HideABedError {
+  readonly issues: ValidationErrorOptions['issues']
+
+  constructor(options: ValidationErrorOptions) {
+    super(options.message ?? 'Validation failed', {
+      category: 'validation',
+      cause: options.cause,
+      couchError: options.couchError,
+      docId: options.docId,
+      operation: options.operation,
+      retryable: false,
+      statusCode: options.statusCode
+    })
+    this.name = 'ValidationError'
+    this.issues = options.issues
   }
 }
 

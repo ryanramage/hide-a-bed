@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test, { suite } from 'node:test'
 import type { CouchConfigInput } from '../schema/config.mts'
 import { z } from 'zod'
-import { OperationError, RetryableError } from './utils/errors.mts'
+import { OperationError, RetryableError, ValidationError } from './utils/errors.mts'
 import { bulkGet, bulkGetDictionary } from './bulkGet.mts'
 import { TEST_DB_URL } from '../test/setup-db.mts'
 import { putJson } from '../test/http.mts'
@@ -67,11 +67,12 @@ suite('bulkGet', () => {
               docSchema: schema
             }
           }),
-        (err: unknown) => {
-          assert.ok(Array.isArray(err))
-          assert.match(err[0]?.message, /Invalid input:/)
-          return true
-        }
+        (err: unknown) =>
+          err instanceof ValidationError &&
+          err.message === 'Bulk get failed' &&
+          err.docId === 'doc-invalid' &&
+          err.operation === 'request' &&
+          /Invalid input:/.test(err.issues[0]?.message ?? '')
       )
     })
 

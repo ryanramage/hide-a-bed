@@ -3,7 +3,7 @@ import test, { suite } from 'node:test'
 import { z } from 'zod'
 import type { CouchConfigInput } from '../schema/config.mts'
 import { get, getAtRev } from './get.mts'
-import { NotFoundError, RetryableError } from './utils/errors.mts'
+import { NotFoundError, RetryableError, ValidationError } from './utils/errors.mts'
 import { TEST_DB_URL } from '../test/setup-db.mts'
 import { putJson } from '../test/http.mts'
 
@@ -52,12 +52,12 @@ suite('get', () => {
 
       await assert.rejects(
         () => get(baseConfig, doc_invalid_id, { validate: { docSchema: schema } }),
-        (err: unknown) => {
-          return (
-            Array.isArray(err) &&
-            err[0].message === 'Invalid input: expected number, received string'
-          )
-        }
+        (err: unknown) =>
+          err instanceof ValidationError &&
+          err.message === 'Document validation failed' &&
+          err.docId === doc_invalid_id &&
+          err.operation === 'get' &&
+          err.issues[0]?.message === 'Invalid input: expected number, received string'
       )
     })
 

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test, { suite } from 'node:test'
 import { z } from 'zod'
 import { parseRows } from './parseRows.mts'
-import { OperationError } from './errors.mts'
+import { OperationError, ValidationError } from './errors.mts'
 
 const docSchema = z.looseObject({
   _id: z.string(),
@@ -131,7 +131,11 @@ suite('parseRows', () => {
           valueSchema,
           onInvalidDoc: 'throw'
         }),
-      err => Array.isArray(err)
+      err =>
+        err instanceof ValidationError &&
+        err.message === 'Row validation failed' &&
+        err.docId === 'doc-invalid' &&
+        err.issues[0]?.message === 'Invalid input: expected number, received string'
     )
   })
 
@@ -156,7 +160,11 @@ suite('parseRows', () => {
           valueSchema,
           onInvalidDoc: 'throw'
         }),
-      err => Array.isArray(err)
+      err =>
+        err instanceof ValidationError &&
+        err.message === 'Row validation failed' &&
+        err.docId === 'doc-valid' &&
+        err.issues[0]?.message === 'Invalid input: expected number, received string'
     )
   })
 
@@ -181,7 +189,11 @@ suite('parseRows', () => {
           valueSchema,
           onInvalidDoc: 'throw'
         }),
-      err => Array.isArray(err)
+      err =>
+        err instanceof ValidationError &&
+        err.message === 'Row validation failed' &&
+        err.docId === 'doc-valid' &&
+        err.issues[0]?.message === 'Invalid input: expected string, received number'
     )
   })
 })

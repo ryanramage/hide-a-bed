@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test, { suite } from 'node:test'
 import { TrackedEmitter } from './impl/utils/trackedEmitter.mts'
-import { ConflictError, bulkSaveTransaction, get } from './index.mts'
+import { ConflictError, ValidationError, bulkSaveTransaction, get } from './index.mts'
 import { bindConfig } from './impl/bindConfig.mts'
 import z from 'zod'
 import { TEST_DB_URL } from './test/setup-db.mts'
@@ -96,7 +96,12 @@ suite('Database Tests', () => {
               })
             }
           }),
-        (err: unknown) => Array.isArray(err)
+        (err: unknown) =>
+          err instanceof ValidationError &&
+          err.docId === schema_doc_id &&
+          err.operation === 'request' &&
+          err.message === 'Bulk get failed' &&
+          err.issues[0]?.message.includes('Invalid input:')
       )
     })
     await t.test('get validates docs with schema', async () => {
@@ -137,7 +142,12 @@ suite('Database Tests', () => {
               })
             }
           }),
-        (err: unknown) => Array.isArray(err) && err[0].message.includes('Invalid input:')
+        (err: unknown) =>
+          err instanceof ValidationError &&
+          err.docId === docId &&
+          err.operation === 'get' &&
+          err.message === 'Document validation failed' &&
+          err.issues[0]?.message.includes('Invalid input:')
       )
     })
     let _rev: string | null | undefined = null

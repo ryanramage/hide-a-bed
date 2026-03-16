@@ -51,7 +51,8 @@ export {
   HideABedError,
   NotFoundError,
   OperationError,
-  RetryableError
+  RetryableError,
+  ValidationError
 } from './impl/utils/errors.mts'
 
 export type {
@@ -82,7 +83,8 @@ export type {
   ErrorCategory,
   ErrorOperation,
   HideABedErrorOptions,
-  NetworkError
+  NetworkError,
+  ValidationErrorOptions
 } from './impl/utils/errors.mts'
 export type { OnRow } from './impl/stream.mts'
 export type { CouchAuth, CouchAuthInput, CouchConfig, CouchConfigInput } from './schema/config.mts'

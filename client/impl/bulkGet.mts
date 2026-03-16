@@ -108,7 +108,7 @@ async function executeBulkGet(
  * @returns The bulk get response with rows optionally validated against the supplied document schema.
  *
  * @throws {RetryableError} When a retryable HTTP status code is encountered or no response is received.
- * @throws {Error<StandardSchemaV1.FailureResult["issues"]>} When the configuration or validation schemas fail to parse.
+ * @throws {ValidationError} When returned documents fail schema validation.
  * @throws {OperationError} When CouchDB returns a non-retryable request-level failure.
  */
 async function _bulkGetWithOptions<DocSchema extends StandardSchemaV1 = typeof CouchDoc>(
@@ -163,7 +163,7 @@ async function _bulkGetWithOptions<DocSchema extends StandardSchemaV1 = typeof C
  * @returns The bulk get response with rows optionally validated against the supplied document schema.
  *
  * @throws {RetryableError} When a retryable HTTP status code is encountered or no response is received.
- * @throws {Error<StandardSchemaV1.FailureResult["issues"]>} When the configuration or validation schemas fail to parse.
+ * @throws {ValidationError} When returned documents fail schema validation.
  * @throws {OperationError} When CouchDB returns a non-retryable request-level failure.
  */
 export async function bulkGet<DocSchema extends StandardSchemaV1 = typeof CouchDoc>(
@@ -215,7 +215,7 @@ export type BulkGetDictionaryResult<
 /**
  * Bulk get documents by IDs and return a dictionary of found and not found documents.
  *
- * @template DocSchema - Schema used to validate each returned document, if provided. Note: if a document is found and it fails validation this will throw a Error<StandardSchemaV1.FailureResult["issues"]>.
+ * @template DocSchema - Schema used to validate each returned document, if provided. Note: if a document is found and it fails validation this will throw a ValidationError.
  *
  * @param config - CouchDB configuration data that is validated before use.
  * @param ids - Array of document IDs to retrieve.
@@ -224,7 +224,7 @@ export type BulkGetDictionaryResult<
  * @returns An object containing found documents and not found rows.
  *
  * @throws {RetryableError} When a retryable HTTP status code is encountered or no response is received.
- * @throws {Error<StandardSchemaV1.FailureResult["issues"]>} When the configuration or validation schemas fail to parse.
+ * @throws {ValidationError} When returned documents fail schema validation.
  * @throws {OperationError} When CouchDB returns a non-retryable request-level failure.
  */
 export async function bulkGetDictionary<DocSchema extends StandardSchemaV1 = typeof CouchDoc>(

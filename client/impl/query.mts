@@ -101,7 +101,7 @@ export async function query(
  * @returns The parsed view response with rows validated against the supplied schemas.
  *
  * @throws {RetryableError} When a retryable HTTP status code is encountered or no response is received.
- * @throws {Error<Array<StandardSchemaV1.Issue>>} When the configuration or validation schemas fail to parse.
+ * @throws {ValidationError} When row, key, value, or included document validation fails.
  * @throws {OperationError} When CouchDB returns a non-retryable response or malformed row payload.
  */
 export async function query<

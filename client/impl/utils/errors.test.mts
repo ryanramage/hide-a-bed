@@ -5,6 +5,7 @@ import {
   NotFoundError,
   OperationError,
   RetryableError,
+  ValidationError,
   createResponseError,
   isConflictError
 } from './errors.mts'
@@ -26,6 +27,21 @@ suite('errors', () => {
     assert.strictEqual(err.statusCode, 409)
     assert.strictEqual(err.couchError, 'conflict')
     assert.strictEqual(err.operation, 'put')
+  })
+
+  test('ValidationError preserves issues and operation context', () => {
+    const err = new ValidationError({
+      docId: 'doc-789',
+      issues: [{ message: 'expected number', path: ['count'] }],
+      message: 'Document validation failed',
+      operation: 'get'
+    })
+    assert.strictEqual(err.name, 'ValidationError')
+    assert.strictEqual(err.message, 'Document validation failed')
+    assert.strictEqual(err.docId, 'doc-789')
+    assert.strictEqual(err.operation, 'get')
+    assert.strictEqual(err.retryable, false)
+    assert.deepStrictEqual(err.issues, [{ message: 'expected number', path: ['count'] }])
   })
 
   test('RetryableError.isRetryableStatusCode identifies retryable statuses', () => {

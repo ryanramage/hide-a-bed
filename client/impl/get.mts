@@ -1,6 +1,11 @@
 import { z } from 'zod'
 import { createLogger } from './utils/logger.mts'
-import { RetryableError, NotFoundError, createResponseError } from './utils/errors.mts'
+import {
+  RetryableError,
+  NotFoundError,
+  ValidationError,
+  createResponseError
+} from './utils/errors.mts'
 import type { StandardSchemaV1 } from '../types/standard-schema.ts'
 import { CouchDoc } from '../schema/couch/couch.output.schema.ts'
 import { fetchCouchJson } from './utils/fetch.mts'
@@ -89,7 +94,12 @@ async function _getWithOptions<DocSchema extends StandardSchemaV1>(
     const typedDoc = await docSchema['~standard'].validate(body)
 
     if (typedDoc.issues) {
-      throw typedDoc.issues
+      throw new ValidationError({
+        docId: id,
+        issues: typedDoc.issues,
+        message: 'Document validation failed',
+        operation
+      })
     }
 
     logger.info(`Successfully retrieved document: ${id}, rev ${rev ?? 'latest'}`)
