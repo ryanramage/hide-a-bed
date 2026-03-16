@@ -4,6 +4,7 @@ import { CouchConfig, type CouchConfigInput } from '../schema/config.mts'
 import { CouchDBInfo } from '../schema/couch/couch.output.schema.ts'
 import { fetchCouchJson } from './utils/fetch.mts'
 import { isSuccessStatusCode } from './utils/response.mts'
+import { createCouchDbUrl } from './utils/url.mts'
 
 /**
  * Fetches and returns CouchDB database information.
@@ -33,7 +34,7 @@ import { isSuccessStatusCode } from './utils/response.mts'
 export const getDBInfo = async (configInput: CouchConfigInput) => {
   const config = CouchConfig.parse(configInput)
   const logger = createLogger(config)
-  const url = `${config.couch}`
+  const url = createCouchDbUrl(config.couch)
 
   let resp
   try {

@@ -18,21 +18,21 @@ export const CouchAuth = z.strictObject({
   password: z.string().describe('basic auth password for CouchDB requests')
 })
 
-const CouchUrl = z.string().refine(value => {
+const CouchUrl = z.custom<string | URL>(value => {
   try {
-    const url = new URL(value)
+    const url = new URL(value as string | URL)
     return url.username === '' && url.password === ''
   } catch {
     return false
   }
-}, 'couch must be a valid URL without embedded credentials')
+})
 
 export const CouchConfig = z
   .strictObject({
     auth: CouchAuth.optional().describe('basic auth credentials for CouchDB requests'),
     backoffFactor: z.number().optional().default(2).describe('multiplier for exponential backoff'),
     bindWithRetry: z.boolean().optional().default(true).describe('should we bind with retry'),
-    couch: CouchUrl.describe('the url of the couch db'),
+    couch: CouchUrl.describe('URL of the couch db without embedded credentials'),
     initialDelay: z
       .number()
       .optional()

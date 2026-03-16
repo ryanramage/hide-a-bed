@@ -26,7 +26,36 @@ async function saveDoc(id: string, body: DocBody) {
   return response.body
 }
 
+type FetchInput = Parameters<typeof globalThis.fetch>[0]
+
 suite('get', () => {
+  test('builds encoded request URLs from URL config input', async t => {
+    const requestUrls: URL[] = []
+    const fetchMock = t.mock.method(globalThis, 'fetch', async (input: FetchInput) => {
+      requestUrls.push(new URL(String(input)))
+      return new Response(JSON.stringify({ _id: 'folder/doc name' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    })
+
+    t.after(() => {
+      fetchMock.mock.restore()
+    })
+
+    const result = await get(
+      { couch: new URL('http://localhost:5984/url-object-db') },
+      'folder/doc name'
+    )
+
+    assert.strictEqual(result?._id, 'folder/doc name')
+    const capturedUrl = requestUrls[0]
+    if (!capturedUrl) {
+      assert.fail('expected request URL to be captured')
+    }
+    assert.strictEqual(capturedUrl.pathname, '/url-object-db/folder%2Fdoc%20name')
+  })
+
   test('integration with pouchdb-server', async t => {
     const doc_valid_id = `doc-valid-${Date.now()}`
     const doc_invalid_id = `doc-invalid-${Date.now()}`

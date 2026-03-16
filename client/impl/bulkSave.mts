@@ -23,6 +23,7 @@ import { withRetry } from './retry.mts'
 import { put } from './put.mts'
 import { fetchCouchJson } from './utils/fetch.mts'
 import { isSuccessStatusCode } from './utils/response.mts'
+import { createCouchPathUrl } from './utils/url.mts'
 
 /**
  * Bulk saves documents to CouchDB using the _bulk_docs endpoint.
@@ -49,7 +50,7 @@ export const bulkSave = async (config: CouchConfigInput, docs: CouchDocInput[]) 
   }
 
   logger.info(`Starting bulk save of ${docs.length} documents`)
-  const url = `${parsedConfig.couch}/_bulk_docs`
+  const url = createCouchPathUrl('_bulk_docs', parsedConfig.couch)
   const body = { docs }
   let resp
   try {

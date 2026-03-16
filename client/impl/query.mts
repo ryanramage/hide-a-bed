@@ -10,6 +10,7 @@ import type { StandardSchemaV1 } from '../types/standard-schema.ts'
 import { parseRows, type OnInvalidDocAction } from './utils/parseRows.mts'
 import { fetchCouchJson } from './utils/fetch.mts'
 import { isSuccessStatusCode } from './utils/response.mts'
+import { createCouchPathUrl } from './utils/url.mts'
 
 type QueryBody = {
   error?: string
@@ -155,7 +156,8 @@ export async function query<
   }
 
   logger.debug('Generated query string:', qs)
-  const url = `${config.couch}/${view}?${qs}`
+  const url = createCouchPathUrl(view, config.couch)
+  if (qs) url.search = qs
   let results
 
   try {

@@ -11,6 +11,7 @@ import { CouchDoc } from '../schema/couch/couch.output.schema.ts'
 import { fetchCouchJson } from './utils/fetch.mts'
 import { CouchConfig, type CouchConfigInput } from '../schema/config.mts'
 import { isSuccessStatusCode } from './utils/response.mts'
+import { createCouchDocUrl } from './utils/url.mts'
 
 export type GetOptions<DocSchema extends StandardSchemaV1> = {
   validate?: {
@@ -52,8 +53,11 @@ async function _getWithOptions<DocSchema extends StandardSchemaV1>(
   const logger = createLogger(config)
   const rev = parsedOptions.rev
   const operation = rev ? 'getAtRev' : 'get'
-  const path = rev ? `${id}?rev=${rev}` : id
-  const url = `${config.couch}/${path}`
+  const url = createCouchDocUrl(id, config.couch)
+
+  if (rev) {
+    url.searchParams.set('rev', rev)
+  }
   logger.info(`Getting document with id: ${id}, rev ${rev ?? 'latest'}`)
 
   try {

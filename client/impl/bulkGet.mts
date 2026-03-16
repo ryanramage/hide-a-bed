@@ -11,6 +11,7 @@ import type { StandardSchemaV1 } from '../types/standard-schema.ts'
 import { parseRows, type OnInvalidDocAction } from './utils/parseRows.mts'
 import { fetchCouchJson } from './utils/fetch.mts'
 import { isSuccessStatusCode } from './utils/response.mts'
+import { createCouchPathUrl } from './utils/url.mts'
 
 type BulkGetBody = {
   error?: string
@@ -62,7 +63,10 @@ async function executeBulkGet(
   }
 
   const config = configParseResult.data
-  const url = `${config.couch}/_all_docs${includeDocs ? '?include_docs=true' : ''}`
+  const url = createCouchPathUrl('_all_docs', config.couch)
+  if (includeDocs) {
+    url.searchParams.append('include_docs', 'true')
+  }
   const payload = { keys: ids }
 
   try {

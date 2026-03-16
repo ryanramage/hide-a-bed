@@ -6,6 +6,7 @@ import { setTimeout } from 'node:timers/promises'
 import { CouchConfig, type CouchConfigInput } from '../../schema/config.mts'
 import { fetchCouchStream } from '../utils/fetch.mts'
 import { isSuccessStatusCode } from '../utils/response.mts'
+import { createCouchPathUrl } from '../utils/url.mts'
 
 export type WatchListener = (...args: Array<unknown>) => void
 
@@ -89,8 +90,12 @@ export function watchDocs(
 
     const feed = 'continuous'
     const includeDocs = options.include_docs ?? false
-    const ids = _docIds.join('","')
-    const url = `${config.couch}/_changes?feed=${feed}&since=${lastSeq}&include_docs=${includeDocs}&filter=_doc_ids&doc_ids=["${ids}"]`
+    const url = createCouchPathUrl('_changes', config.couch)
+    url.searchParams.set('feed', feed)
+    url.searchParams.set('since', String(lastSeq))
+    url.searchParams.set('include_docs', String(includeDocs))
+    url.searchParams.set('filter', '_doc_ids')
+    url.searchParams.set('doc_ids', JSON.stringify(_docIds))
     const abortController = new AbortController()
     currentAbortController = abortController
 

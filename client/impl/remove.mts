@@ -4,6 +4,7 @@ import { CouchPutResponse } from '../schema/couch/couch.output.schema.ts'
 import { CouchConfig, type CouchConfigInput } from '../schema/config.mts'
 import { fetchCouchJson } from './utils/fetch.mts'
 import { isRecord, isSuccessStatusCode } from './utils/response.mts'
+import { createCouchDocUrl } from './utils/url.mts'
 
 type CouchMutationBody = {
   error?: string
@@ -15,7 +16,8 @@ type CouchMutationBody = {
 export const remove = async (configInput: CouchConfigInput, id: string, rev: string) => {
   const config = CouchConfig.parse(configInput)
   const logger = createLogger(config)
-  const url = `${config.couch}/${id}?rev=${rev}`
+  const url = createCouchDocUrl(id, config.couch)
+  url.searchParams.set('rev', rev)
 
   logger.info(`Deleting document with id: ${id}`)
   let resp

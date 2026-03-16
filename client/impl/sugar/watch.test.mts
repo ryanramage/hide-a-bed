@@ -124,11 +124,40 @@ suite('watchDocs', () => {
       changes.map(change => change.id),
       ['doc-a', 'doc-b']
     )
-    assert.match(requests[0].url, /include_docs=true/)
-    assert.match(requests[0].url, /doc_ids=\["doc-a","doc-b"\]/)
+    const requestUrl = new URL(requests[0].url)
+    assert.strictEqual(requestUrl.searchParams.get('include_docs'), 'true')
+    assert.strictEqual(requestUrl.searchParams.get('doc_ids'), '["doc-a","doc-b"]')
 
     watcher.stop()
     assert.strictEqual(requests[0].signal?.aborted, true)
+  })
+
+  test('supports URL config input', async t => {
+    const requests: FetchRequest[] = []
+    const activeResponse = createStreamResponse()
+    mockFetch(t, async (input, init) => {
+      requests.push({
+        signal: init?.signal ?? null,
+        url: String(input)
+      })
+      return activeResponse.response
+    })
+
+    const watcher = watchDocs(
+      {
+        couch: new URL('http://localhost:5984/watch-url-db')
+      },
+      'folder/doc name',
+      () => {}
+    )
+
+    await waitFor(() => requests.length === 1)
+
+    const requestUrl = new URL(requests[0].url)
+    assert.strictEqual(requestUrl.pathname, '/watch-url-db/_changes')
+    assert.strictEqual(requestUrl.searchParams.get('doc_ids'), '["folder/doc name"]')
+
+    watcher.stop()
   })
 
   test('reconnects after retryable response status', async t => {

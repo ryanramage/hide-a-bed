@@ -70,6 +70,16 @@ suite('CouchConfig', () => {
     })
   })
 
+  test('accepts couch URL objects', () => {
+    const couch = new URL('http://localhost:5984/my-db')
+    const parsed = CouchConfig.parse({
+      couch
+    })
+
+    assert.ok(parsed.couch instanceof URL)
+    assert.strictEqual(parsed.couch.href, 'http://localhost:5984/my-db')
+  })
+
   test('accepts request defaults', () => {
     const signal = new AbortController().signal
     const dispatcher = {

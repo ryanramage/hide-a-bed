@@ -12,6 +12,7 @@ import { ViewOptions } from '../schema/couch/couch.input.schema.ts'
 import { fetchCouchStream } from './utils/fetch.mts'
 import type { ReadableStream } from 'node:stream/web'
 import { isSuccessStatusCode } from './utils/response.mts'
+import { createCouchPathUrl } from './utils/url.mts'
 
 type StreamArrayChunk<Row> = {
   key: number
@@ -60,7 +61,9 @@ export async function queryStream(
         }
       }
 
-      const url = `${config.couch}/${view}?${qs}`
+      const url = createCouchPathUrl(view, config.couch)
+      if (qs) url.search = qs
+
       const requestHeaders = {
         'Content-Type': 'application/json'
       }

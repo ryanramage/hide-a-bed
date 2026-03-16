@@ -6,7 +6,35 @@ import { getDBInfo } from './getDBInfo.mts'
 import { OperationError, RetryableError } from './utils/errors.mts'
 import { TEST_DB_URL } from '../test/setup-db.mts'
 
+type FetchInput = Parameters<typeof globalThis.fetch>[0]
+
 suite('getDBInfo', () => {
+  test('supports URL config input', async t => {
+    const requestUrls: URL[] = []
+    const fetchMock = t.mock.method(globalThis, 'fetch', async (input: FetchInput) => {
+      requestUrls.push(new URL(String(input)))
+      return new Response(JSON.stringify({ db_name: 'url-object-db', doc_count: 0 }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    })
+
+    t.after(() => {
+      fetchMock.mock.restore()
+    })
+
+    const info = await getDBInfo({
+      couch: new URL('http://localhost:5984/url-object-db')
+    })
+
+    assert.strictEqual(info.db_name, 'url-object-db')
+    const capturedUrl = requestUrls[0]
+    if (!capturedUrl) {
+      assert.fail('expected request URL to be captured')
+    }
+    assert.strictEqual(capturedUrl.pathname, '/url-object-db')
+  })
+
   test('it should throw if provided config is invalid', async () => {
     await assert.rejects(async () => {
       await getDBInfo({

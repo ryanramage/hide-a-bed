@@ -5,6 +5,7 @@ import { CouchPutResponse, type CouchDoc } from '../schema/couch/couch.output.sc
 import { z } from 'zod'
 import { fetchCouchJson } from './utils/fetch.mts'
 import { isRecord, isSuccessStatusCode } from './utils/response.mts'
+import { createCouchDocUrl } from './utils/url.mts'
 
 type CouchMutationBody = {
   error?: string
@@ -19,7 +20,7 @@ export const put = async (
 ): Promise<z.infer<typeof CouchPutResponse>> => {
   const config = CouchConfig.parse(configInput)
   const logger = createLogger(config)
-  const url = `${config.couch}/${doc._id}`
+  const url = createCouchDocUrl(doc._id, config.couch)
   const body = doc
 
   logger.info(`Putting document with id: ${doc._id}`)

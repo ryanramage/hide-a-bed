@@ -43,7 +43,7 @@ export type FetchRequestOptions = {
     | 'watchDocs'
   request?: RequestOptions
   signal?: AbortSignal
-  url: string
+  url: string | URL
 }
 
 const JSON_HEADERS = {
