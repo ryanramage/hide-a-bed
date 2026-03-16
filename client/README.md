@@ -18,6 +18,11 @@ And some utility APIs
 - [`createQuery()`](#createquery) 🍭
 - [`withRetry()`](#withretry)
 
+### Migration Guides
+
+- [v6 Migration Guide](./migration_guides/v6.md)
+- [v7 Migration Guide](./migration_guides/v7.md)
+
 ### Setup
 
 Depending on your environment, use import or require
