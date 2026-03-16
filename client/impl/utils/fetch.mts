@@ -1,8 +1,17 @@
 import { RetryableError } from './errors.mts'
+import type { RequestOptions } from '../../schema/request.mts'
+import { composeAbortSignal } from './request.mts'
 
 export type HttpMethod = 'DELETE' | 'GET' | 'POST' | 'PUT'
 
-export type FetchBody = BodyInit | Record<string, unknown> | Array<unknown> | null | undefined
+type NativeFetchBody = RequestInit['body']
+
+export type FetchBody =
+  | NativeFetchBody
+  | Record<string, unknown>
+  | Array<unknown>
+  | null
+  | undefined
 
 export type FetchAuth = {
   password: string
@@ -20,6 +29,7 @@ export type FetchRequestOptions = {
   body?: FetchBody
   headers?: Record<string, string>
   method: HttpMethod
+  request?: RequestOptions
   signal?: AbortSignal
   url: string
 }
@@ -53,7 +63,11 @@ const isAbortError = (err: unknown): err is DOMException => {
   return err instanceof DOMException && err.name === 'AbortError'
 }
 
-const encodeBody = (body: FetchBody) => {
+const isTimeoutError = (err: unknown): err is DOMException => {
+  return err instanceof DOMException && err.name === 'TimeoutError'
+}
+
+const encodeBody = (body: FetchBody): NativeFetchBody | undefined => {
   if (body == null) return undefined
 
   if (
@@ -65,7 +79,7 @@ const encodeBody = (body: FetchBody) => {
     body instanceof URLSearchParams ||
     body instanceof ReadableStream
   ) {
-    return body
+    return body as NativeFetchBody
   }
 
   return JSON.stringify(body)
@@ -84,6 +98,7 @@ export async function fetchCouchJson<TBody = unknown>(
 ): Promise<FetchResult<TBody>> {
   let response: Response
   const { headers } = prepareRequest(options)
+  const { signal, timedOut } = composeAbortSignal(options.signal, options.request)
 
   try {
     response = await fetch(options.url, {
@@ -93,9 +108,14 @@ export async function fetchCouchJson<TBody = unknown>(
         ...headers
       },
       body: encodeBody(options.body),
-      signal: options.signal
+      signal,
+      dispatcher: options.request?.dispatcher
     })
   } catch (err) {
+    if (timedOut() || isTimeoutError(err)) {
+      throw new RetryableError('Request timed out', 503)
+    }
+
     if (isAbortError(err)) {
       throw err
     }
@@ -115,15 +135,21 @@ export async function fetchCouchStream(
 ): Promise<FetchResult<ReadableStream<Uint8Array> | null>> {
   let response: Response
   const { headers } = prepareRequest(options)
+  const { signal, timedOut } = composeAbortSignal(options.signal, options.request)
 
   try {
     response = await fetch(options.url, {
       method: options.method,
       headers,
       body: encodeBody(options.body),
-      signal: options.signal
+      signal,
+      dispatcher: options.request?.dispatcher
     })
   } catch (err) {
+    if (timedOut() || isTimeoutError(err)) {
+      throw new RetryableError('Request timed out', 503)
+    }
+
     if (isAbortError(err)) {
       throw err
     }

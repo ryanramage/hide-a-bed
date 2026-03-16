@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type { StandardSchemaV1 } from '../types/standard-schema.ts'
+import { RequestOptions } from './request.mts'
 
 const anyArgs = z.array(z.any())
 
@@ -41,6 +42,7 @@ export const CouchConfig = z
       'logging interface supporting winston-like or simple function interface'
     ),
     maxRetries: z.number().optional().default(3).describe('maximum number of retry attempts'),
+    request: RequestOptions.optional().describe('default request controls for CouchDB requests'),
     throwOnGetNotFound: z
       .boolean()
       .optional()

@@ -68,6 +68,7 @@ async function executeBulkGet(
     const resp = await fetchCouchJson<BulkGetBody>({
       auth: config.auth,
       method: 'POST',
+      request: config.request,
       url,
       body: payload
     })

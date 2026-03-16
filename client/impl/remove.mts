@@ -12,7 +12,11 @@ type CouchMutationBody = {
   statusCode?: number
 } & Record<string, unknown>
 
-export const remove = async (configInput: CouchConfigInput, id: string, rev: string) => {
+export const remove = async (
+  configInput: CouchConfigInput,
+  id: string,
+  rev: string
+) => {
   const config = CouchConfig.parse(configInput)
   const logger = createLogger(config)
   const url = `${config.couch}/${id}?rev=${rev}`
@@ -23,6 +27,7 @@ export const remove = async (configInput: CouchConfigInput, id: string, rev: str
     resp = await fetchCouchJson({
       auth: config.auth,
       method: 'DELETE',
+      request: config.request,
       url
     })
   } catch (err) {

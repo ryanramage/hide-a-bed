@@ -1,14 +1,67 @@
 import assert from 'node:assert/strict'
-import test, { suite } from 'node:test'
-import { createServer } from 'node:http'
-import type { AddressInfo } from 'node:net'
+import test, { suite, type TestContext } from 'node:test'
 import { queryStream } from './stream.mts'
 import { bindConfig } from './bindConfig.mts'
 
-const startServer = async (handler: Parameters<typeof createServer>[0]) => {
-  const server = createServer(handler)
-  await new Promise<void>(resolve => server.listen(0, resolve))
-  return server
+type FetchInput = Parameters<typeof globalThis.fetch>[0]
+type FetchInit = Parameters<typeof globalThis.fetch>[1]
+
+const encoder = new TextEncoder()
+
+const createStreamResponse = (status = 200) => {
+  let controller: ReadableStreamDefaultController<Uint8Array> | null = null
+
+  const stream = new ReadableStream<Uint8Array>({
+    start(innerController) {
+      controller = innerController
+    }
+  })
+
+  return {
+    response: new Response(stream, { status }),
+    close() {
+      controller?.close()
+    },
+    push(chunk: string) {
+      controller?.enqueue(encoder.encode(chunk))
+    }
+  }
+}
+
+const pushJsonInChunks = (
+  response: ReturnType<typeof createStreamResponse>,
+  body: unknown,
+  chunkSize = 7
+) => {
+  const payload = JSON.stringify(body)
+  queueMicrotask(() => {
+    for (let i = 0; i < payload.length; i += chunkSize) {
+      response.push(payload.slice(i, i + chunkSize))
+    }
+    response.close()
+  })
+}
+
+const waitFor = async (predicate: () => boolean, timeoutMs = 2000, intervalMs = 10) => {
+  const startedAt = Date.now()
+  while (Date.now() - startedAt <= timeoutMs) {
+    if (predicate()) return
+    await new Promise(resolve => {
+      setTimeout(resolve, intervalMs)
+    })
+  }
+  throw new Error('waitFor timed out')
+}
+
+const mockFetch = (
+  t: TestContext,
+  handler: (input: FetchInput, init?: FetchInit) => Promise<Response>
+) => {
+  const fetchMock = t.mock.method(globalThis, 'fetch', handler)
+  t.after(() => {
+    fetchMock.mock.restore()
+  })
+  return fetchMock
 }
 
 suite('queryStream', () => {
@@ -17,35 +70,21 @@ suite('queryStream', () => {
       { id: 'row-1', key: 'row-1', value: { count: 1 } },
       { id: 'row-2', key: 'row-2', value: { count: 2 } }
     ]
-
-    // @ts-expect-error testing server
-    const server = await startServer((req, res) => {
-      res.on('error', () => {})
-      const requestUrl = new URL(req.url ?? '/', `http://${req.headers.host}`)
-      assert.strictEqual(req.method, 'GET')
-      assert.strictEqual(requestUrl.pathname, '/_design/demo/_view/by-key')
-
-      res.writeHead(200, { 'Content-Type': 'application/json' })
-      const payload = JSON.stringify({
+    const rows: unknown[] = []
+    const streamedResponse = createStreamResponse()
+    mockFetch(t, async (input, init) => {
+      const requestUrl = new URL(String(input))
+      assert.strictEqual(init?.method, 'GET')
+      assert.strictEqual(requestUrl.pathname, '/db/_design/demo/_view/by-key')
+      pushJsonInChunks(streamedResponse, {
         total_rows: expectedRows.length,
         rows: expectedRows
       })
-      const chunkSize = 7
-      for (let i = 0; i < payload.length; i += chunkSize) {
-        res.write(payload.slice(i, i + chunkSize))
-      }
-      res.end()
+      return streamedResponse.response
     })
-
-    t.after(async () => {
-      await new Promise<void>(resolve => server.close(() => resolve()))
-    })
-
-    const { port } = server.address() as AddressInfo
-    const rows: unknown[] = []
 
     await queryStream(
-      { couch: `http://127.0.0.1:${port}` },
+      { couch: 'http://localhost:5984/db' },
       '_design/demo/_view/by-key',
       {},
       row => {
@@ -64,35 +103,20 @@ suite('queryStream', () => {
       { id: 'row-1', key: 'row-1', value: { count: 1 } },
       { id: 'row-2', key: 'row-2', value: { count: 2 } }
     ]
-
-    // @ts-expect-error testing server
-    const server = await startServer((req, res) => {
-      res.on('error', () => {})
-      const requestUrl = new URL(req.url ?? '/', `http://${req.headers.host}`)
-      assert.strictEqual(req.method, 'GET')
-      assert.strictEqual(requestUrl.pathname, '/_design/demo/_view/by-key')
-
-      res.writeHead(200, { 'Content-Type': 'application/json' })
-      const payload = JSON.stringify({
+    const rows: unknown[] = []
+    const streamedResponse = createStreamResponse()
+    mockFetch(t, async (input, init) => {
+      const requestUrl = new URL(String(input))
+      assert.strictEqual(init?.method, 'GET')
+      assert.strictEqual(requestUrl.pathname, '/db/_design/demo/_view/by-key')
+      pushJsonInChunks(streamedResponse, {
         total_rows: expectedRows.length,
         rows: expectedRows
       })
-      const chunkSize = 7
-      for (let i = 0; i < payload.length; i += chunkSize) {
-        res.write(payload.slice(i, i + chunkSize))
-      }
-      res.end()
+      return streamedResponse.response
     })
 
-    t.after(async () => {
-      await new Promise<void>(resolve => server.close(() => resolve()))
-    })
-
-    const { port } = server.address() as AddressInfo
-
-    const rows: unknown[] = []
-
-    const db = bindConfig({ couch: `http://127.0.0.1:${port}` })
+    const db = bindConfig({ couch: 'http://localhost:5984/db' })
 
     await db.queryStream('_design/demo/_view/by-key', {}, row => {
       const matchedRow = expectedRows.find(r => r.id === row.id)
@@ -109,34 +133,20 @@ suite('queryStream', () => {
       { id: 'row-1', key: 'row-1', value: { count: 1 } },
       { id: 'row-2', key: 'row-2', value: { count: 2 } }
     ]
-
-    // @ts-expect-error testing server
-    const server = await startServer((req, res) => {
-      res.on('error', () => {})
-      const requestUrl = new URL(req.url ?? '/', `http://${req.headers.host}`)
-      assert.strictEqual(req.method, 'GET')
-      assert.strictEqual(requestUrl.pathname, '/_design/demo/_view/by-key')
-
-      res.writeHead(200, { 'Content-Type': 'application/json' })
-      const payload = JSON.stringify({
+    const rows: unknown[] = []
+    const streamedResponse = createStreamResponse()
+    mockFetch(t, async (input, init) => {
+      const requestUrl = new URL(String(input))
+      assert.strictEqual(init?.method, 'GET')
+      assert.strictEqual(requestUrl.pathname, '/db/_design/demo/_view/by-key')
+      pushJsonInChunks(streamedResponse, {
         total_rows: expectedRows.length,
         rows: expectedRows
       })
-      const chunkSize = 7
-      for (let i = 0; i < payload.length; i += chunkSize) {
-        res.write(payload.slice(i, i + chunkSize))
-      }
-      res.end()
+      return streamedResponse.response
     })
 
-    t.after(async () => {
-      await new Promise<void>(resolve => server.close(() => resolve()))
-    })
-
-    const { port } = server.address() as AddressInfo
-    const rows: unknown[] = []
-
-    const db = bindConfig({ couch: `http://127.0.0.1:${port}` })
+    const db = bindConfig({ couch: 'http://localhost:5984/db' })
 
     await db.options({ logger: console }).queryStream('_design/demo/_view/by-key', {}, row => {
       const matchedRow = expectedRows.find(r => r.id === row.id)
@@ -149,23 +159,15 @@ suite('queryStream', () => {
   })
 
   test('queryStream handles empty result sets', async t => {
-    // @ts-expect-error testing server
-    const server = await startServer((_, res) => {
-      res.on('error', () => {})
-      res.writeHead(200, { 'Content-Type': 'application/json' })
-      res.write('{"rows":[]}')
-      res.end()
-    })
-
-    t.after(async () => {
-      await new Promise<void>(resolve => server.close(() => resolve()))
-    })
-
-    const { port } = server.address() as AddressInfo
     let rowCount = 0
+    const streamedResponse = createStreamResponse()
+    mockFetch(t, async () => {
+      pushJsonInChunks(streamedResponse, { rows: [] })
+      return streamedResponse.response
+    })
 
     await queryStream(
-      { couch: `http://127.0.0.1:${port}` },
+      { couch: 'http://localhost:5984/db' },
       '_design/demo/_view/by-key',
       {},
       () => {
@@ -177,23 +179,15 @@ suite('queryStream', () => {
   })
 
   test('queryStream rejects when row handler throws', async t => {
-    // @ts-expect-error testing server
-    const server = await startServer((_, res) => {
-      res.on('error', () => {})
-      res.writeHead(200, { 'Content-Type': 'application/json' })
-      res.write('{"rows":[{"id":"broken","value":42}]}')
-      res.end()
-    })
-
-    t.after(async () => {
-      await new Promise<void>(resolve => server.close(() => resolve()))
-    })
-
-    const { port } = server.address() as AddressInfo
     const handlerError = new Error('row-failure')
+    const streamedResponse = createStreamResponse()
+    mockFetch(t, async () => {
+      pushJsonInChunks(streamedResponse, { rows: [{ id: 'broken', value: 42 }] })
+      return streamedResponse.response
+    })
 
     await assert.rejects(
-      queryStream({ couch: `http://127.0.0.1:${port}` }, '_design/demo/_view/error', {}, () => {
+      queryStream({ couch: 'http://localhost:5984/db' }, '_design/demo/_view/error', {}, () => {
         throw handlerError
       }),
       error => {
@@ -201,5 +195,38 @@ suite('queryStream', () => {
         return true
       }
     )
+  })
+
+  test('queryStream aborts when config request signal is aborted', async t => {
+    const controller = new AbortController()
+    const activeResponse = createStreamResponse()
+    const requests: Array<{ signal: AbortSignal | null; url: string }> = []
+    mockFetch(t, async (input, init) => {
+      requests.push({
+        signal: init?.signal ?? null,
+        url: String(input)
+      })
+      return activeResponse.response
+    })
+
+    const streamPromise = queryStream(
+      {
+        couch: 'http://localhost:5984/query-stream-abort',
+        request: { signal: controller.signal }
+      },
+      '_design/demo/_view/by-key',
+      {},
+      () => {}
+    )
+
+    await waitFor(() => requests.length === 1)
+    controller.abort()
+
+    await assert.rejects(
+      streamPromise,
+      (err: unknown) => err instanceof DOMException && err.name === 'AbortError'
+    )
+
+    assert.strictEqual(requests[0].signal?.aborted, true)
   })
 })

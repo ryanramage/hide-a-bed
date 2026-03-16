@@ -35,3 +35,37 @@ const config = {
 - CRUD, bulk, query, and streaming APIs keep the same public method signatures
 - Retry and logging config still use the documented top-level config fields
 - `watchDocs()` and `queryStream()` remain part of the main client package
+
+## New request controls
+
+Native fetch controls are exposed through:
+
+- `config.request`
+
+Only these fields are supported in this migration:
+
+- `signal`
+- `timeout`
+- `dispatcher`
+
+Example:
+
+```ts
+const config = {
+  couch: 'http://localhost:5984/mydb',
+  request: {
+    timeout: 5000
+  }
+}
+
+await get(
+  {
+    ...config,
+    request: {
+      ...config.request,
+      signal: abortController.signal
+    }
+  },
+  'doc-id'
+)
+```

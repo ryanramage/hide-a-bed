@@ -70,6 +70,26 @@ suite('CouchConfig', () => {
     })
   })
 
+  test('accepts request defaults', () => {
+    const signal = new AbortController().signal
+    const dispatcher = {
+      dispatch: () => true
+    }
+
+    const parsed = CouchConfig.parse({
+      couch: 'http://localhost:5984',
+      request: {
+        dispatcher,
+        signal,
+        timeout: 250
+      }
+    })
+
+    assert.strictEqual(parsed.request?.signal, signal)
+    assert.strictEqual(parsed.request?.dispatcher, dispatcher)
+    assert.strictEqual(parsed.request?.timeout, 250)
+  })
+
   test('rejects couch URLs with embedded credentials', () => {
     assert.throws(() => {
       CouchConfig.parse({
@@ -94,6 +114,18 @@ suite('CouchConfig', () => {
         )
       }
     )
+  })
+
+  test('rejects unknown request keys', () => {
+    assert.throws(() => {
+      CouchConfig.parse({
+        couch: 'http://localhost:5984',
+        request: {
+          timeout: 250,
+          unsupported: true
+        }
+      })
+    })
   })
 
   test('rejects removed needle options', () => {

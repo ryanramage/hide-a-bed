@@ -1,11 +1,11 @@
 import { z } from 'zod'
-import type { CouchConfigInput } from '../schema/config.mts'
 import { createLogger } from './utils/logger.mts'
 import { RetryableError, NotFoundError } from './utils/errors.mts'
 import type { StandardSchemaV1 } from '../types/standard-schema.ts'
 import { CouchDoc } from '../schema/couch/couch.output.schema.ts'
 import { fetchCouchJson } from './utils/fetch.mts'
 import { getReason } from './utils/response.mts'
+import { CouchConfig, type CouchConfigInput } from '../schema/config.mts'
 
 export type GetOptions<DocSchema extends StandardSchemaV1> = {
   validate?: {
@@ -26,7 +26,7 @@ const ValidSchema = z.custom(
   }
 )
 
-export const CouchGetOptions = z.object({
+export const CouchGetOptions = z.strictObject({
   rev: z.string().optional().describe('the couch doc revision'),
   validate: z
     .object({
@@ -37,14 +37,12 @@ export const CouchGetOptions = z.object({
 })
 
 async function _getWithOptions<DocSchema extends StandardSchemaV1>(
-  config: CouchConfigInput,
+  configInput: CouchConfigInput,
   id: string,
   options: InternalGetOptions<DocSchema>
 ): Promise<StandardSchemaV1.InferOutput<DocSchema> | null> {
-  const parsedOptions = CouchGetOptions.parse({
-    rev: options.rev,
-    validate: options.validate
-  })
+  const config = CouchConfig.parse(configInput)
+  const parsedOptions = CouchGetOptions.parse(options)
 
   const logger = createLogger(config)
   const rev = parsedOptions.rev
@@ -56,6 +54,7 @@ async function _getWithOptions<DocSchema extends StandardSchemaV1>(
     const resp = await fetchCouchJson({
       auth: config.auth,
       method: 'GET',
+      request: config.request,
       url
     })
     if (!resp) {

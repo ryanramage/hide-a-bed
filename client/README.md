@@ -51,6 +51,19 @@ const config = {
 }
 ```
 
+You can also set default request controls on the config:
+
+```javascript
+const config = {
+  couch: 'https://the.couch.url.com:5984/mydb',
+  request: {
+    timeout: 5000,
+    signal: abortController.signal,
+    dispatcher
+  }
+}
+```
+
 See [Advanced Config Options](#advanced-config-options) for more advanced settings.
 
 #### bindConfig
@@ -90,6 +103,7 @@ Get a single document by ID.
   - `couch` URL string
   - `throwOnGetNotFound` default false. If true, 404 docs throw
 - `id`: Document ID string
+- `options`: Optional object with `validate`
 - Returns: Promise resolving to document object or null if not found
 
 ```javascript
@@ -483,7 +497,10 @@ Get basic info about a db in couch
 
 ```
 const config = { couch: 'http://localhost:5984/mydb' }
-const result = await getDBInfo(config)
+const result = await getDBInfo({
+  ...config,
+  request: { timeout: 2000 }
+})
 // result: { db_name: 'test', doc_count: 3232 }
 ```
 
@@ -661,6 +678,8 @@ Watch specific documents for changes in real-time.
   - `initialDelay`: Number - initial reconnection delay in ms (default 1000)
   - `maxDelay`: Number - maximum reconnection delay in ms (default: 30000)
 
+Request controls for `watchDocs()` come from `config.request`. Aborting `config.request.signal` stops the watcher.
+
 Returns an EventEmitter that emits:
 
 - 'change' events with change objects.
@@ -716,6 +735,7 @@ The config object supports the following properties:
 | ------------------ | --------------- | --------- | ----------------------------------------------------------------------- |
 | couch              | string          | required  | The URL of the CouchDB database                                         |
 | auth               | object          | undefined | Basic auth credentials for CouchDB requests                             |
+| request            | object          | undefined | Default request controls: `signal`, `timeout`, and `dispatcher`         |
 | throwOnGetNotFound | boolean         | false     | If true, throws an error when get() returns 404. If false, returns null |
 | bindWithRetry      | boolean         | true      | When using bindConfig(), adds retry logic to bound methods              |
 | maxRetries         | number          | 3         | Maximum number of retry attempts for retryable operations               |
@@ -733,6 +753,9 @@ const config = {
     username: process.env.COUCHDB_USER,
     password: process.env.COUCHDB_PASSWORD
   },
+  request: {
+    timeout: 5000
+  },
   throwOnGetNotFound: true,
   bindWithRetry: true,
   maxRetries: 5,
@@ -746,6 +769,8 @@ const config = {
 ### Migration Note
 
 `needleOpts` has been removed from the main `client` package. If you were passing transport-specific `needle` options through `config.needleOpts`, remove that configuration when upgrading. If you used `needleOpts.username` or `needleOpts.password`, move them to `config.auth.username` and `config.auth.password`. Couch URLs with embedded credentials are no longer supported and will fail validation. The package now uses native `fetch` internally and only supports the documented top-level config fields above.
+
+Native request controls now live under `config.request`. This surface intentionally only supports `signal`, `timeout`, and `dispatcher`.
 
 ### Logging Support
 

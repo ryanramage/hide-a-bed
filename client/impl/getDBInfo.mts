@@ -40,8 +40,21 @@ export const getDBInfo = async (configInput: CouchConfigInput) => {
     resp = await fetchCouchJson({
       auth: config.auth,
       method: 'GET',
+      request: config.request,
       url
     })
+
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
+      if (RetryableError.isRetryableStatusCode(resp.statusCode)) {
+        logger.warn(`Retryable status code received: ${resp.statusCode}`)
+        const reason = getReason(resp.body, 'retryable error')
+        throw new RetryableError(reason, resp.statusCode)
+      } else {
+        logger.error(`Non-retryable status code received: ${resp.statusCode}`)
+        const reason = getReason(resp.body, 'error fetching database info')
+        throw new Error(reason)
+      }
+    }
   } catch (err) {
     logger.error('Error during get operation:', err)
     RetryableError.handleNetworkError(err)
@@ -58,5 +71,6 @@ export const getDBInfo = async (configInput: CouchConfigInput) => {
     throw new RetryableError(reason, resp.statusCode)
   }
 
+  debugger
   return CouchDBInfo.parse(resp.body)
 }

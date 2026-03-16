@@ -31,7 +31,10 @@ import { fetchCouchJson } from './utils/fetch.mts'
  * @throws {RetryableError} When a retryable HTTP status code is encountered or no response is received.
  * @throws {Error} When CouchDB returns a non-retryable error payload.
  */
-export const bulkSave = async (config: CouchConfigInput, docs: CouchDocInput[]) => {
+export const bulkSave = async (
+  config: CouchConfigInput,
+  docs: CouchDocInput[]
+) => {
   const parsedConfig = CouchConfig.parse(config)
   const logger = createLogger(parsedConfig)
 
@@ -48,6 +51,7 @@ export const bulkSave = async (config: CouchConfigInput, docs: CouchDocInput[]) 
     resp = await fetchCouchJson({
       auth: parsedConfig.auth,
       method: 'POST',
+      request: parsedConfig.request,
       url,
       body
     })

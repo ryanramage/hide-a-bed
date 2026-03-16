@@ -8,7 +8,7 @@ import { RetryableError } from './utils/errors.mts'
 import { createLogger } from './utils/logger.mts'
 import { queryString } from './utils/queryString.mts'
 import type { ViewRow } from '../schema/couch/couch.output.schema.ts'
-import type { ViewOptions } from '../schema/couch/couch.input.schema.ts'
+import { ViewOptions } from '../schema/couch/couch.input.schema.ts'
 import { fetchCouchStream } from './utils/fetch.mts'
 import type { ReadableStream } from 'node:stream/web'
 
@@ -38,9 +38,9 @@ export async function queryStream(
       const config = CouchConfig.parse(rawConfig)
       const logger = createLogger(config)
       logger.info(`Starting view query stream: ${view}`)
-      logger.debug('Query options:', options)
-
-      const queryOptions: ViewOptions = options ?? {}
+      const queryOptions = ViewOptions.parse(options ?? {})
+      const request = config.request
+      logger.debug('Query options:', { ...queryOptions, request })
 
       let method: HttpMethod = 'GET'
       let payload: Record<string, unknown> | null = null
@@ -64,6 +64,16 @@ export async function queryStream(
         'Content-Type': 'application/json'
       }
       const abortController = new AbortController()
+      const requestAbortHandler = () => {
+        const reason =
+          request?.signal?.reason instanceof Error
+            ? request.signal.reason
+            : new DOMException('The operation was aborted.', 'AbortError')
+        abortController.abort(reason)
+        responseStream?.destroy(reason)
+        parserPipeline.destroy(reason)
+        settleReject(reason)
+      }
 
       const parserPipeline = Chain.chain([
         new Parser(),
@@ -77,16 +87,20 @@ export async function queryStream(
       const settleReject = (err: unknown) => {
         if (settled) return
         settled = true
+        request?.signal?.removeEventListener('abort', requestAbortHandler)
         reject(err)
       }
 
       const settleResolve = () => {
         if (settled) return
         settled = true
+        request?.signal?.removeEventListener('abort', requestAbortHandler)
         resolve()
       }
 
       let responseStream: Readable | null = null
+
+      request?.signal?.addEventListener('abort', requestAbortHandler, { once: true })
 
       parserPipeline.on('data', (chunk: StreamArrayChunk<ViewRow>) => {
         try {
@@ -117,6 +131,7 @@ export async function queryStream(
           url,
           body: method === 'POST' ? payload : undefined,
           headers: requestHeaders,
+          request,
           signal: abortController.signal
         })
 

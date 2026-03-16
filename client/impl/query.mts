@@ -16,6 +16,41 @@ type QueryBody = {
   rows?: unknown[]
 } & Record<string, unknown>
 
+const ValidSchema = z.custom(
+  value => {
+    return value !== null && typeof value === 'object' && '~standard' in value
+  },
+  {
+    message: 'schema must be a valid StandardSchemaV1 schema'
+  }
+)
+
+const QueryValidationSchema = z
+  .object({
+    docSchema: ValidSchema.optional(),
+    keySchema: ValidSchema.optional(),
+    onInvalidDoc: z.enum(['skip', 'throw']).optional(),
+    valueSchema: ValidSchema.optional()
+  })
+  .optional()
+
+const QueryOptionsSchema = ViewOptions.extend({
+  validate: QueryValidationSchema
+}).strict()
+
+type QueryRequestOptions<
+  DocSchema extends StandardSchemaV1,
+  KeySchema extends StandardSchemaV1,
+  ValueSchema extends StandardSchemaV1
+> = ViewOptions & {
+  validate?: {
+    onInvalidDoc?: OnInvalidDocAction
+    docSchema?: DocSchema
+    keySchema?: KeySchema
+    valueSchema?: ValueSchema
+  }
+}
+
 export async function query<
   DocSchema extends StandardSchemaV1 = typeof CouchDoc,
   KeySchema extends StandardSchemaV1 = ZodAny,
@@ -23,14 +58,8 @@ export async function query<
 >(
   config: CouchConfigInput,
   view: ViewString,
-  options: ViewOptions & {
+  options: QueryRequestOptions<DocSchema, KeySchema, ValueSchema> & {
     include_docs: true
-    validate?: {
-      onInvalidDoc?: OnInvalidDocAction
-      docSchema?: DocSchema
-      keySchema?: KeySchema
-      valueSchema?: ValueSchema
-    }
   }
 ): Promise<ViewQueryResponseValidated<DocSchema, KeySchema, ValueSchema>>
 
@@ -41,14 +70,8 @@ export async function query<
 >(
   config: CouchConfigInput,
   view: ViewString,
-  options: ViewOptions & {
+  options: QueryRequestOptions<DocSchema, KeySchema, ValueSchema> & {
     include_docs?: false | undefined
-    validate?: {
-      onInvalidDoc?: OnInvalidDocAction
-      docSchema?: DocSchema
-      keySchema?: KeySchema
-      valueSchema?: ValueSchema
-    }
   }
 ): Promise<ViewQueryResponseValidated<ZodNever, KeySchema, ValueSchema>>
 
@@ -87,19 +110,13 @@ export async function query<
 >(
   _config: CouchConfigInput,
   view: ViewString,
-  options: ViewOptions & {
-    validate?: {
-      onInvalidDoc?: OnInvalidDocAction
-      docSchema?: DocSchema
-      keySchema?: KeySchema
-      valueSchema?: ValueSchema
-    }
-  } = {}
+  options: QueryRequestOptions<DocSchema, KeySchema, ValueSchema> = {}
 ): Promise<ViewQueryResponseValidated<DocSchema, KeySchema, ValueSchema>> {
   const configParseResult = CouchConfig.safeParse(_config)
+  const parsedOptions = QueryOptionsSchema.parse(options || {})
   const logger = createLogger(_config)
   logger.info(`Starting view query: ${view}`)
-  logger.debug('Query options:', ViewOptions.parse(options || {}))
+  logger.debug('Query options:', parsedOptions)
   if (!configParseResult.success) {
     logger.error(`Invalid configuration provided: ${z.prettifyError(configParseResult.error)}`)
     throw configParseResult.error
@@ -107,22 +124,21 @@ export async function query<
 
   const config = configParseResult.data
 
-  let qs = queryString(options)
+  let qs = queryString(parsedOptions)
   let method: 'GET' | 'POST' = 'GET'
   let payload: Record<string, unknown> | null = null
 
   // If keys are supplied, issue a POST to circumvent GET query string limits
   // see http://wiki.apache.org/couchdb/HTTP_view_API#Querying_Options
-  if (typeof options.keys !== 'undefined') {
+  if (typeof parsedOptions.keys !== 'undefined') {
     const MAX_URL_LENGTH = 2000
     // according to http://stackoverflow.com/a/417184/680742,
     // the de facto URL length limit is 2000 characters
 
-    const _options = structuredClone(options)
-    delete _options.keys
-    qs = queryString(_options)
+    const { keys, validate, ...queryableOptions } = parsedOptions
+    qs = queryString(queryableOptions)
 
-    const keysAsString = `keys=${JSON.stringify(options.keys)}`
+    const keysAsString = `keys=${JSON.stringify(keys)}`
 
     if (keysAsString.length + qs.length + 1 <= MAX_URL_LENGTH) {
       // If the keys are short enough, do a GET. we do this to work around
@@ -133,7 +149,7 @@ export async function query<
       qs += keysAsString
     } else {
       method = 'POST'
-      payload = { keys: options.keys }
+      payload = { keys: parsedOptions.keys }
     }
   }
 
@@ -146,6 +162,7 @@ export async function query<
     results = await fetchCouchJson<QueryBody>({
       auth: config.auth,
       method,
+      request: config.request,
       url,
       body: method === 'POST' ? payload : undefined
     })
@@ -172,14 +189,18 @@ export async function query<
   }
 
   // If validation schemas are provided, validate each row accordingly
-  if (options.validate && body.rows) {
-    body.rows = await parseRows<DocSchema, KeySchema, ValueSchema>(body.rows, options.validate)
-  }
+  const rows: ViewQueryResponseValidated<DocSchema, KeySchema, ValueSchema>['rows'] =
+    options.validate && body.rows
+      ? await parseRows<DocSchema, KeySchema, ValueSchema>(body.rows, options.validate)
+      : ((body.rows ?? []) as ViewQueryResponseValidated<DocSchema, KeySchema, ValueSchema>['rows'])
 
   logger.info(`Successfully executed view query: ${view}`)
-  logger.debug('Query response:', body)
+  logger.debug('Query response:', { ...body, rows })
 
-  return body as ViewQueryResponseValidated<DocSchema, KeySchema, ValueSchema>
+  return {
+    ...body,
+    rows
+  }
 }
 
 export type QueryBound = {
@@ -189,14 +210,8 @@ export type QueryBound = {
     ValueSchema extends StandardSchemaV1 = ZodAny
   >(
     view: ViewString,
-    options: ViewOptions & {
+    options: QueryRequestOptions<DocSchema, KeySchema, ValueSchema> & {
       include_docs: true
-      validate?: {
-        onInvalidDoc?: OnInvalidDocAction
-        docSchema?: DocSchema
-        keySchema?: KeySchema
-        valueSchema?: ValueSchema
-      }
     }
   ): Promise<ViewQueryResponseValidated<DocSchema, KeySchema, ValueSchema>>
   <
@@ -205,14 +220,8 @@ export type QueryBound = {
     ValueSchema extends StandardSchemaV1 = ZodAny
   >(
     view: ViewString,
-    options: ViewOptions & {
+    options: QueryRequestOptions<DocSchema, KeySchema, ValueSchema> & {
       include_docs?: false | undefined
-      validate?: {
-        onInvalidDoc?: OnInvalidDocAction
-        docSchema?: DocSchema
-        keySchema?: KeySchema
-        valueSchema?: ValueSchema
-      }
     }
   ): Promise<ViewQueryResponseValidated<ZodNever, KeySchema, ValueSchema>>
   (

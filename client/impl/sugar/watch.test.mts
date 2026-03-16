@@ -3,6 +3,9 @@ import test, { suite, type TestContext } from 'node:test'
 import type { CouchConfigInput } from '../../schema/config.mts'
 import { watchDocs } from './watch.mts'
 
+type FetchInput = Parameters<typeof globalThis.fetch>[0]
+type FetchInit = Parameters<typeof globalThis.fetch>[1]
+
 const encoder = new TextEncoder()
 
 type FetchRequest = {
@@ -50,7 +53,7 @@ const createStreamResponse = (status = 200) => {
 
 const mockFetch = (
   t: TestContext,
-  handler: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>
+  handler: (input: FetchInput, init?: FetchInit) => Promise<Response>
 ) => {
   const fetchMock = t.mock.method(globalThis, 'fetch', handler)
   t.after(() => {
@@ -162,7 +165,7 @@ suite('watchDocs', () => {
       maxDelay: 1
     })
     watcher.on('error', err => {
-      errors.push(err as unknown as Error)
+      errors.push(err as Error)
     })
 
     await waitFor(() => requests.length === 3)
@@ -183,11 +186,73 @@ suite('watchDocs', () => {
       return activeResponse.response
     })
 
-    const watcher = watchDocs(baseConfig(), 'doc-stop', () => {})
+    const watcher = watchDocs(
+      {
+        ...baseConfig(),
+        request: {
+          timeout: 1000
+        }
+      },
+      'doc-stop',
+      () => {}
+    )
 
     await waitFor(() => requests.length === 1)
     watcher.stop()
 
     assert.strictEqual(requests[0].signal?.aborted, true)
+  })
+
+  test('config request signal stops the watcher lifecycle', async t => {
+    const controller = new AbortController()
+    const requests: FetchRequest[] = []
+    const activeResponse = createStreamResponse()
+    mockFetch(t, async (input, init) => {
+      requests.push({
+        signal: init?.signal ?? null,
+        url: String(input)
+      })
+      return activeResponse.response
+    })
+
+    const endEvents: Array<{ lastSeq: null | 'now' }> = []
+    const watcher = watchDocs(
+      {
+        ...baseConfig(),
+        request: {
+          signal: controller.signal
+        }
+      },
+      'doc-external-stop',
+      () => {},
+      {
+        initialDelay: 1,
+        maxDelay: 1,
+        maxRetries: 3
+      }
+    )
+
+    watcher.on('end', (payload: unknown) => {
+      endEvents.push(payload as unknown as { lastSeq: null | 'now' })
+    })
+
+    await waitFor(() => requests.length === 1)
+    controller.abort()
+
+    await waitFor(() => endEvents.length === 1)
+    await new Promise(resolve => {
+      setTimeout(resolve, 25)
+    })
+
+    assert.strictEqual(requests[0].signal?.aborted, true)
+    assert.strictEqual(requests.length, 1)
+  })
+
+  test('rejects per-call request controls in watch options', () => {
+    assert.throws(() => {
+      watchDocs(baseConfig(), 'doc-invalid', () => {}, {
+        request: { timeout: 10 }
+      } as Parameters<typeof watchDocs>[3])
+    }, /request/)
   })
 })

@@ -28,6 +28,7 @@ export const put = async (
     resp = await fetchCouchJson({
       auth: config.auth,
       method: 'PUT',
+      request: config.request,
       url,
       body
     })

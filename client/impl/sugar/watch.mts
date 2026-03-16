@@ -6,6 +6,8 @@ import { setTimeout } from 'node:timers/promises'
 import { CouchConfig, type CouchConfigInput } from '../../schema/config.mts'
 import { fetchCouchStream } from '../utils/fetch.mts'
 
+type WatchListener = (...args: Array<unknown>) => void
+
 /**
  * Watch for changes to specified document IDs in CouchDB.
  * Calls the onChange callback for each change detected.
@@ -29,9 +31,12 @@ export function watchDocs(
   const options = WatchOptions.parse(optionsInput)
   const logger = createLogger(config)
   const emitter = new EventEmitter()
+  const request = config.request
   let lastSeq: null | 'now' = null
   let stopping = false
+  let stopEndEmitted = false
   let retryCount = 0
+  const lifecycleAbortController = new AbortController()
   let currentAbortController: AbortController | null = null
   const maxRetries = options.maxRetries || 10
   const initialDelay = options.initialDelay || 1000
@@ -40,6 +45,29 @@ export function watchDocs(
   const _docIds = Array.isArray(docIds) ? docIds : [docIds]
   if (_docIds.length === 0) throw new Error('docIds must be a non-empty array')
   if (_docIds.length > 100) throw new Error('docIds must be an array of 100 or fewer elements')
+
+  const emitStopEnd = () => {
+    if (stopEndEmitted) return
+    stopEndEmitted = true
+    emitter.emit('end', { lastSeq })
+  }
+
+  const stopWatching = () => {
+    if (stopping) return
+    stopping = true
+    lifecycleAbortController.abort()
+    currentAbortController?.abort()
+    request?.signal?.removeEventListener('abort', handleExternalAbort)
+    emitStopEnd()
+    emitter.removeAllListeners()
+  }
+
+  const handleExternalAbort = () => {
+    logger.info(`Request signal aborted, stopping watcher for [${_docIds}]`)
+    stopWatching()
+  }
+
+  request?.signal?.addEventListener('abort', handleExternalAbort, { once: true })
 
   const connect = async () => {
     if (stopping) return
@@ -74,7 +102,8 @@ export function watchDocs(
         headers: {
           'Content-Type': 'application/json'
         },
-        signal: abortController.signal
+        request,
+        signal: AbortSignal.any([abortController.signal, lifecycleAbortController.signal])
       })
 
       logger.debug(
@@ -161,7 +190,11 @@ export function watchDocs(
     retryCount++
 
     logger.info(`Attempting to reconnect in ${delay}ms (attempt ${retryCount} of ${maxRetries})`)
-    await setTimeout(delay)
+    try {
+      await setTimeout(delay, undefined, { signal: lifecycleAbortController.signal })
+    } catch {
+      return
+    }
 
     try {
       await connect()
@@ -171,21 +204,20 @@ export function watchDocs(
     }
   }
 
-  // Start initial connection
-  void connect()
-
   // Bind the provided change listener
   emitter.on('change', onChange)
 
+  // Start initial connection
+  if (request?.signal?.aborted) {
+    stopWatching()
+  } else {
+    void connect()
+  }
+
   return {
-    on: (event: string, listener: EventListener) => emitter.on(event, listener),
-    removeListener: (event: string, listener: EventListener) =>
+    on: (event: string, listener: WatchListener) => emitter.on(event, listener),
+    removeListener: (event: string, listener: WatchListener) =>
       emitter.removeListener(event, listener),
-    stop: () => {
-      stopping = true
-      currentAbortController?.abort()
-      emitter.emit('end', { lastSeq })
-      emitter.removeAllListeners()
-    }
+    stop: stopWatching
   }
 }
