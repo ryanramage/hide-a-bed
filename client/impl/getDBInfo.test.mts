@@ -81,6 +81,32 @@ suite('getDBInfo', () => {
     )
   })
 
+  test('throws RetryableError for retryable non-JSON response failures', async t => {
+    const port = 8995
+    const server = createServer((_req, res) => {
+      res.statusCode = 503
+      res.setHeader('Content-Type', 'text/html')
+      res.end('<html>maintenance</html>')
+    })
+
+    await new Promise<void>(resolve => {
+      server.listen(port, resolve)
+    })
+    t.after(() => {
+      server.close()
+    })
+
+    await assert.rejects(
+      () => getDBInfo({ couch: `http://localhost:${port}/retryable-text` }),
+      (err: unknown) => {
+        assert.ok(err instanceof RetryableError)
+        assert.strictEqual(err.statusCode, 503)
+        assert.strictEqual(err.message, 'Failed to fetch database info')
+        return true
+      }
+    )
+  })
+
   test('throws OperationError for non-retryable response failures', async t => {
     const port = 8994
     const server = createServer((_req, res) => {
@@ -103,6 +129,31 @@ suite('getDBInfo', () => {
         err.statusCode === 403 &&
         err.message === 'Failed to fetch database info' &&
         err.couchError === 'forbidden'
+    )
+  })
+
+  test('throws OperationError for non-JSON response failures', async t => {
+    const port = 8996
+    const server = createServer((_req, res) => {
+      res.statusCode = 401
+      res.setHeader('Content-Type', 'text/plain')
+      res.end('access denied')
+    })
+
+    await new Promise<void>(resolve => {
+      server.listen(port, resolve)
+    })
+    t.after(() => {
+      server.close()
+    })
+
+    await assert.rejects(
+      () => getDBInfo({ couch: `http://localhost:${port}/forbidden-text` }),
+      (err: unknown) =>
+        err instanceof OperationError &&
+        err.statusCode === 401 &&
+        err.message === 'Failed to fetch database info' &&
+        err.couchError === undefined
     )
   })
 

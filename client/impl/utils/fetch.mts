@@ -102,7 +102,21 @@ const parseJsonResponse = async (response: Response): Promise<unknown> => {
     return null
   }
 
-  return response.json()
+  const text = await response.text()
+
+  if (text.trim() === '') {
+    return null
+  }
+
+  try {
+    return JSON.parse(text)
+  } catch (err) {
+    if (response.ok) {
+      throw err
+    }
+
+    return text
+  }
 }
 
 export async function fetchCouchJson<TBody = unknown>(

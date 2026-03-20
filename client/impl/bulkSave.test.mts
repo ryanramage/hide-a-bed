@@ -124,6 +124,27 @@ suite('bulkSave', () => {
     )
   })
 
+  test('throws RetryableError for retryable non-JSON response failures', async t => {
+    const fetchMock = t.mock.method(globalThis, 'fetch', async () => {
+      return new Response('<html>temporary outage</html>', {
+        status: 503,
+        headers: { 'Content-Type': 'text/html' }
+      })
+    })
+
+    t.after(() => {
+      fetchMock.mock.restore()
+    })
+
+    await assert.rejects(
+      () => bulkSave({ couch: 'http://localhost:5984/mock-db' }, [{ _id: 'doc-1' }]),
+      (err: unknown) =>
+        err instanceof RetryableError &&
+        err.statusCode === 503 &&
+        err.message === 'Bulk save failed'
+    )
+  })
+
   test('integration with pouchdb-server', async t => {
     let docTwoInitialRev: string | undefined
     const docs = [

@@ -126,4 +126,39 @@ suite('fetchCouchJson request controls', () => {
       (err: unknown) => err instanceof RetryableError && err.message === 'Request timed out'
     )
   })
+
+  test('returns text bodies for unsuccessful non-JSON responses', async t => {
+    mockFetch(t, async () => {
+      return new Response('<html>bad gateway</html>', {
+        status: 502,
+        headers: { 'Content-Type': 'text/html' }
+      })
+    })
+
+    const response = await fetchCouchJson<string>({
+      method: 'GET',
+      url: 'http://localhost:5984/db'
+    })
+
+    assert.strictEqual(response.statusCode, 502)
+    assert.strictEqual(response.body, '<html>bad gateway</html>')
+  })
+
+  test('still rejects malformed JSON for successful responses', async t => {
+    mockFetch(t, async () => {
+      return new Response('not-json', {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    })
+
+    await assert.rejects(
+      () =>
+        fetchCouchJson({
+          method: 'GET',
+          url: 'http://localhost:5984/db'
+        }),
+      (err: unknown) => err instanceof SyntaxError
+    )
+  })
 })
