@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test, { suite } from 'node:test'
 import { TrackedEmitter } from './impl/utils/trackedEmitter.mts'
+import type { BulkSaveResponse } from './schema/couch/couch.output.schema.ts'
 import { ConflictError, ValidationError, bulkSaveTransaction, get } from './index.mts'
 import { bindConfig } from './impl/bindConfig.mts'
 import z from 'zod'
@@ -9,6 +10,17 @@ import {
   TransactionRollbackError,
   TransactionVersionConflictError
 } from './impl/utils/transactionErrors.mts'
+
+type BulkSaveRow = BulkSaveResponse[number]
+
+function assertBulkSaveSuccess(
+  row: BulkSaveRow | undefined
+): asserts row is Extract<BulkSaveRow, { ok: true }> {
+  assert.ok(row)
+  if (!('ok' in row) || row.ok !== true) {
+    assert.fail(`expected bulk save success row, got ${JSON.stringify(row)}`)
+  }
+}
 
 const config: Parameters<typeof get>[0] = {
   couch: TEST_DB_URL,
@@ -158,6 +170,7 @@ suite('Database Tests', () => {
       const docs = [{ _id: doc_a, data: 'something' }]
       const resp = await bulkSaveTransaction(config, `transaction-${Date.now()}`, docs)
       assert.strictEqual(resp.length, 1, 'one response')
+      assertBulkSaveSuccess(resp[0])
       assert.strictEqual(resp[0].ok, true, 'response ok')
       _rev = resp[0].rev
       assert.ok(resp)
@@ -183,8 +196,10 @@ suite('Database Tests', () => {
       const resp = await bulkSaveTransaction(config, `transaction-${Date.now()}`, docs)
       assert.ok(resp)
       assert.strictEqual(resp.length, 2, 'one response')
+      assertBulkSaveSuccess(resp[0])
       assert.strictEqual(resp[0].ok, true, 'response ok')
       _rev = resp[0].rev
+      assertBulkSaveSuccess(resp[1])
       b_rev = resp[1].rev
       assert.strictEqual(resp[1].ok, true, 'response ok')
       assert.ok(resp[0].rev?.startsWith('2-'), 'second rev saved')

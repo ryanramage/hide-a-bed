@@ -290,8 +290,9 @@ suite('query', () => {
       (err: unknown) =>
         err instanceof OperationError &&
         err.statusCode === 403 &&
-        err.message === 'Query failed' &&
-        err.couchError === 'forbidden'
+        err.message === 'Query failed: not allowed' &&
+        err.couchError === 'forbidden' &&
+        err.couchReason === 'not allowed'
     )
   })
 })

@@ -28,6 +28,18 @@ export const ViewRow = z.object({
 })
 export type ViewRow = StandardSchemaV1.InferOutput<typeof ViewRow>
 
+export const BulkSaveSuccessRow = z.object({
+  ok: z.literal(true).describe('successful bulk mutation rows always return ok=true'),
+  id: z.string().nullish(),
+  rev: z.string().nullish()
+})
+
+export const BulkSaveFailureRow = z.object({
+  id: z.string().nullish(),
+  error: z.string().nullish().describe('if an error occurred, one word reason, eg conflict'),
+  reason: z.string().nullish().describe('a full error message')
+})
+
 /**
  * A CouchDB view row with validated key, value, and document schemas.
  */
@@ -53,8 +65,7 @@ export const ViewQueryResponse = z.object({
     .nonnegative()
     .optional()
     .describe('the offset of the first row in this result set'),
-  error: z.string().optional().describe('if something is wrong'),
-  rows: z.array(ViewRow).optional().describe('the rows returned by the view'),
+  rows: z.array(ViewRow).describe('the rows returned by the view'),
   update_seq: z
     .number()
     .optional()
@@ -76,23 +87,14 @@ export type ViewQueryResponseValidated<
 /**
  * CouchDB _bulk_docs response schema
  */
-export const BulkSaveResponse = z.array(
-  z.object({
-    ok: z.boolean().nullish(),
-    id: z.string().nullish(),
-    rev: z.string().nullish(),
-    error: z.string().nullish().describe('if an error occurred, one word reason, eg conflict'),
-    reason: z.string().nullish().describe('a full error message')
-  })
-)
+export const BulkSaveResponse = z.array(z.union([BulkSaveSuccessRow, BulkSaveFailureRow]))
 export type BulkSaveResponse = z.infer<typeof BulkSaveResponse>
 
 export const CouchPutResponse = z.object({
-  ok: z.boolean().optional().describe('did the request succeed'),
-  error: z.string().optional().describe('the error message, if did not succeed'),
-  statusCode: z.number(),
+  ok: z.literal(true).describe('successful mutation responses always return ok=true'),
   id: z.string().optional().describe('the couch doc id'),
-  rev: z.string().optional().describe('the new rev of the doc')
+  rev: z.string().optional().describe('the new rev of the doc'),
+  statusCode: z.number()
 })
 
 export const CouchDBInfo = z.looseObject({

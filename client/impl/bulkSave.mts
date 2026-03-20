@@ -25,6 +25,18 @@ import { fetchCouchJson } from './utils/fetch.mts'
 import { isSuccessStatusCode } from './utils/response.mts'
 import { createCouchPathUrl } from './utils/url.mts'
 
+type BulkSaveRow = BulkSaveResponse[number]
+type BulkSaveSuccessRow = Extract<BulkSaveRow, { ok: true }>
+type BulkSaveFailureRow = Exclude<BulkSaveRow, BulkSaveSuccessRow>
+
+const isBulkSaveSuccess = (row: BulkSaveRow): row is BulkSaveSuccessRow => {
+  return 'ok' in row && row.ok === true
+}
+
+const isBulkSaveFailure = (row: BulkSaveRow): row is BulkSaveFailureRow => {
+  return !isBulkSaveSuccess(row)
+}
+
 /**
  * Bulk saves documents to CouchDB using the _bulk_docs endpoint.
  *
@@ -68,19 +80,17 @@ export const bulkSave = async (config: CouchConfigInput, docs: CouchDocInput[]) 
   }
   if (!resp) {
     logger.error('No response received from bulk save request')
-    throw new RetryableError('Bulk save failed', 503, { operation: 'request' })
-  }
-  if (RetryableError.isRetryableStatusCode(resp.statusCode)) {
-    logger.warn(`Retryable status code received: ${resp.statusCode}`)
-    throw new RetryableError('Bulk save failed', resp.statusCode, {
-      operation: 'request'
-    })
+    throw new RetryableError(
+      `Bulk save failed for ${docs.length} document${docs.length === 1 ? '' : 's'}`,
+      503,
+      { operation: 'request' }
+    )
   }
   if (!isSuccessStatusCode('bulkSave', resp.statusCode)) {
     logger.error(`Unexpected status code: ${resp.statusCode}`)
     throw createResponseError({
       body: resp.body,
-      defaultMessage: 'Bulk save failed',
+      defaultMessage: `Bulk save failed for ${docs.length} document${docs.length === 1 ? '' : 's'}`,
       operation: 'request',
       statusCode: resp.statusCode
     })
@@ -231,7 +241,7 @@ export const bulkSaveTransaction = async (
     // Check for failures
     results.forEach(r => {
       if (!r.id) return // not enough info
-      if (!r.error) {
+      if (isBulkSaveSuccess(r)) {
         if (existingDocs.notFound[r.id]) newDocsToRollback.push(r)
         if (existingDocs.found[r.id]) potentialExistingDocsToRollback.push(r)
       } else {
@@ -262,12 +272,14 @@ export const bulkSaveTransaction = async (
     // Rollback changes
     const toRollback: CouchDoc[] = []
     potentialExistingDocsToRollback.forEach(row => {
+      if (!isBulkSaveSuccess(row)) return
       if (!row.id || !row.rev) return
       const doc = existingDocs.found[row.id]
       doc._rev = row.rev
       toRollback.push(doc)
     })
     newDocsToRollback.forEach(d => {
+      if (!isBulkSaveSuccess(d)) return
       if (!d.id || !d.rev) return
       const before = JSON.parse(JSON.stringify(providedDocsById[d.id]))
       before._rev = d.rev
@@ -279,7 +291,7 @@ export const bulkSaveTransaction = async (
     const bulkRollbackResult = await bulkSave(config, toRollback)
     let status: TransactionStatus = 'rolled_back'
     bulkRollbackResult.forEach(r => {
-      if (r.error) status = 'rollback_failed'
+      if (isBulkSaveFailure(r)) status = 'rollback_failed'
     })
     logger.warn('Transaction rolled back:', { bulkRollbackResult, status })
     await emitter.emit('transaction-rolled-back', {

@@ -1,4 +1,4 @@
-import { getCouchError } from './response.mts'
+import { getCouchError, getReason } from './response.mts'
 import type { StandardSchemaV1 } from '../../types/standard-schema.ts'
 
 /**
@@ -89,6 +89,7 @@ export type HideABedErrorOptions = {
   category: ErrorCategory
   cause?: unknown
   couchError?: string
+  couchReason?: string
   docId?: string
   operation?: ErrorOperation
   retryable: boolean
@@ -103,6 +104,7 @@ export type HideABedErrorOptions = {
 export class HideABedError extends Error {
   readonly category: ErrorCategory
   readonly couchError?: string
+  readonly couchReason?: string
   readonly docId?: string
   readonly operation?: ErrorOperation
   readonly retryable: boolean
@@ -113,6 +115,7 @@ export class HideABedError extends Error {
     this.name = 'HideABedError'
     this.category = options.category
     this.couchError = options.couchError
+    this.couchReason = options.couchReason
     this.docId = options.docId
     this.operation = options.operation
     this.retryable = options.retryable
@@ -147,6 +150,7 @@ export class NotFoundError extends HideABedError {
     super(options.message ?? 'Document not found', {
       category: 'not_found',
       couchError: options.couchError ?? 'not_found',
+      couchReason: options.couchReason,
       cause: options.cause,
       docId,
       operation: options.operation,
@@ -172,6 +176,7 @@ export class ConflictError extends HideABedError {
     super(options.message ?? 'Document update conflict', {
       category: 'conflict',
       couchError: options.couchError ?? 'conflict',
+      couchReason: options.couchReason,
       cause: options.cause,
       docId,
       operation: options.operation,
@@ -198,6 +203,7 @@ export class OperationError extends HideABedError {
       category: options.category ?? 'operation',
       cause: options.cause,
       couchError: options.couchError,
+      couchReason: options.couchReason,
       docId: options.docId,
       operation: options.operation,
       retryable: false,
@@ -220,6 +226,7 @@ export class ValidationError extends HideABedError {
       category: 'validation',
       cause: options.cause,
       couchError: options.couchError,
+      couchReason: options.couchReason,
       docId: options.docId,
       operation: options.operation,
       retryable: false,
@@ -251,6 +258,7 @@ export class RetryableError extends HideABedError {
       category: options.category ?? 'retryable',
       cause: options.cause,
       couchError: options.couchError,
+      couchReason: options.couchReason,
       docId: options.docId,
       operation: options.operation,
       retryable: true,
@@ -306,6 +314,16 @@ type ResponseErrorOptions = {
   statusCode?: number
 }
 
+const getResponseErrorMessage = (body: unknown, defaultMessage: string) => {
+  const reason = getReason(body, '').trim()
+
+  if (!reason || reason === defaultMessage) {
+    return defaultMessage
+  }
+
+  return `${defaultMessage}: ${reason}`
+}
+
 export function createResponseError({
   body,
   defaultMessage,
@@ -315,11 +333,14 @@ export function createResponseError({
   statusCode
 }: ResponseErrorOptions): HideABedError {
   const couchError = getCouchError(body)
+  const couchReason = getReason(body, '').trim() || undefined
+  const message = getResponseErrorMessage(body, defaultMessage)
 
   if (statusCode === 404 && docId) {
     return new NotFoundError(docId, {
       couchError,
-      message: notFoundMessage,
+      couchReason,
+      message: notFoundMessage ? getResponseErrorMessage(body, notFoundMessage) : undefined,
       operation,
       statusCode
     })
@@ -328,20 +349,24 @@ export function createResponseError({
   if (statusCode === 409 && docId) {
     return new ConflictError(docId, {
       couchError,
+      couchReason,
+      message,
       operation,
       statusCode
     })
   }
 
   if (RetryableError.isRetryableStatusCode(statusCode)) {
-    return new RetryableError(defaultMessage, statusCode, {
+    return new RetryableError(message, statusCode, {
       couchError,
+      couchReason,
       operation
     })
   }
 
-  return new OperationError(defaultMessage, {
+  return new OperationError(message, {
     couchError,
+    couchReason,
     docId,
     operation,
     statusCode

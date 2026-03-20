@@ -95,8 +95,9 @@ suite('errors', () => {
       statusCode: 503
     })
     assert.ok(retryable instanceof RetryableError)
-    assert.strictEqual(retryable.message, 'Query failed')
+    assert.strictEqual(retryable.message, 'Query failed: cluster is rebooting')
     assert.strictEqual(retryable.couchError, 'maintenance_mode')
+    assert.strictEqual(retryable.couchReason, 'cluster is rebooting')
     assert.strictEqual(retryable.statusCode, 503)
 
     const operationError = createResponseError({
@@ -107,9 +108,10 @@ suite('errors', () => {
       statusCode: 403
     })
     assert.ok(operationError instanceof OperationError)
-    assert.strictEqual(operationError.message, 'Put failed')
+    assert.strictEqual(operationError.message, 'Put failed: validation failed')
     assert.strictEqual(operationError.statusCode, 403)
     assert.strictEqual(operationError.couchError, 'forbidden')
+    assert.strictEqual(operationError.couchReason, 'validation failed')
     assert.strictEqual(operationError.docId, 'doc-789')
   })
 })

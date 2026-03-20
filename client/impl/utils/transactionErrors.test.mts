@@ -33,7 +33,10 @@ suite('transactionErrors', () => {
     const error = new TransactionBulkOperationError(failedDocs)
 
     assert.strictEqual(error.name, 'TransactionBulkOperationError')
-    assert.match(error.message, /doc-1, doc-2/)
+    assert.strictEqual(
+      error.message,
+      'Failed to save 2 documents: doc-1 (stale revision), doc-2 (validation failed)'
+    )
     assert.deepStrictEqual(error.failedDocs, failedDocs)
   })
 

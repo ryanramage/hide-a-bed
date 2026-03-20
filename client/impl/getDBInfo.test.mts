@@ -75,7 +75,7 @@ suite('getDBInfo', () => {
       (err: unknown) => {
         assert.ok(err instanceof RetryableError)
         assert.strictEqual(err.statusCode, 503)
-        assert.strictEqual(err.message, 'Failed to fetch database info')
+        assert.strictEqual(err.message, 'Failed to fetch database info: maintenance')
         return true
       }
     )
@@ -127,7 +127,7 @@ suite('getDBInfo', () => {
       (err: unknown) =>
         err instanceof OperationError &&
         err.statusCode === 403 &&
-        err.message === 'Failed to fetch database info' &&
+        err.message === 'Failed to fetch database info: no access' &&
         err.couchError === 'forbidden'
     )
   })

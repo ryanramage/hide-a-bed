@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test, { suite } from 'node:test'
 import type { CouchConfigInput } from '../schema/config.mts'
 import { bulkSave, bulkSaveTransaction } from './bulkSave.mts'
+import type { BulkSaveResponse } from '../schema/couch/couch.output.schema.ts'
 import { OperationError, RetryableError } from './utils/errors.mts'
 import {
   TransactionRollbackError,
@@ -22,6 +23,25 @@ const transactionBaseConfig: CouchConfigInput = {
 }
 
 type EventRecord = { event: string; payload: unknown }
+type BulkSaveRow = BulkSaveResponse[number]
+
+function assertBulkSaveSuccess(
+  row: BulkSaveRow | undefined
+): asserts row is Extract<BulkSaveRow, { ok: true }> {
+  assert.ok(row)
+  if (!('ok' in row) || row.ok !== true) {
+    assert.fail(`expected bulk save success row, got ${JSON.stringify(row)}`)
+  }
+}
+
+function assertBulkSaveFailure(
+  row: BulkSaveRow | undefined
+): asserts row is Exclude<BulkSaveRow, { ok: true }> {
+  assert.ok(row)
+  if ('ok' in row && row.ok === true) {
+    assert.fail(`expected bulk save failure row, got ${JSON.stringify(row)}`)
+  }
+}
 
 function createTestEmitter() {
   const events: EventRecord[] = []
@@ -119,8 +139,9 @@ suite('bulkSave', () => {
       (err: unknown) =>
         err instanceof OperationError &&
         err.statusCode === 403 &&
-        err.message === 'Bulk save failed' &&
-        err.couchError === 'forbidden'
+        err.message === 'Bulk save failed for 1 document: blocked' &&
+        err.couchError === 'forbidden' &&
+        err.couchReason === 'blocked'
     )
   })
 
@@ -141,7 +162,7 @@ suite('bulkSave', () => {
       (err: unknown) =>
         err instanceof RetryableError &&
         err.statusCode === 503 &&
-        err.message === 'Bulk save failed'
+        err.message === 'Bulk save failed for 1 document'
     )
   })
 
@@ -156,10 +177,10 @@ suite('bulkSave', () => {
       const results = await bulkSave(baseConfig, docs)
       assert.strictEqual(results.length, 2)
       const [first, second] = results
-      assert.ok(first)
+      assertBulkSaveSuccess(first)
       assert.strictEqual(first.id, docs[0]._id)
       assert.strictEqual(first.ok, true)
-      assert.ok(second)
+      assertBulkSaveSuccess(second)
       assert.strictEqual(second.id, docs[1]._id)
       assert.strictEqual(second.ok, true)
 
@@ -186,7 +207,7 @@ suite('bulkSave', () => {
 
       assert.strictEqual(updateResults.length, 1)
       const [updated] = updateResults
-      assert.ok(updated)
+      assertBulkSaveSuccess(updated)
       assert.strictEqual(updated.ok, true)
       assert.ok(updated.rev)
 
@@ -208,7 +229,7 @@ suite('bulkSave', () => {
 
       assert.strictEqual(conflictResults.length, 1)
       const [conflict] = conflictResults
-      assert.ok(conflict)
+      assertBulkSaveFailure(conflict)
       assert.strictEqual(conflict.id, docs[1]._id)
       assert.strictEqual(conflict.error, 'conflict')
       assert.ok(conflict.reason)
@@ -246,9 +267,9 @@ suite('bulkSaveTransaction', () => {
 
       const results = await bulkSaveTransaction(config, transactionId, docs)
       assert.strictEqual(results.length, 2)
-      assert.ok(results[0]?.ok)
+      assertBulkSaveSuccess(results[0])
       assert.strictEqual(results[0]?.id, existingId)
-      assert.ok(results[1]?.ok)
+      assertBulkSaveSuccess(results[1])
       assert.strictEqual(results[1]?.id, newId)
 
       const updatedExisting = await getDocFrom(TEST_DB_URL, existingId)

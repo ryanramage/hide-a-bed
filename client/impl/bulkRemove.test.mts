@@ -50,9 +50,14 @@ suite('bulkRemove', () => {
       const results = await bulkRemove(config, ['bulk-remove-doc-1'])
       assert.strictEqual(results.length, 1)
       const [first] = results
-      assert.strictEqual(first?.id, 'bulk-remove-doc-1')
-      assert.strictEqual(first?.ok, true)
-      assert.ok(typeof first?.rev === 'string')
+
+      if (!('ok' in first)) {
+        assert.fail('expected result to have ok property')
+      }
+
+      assert.strictEqual(first.id, 'bulk-remove-doc-1')
+      assert.strictEqual(first.ok, true)
+      assert.ok(typeof first.rev === 'string')
 
       const { statusCode, body } = await getDoc('bulk-remove-doc-1')
       assert.strictEqual(statusCode, 404)
@@ -70,6 +75,11 @@ suite('bulkRemove', () => {
       const results = await bulkRemoveMap(config, ['bulk-remove-map-doc-1'])
       assert.strictEqual(results.length, 1)
       const [first] = results
+
+      if (!('ok' in first)) {
+        assert.fail('expected result to have ok property')
+      }
+
       assert.ok(first)
       assert.strictEqual(first.id, 'bulk-remove-map-doc-1')
       assert.strictEqual(first.ok, true)

@@ -123,8 +123,9 @@ suite('bulkGet', () => {
         (err: unknown) =>
           err instanceof OperationError &&
           err.statusCode === 403 &&
-          err.message === 'Bulk get failed' &&
-          err.couchError === 'forbidden'
+          err.message === 'Bulk get failed: no access' &&
+          err.couchError === 'forbidden' &&
+          err.couchReason === 'no access'
       )
     })
 
