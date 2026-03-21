@@ -35,7 +35,10 @@ export async function requestJson<TBody = Record<string, unknown> | null>(
   }
 }
 
-export const getJson = <TBody = Record<string, unknown> | null,>(url: string) =>
-  requestJson<TBody>('GET', url)
-export const putJson = <TBody = Record<string, unknown> | null,>(url: string, body?: unknown) =>
-  requestJson<TBody>('PUT', url, body)
+export function getJson<TBody = Record<string, unknown> | null>(url: string) {
+  return requestJson<TBody>('GET', url)
+}
+
+export function putJson<TBody = Record<string, unknown> | null>(url: string, body?: unknown) {
+  return requestJson<TBody>('PUT', url, body)
+}

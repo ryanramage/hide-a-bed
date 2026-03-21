@@ -45,7 +45,8 @@ This document orients automation and AI assistants working in hide-a-bed.
 
 ## NPM scripts
 
-- `npm run validate` – runs format, lint, and typecheck in sequence. Use this validate all changes.
+- `npm run validate` – runs format:check, lint:check, and typecheck in sequence. Use this validate all changes.
+- `npm run format` – formats code with Oxfmt. Use `npm run format:check` to check formatting without modifying files.
 
 ## Verification Checklist
 
