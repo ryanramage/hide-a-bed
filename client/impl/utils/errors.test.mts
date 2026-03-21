@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test, { suite } from 'node:test'
 import {
   ConflictError,
+  isTransientAuthError,
   NotFoundError,
   OperationError,
   RetryableError,
@@ -51,6 +52,14 @@ suite('errors', () => {
     }
     assert.strictEqual(RetryableError.isRetryableStatusCode(404), false)
     assert.strictEqual(RetryableError.isRetryableStatusCode(undefined), false)
+  })
+
+  test('isTransientAuthError only retries auth failures on the first attempt', () => {
+    assert.strictEqual(isTransientAuthError({ statusCode: 401 }, 0), true)
+    assert.strictEqual(isTransientAuthError({ statusCode: 403 }, 0), true)
+    assert.strictEqual(isTransientAuthError({ statusCode: 401 }, 1), false)
+    assert.strictEqual(isTransientAuthError({ statusCode: 500 }, 0), false)
+    assert.strictEqual(isTransientAuthError(new Error('boom'), 0), false)
   })
 
   test('handleNetworkError wraps known network failures', () => {

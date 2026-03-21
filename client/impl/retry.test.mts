@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test, { suite } from 'node:test'
 import { withRetry } from './retry.mts'
-import { RetryableError } from './utils/errors.mts'
+import { OperationError, RetryableError } from './utils/errors.mts'
 
 suite('withRetry', () => {
   test('resolves when the wrapped function succeeds without retries', async () => {
@@ -73,5 +73,53 @@ suite('withRetry', () => {
       }
     )
     assert.strictEqual(attempts, 3)
+  })
+
+  test('retries a transient auth error once by default', async () => {
+    let attempts = 0
+    const fn = async () => {
+      attempts += 1
+      if (attempts === 1) {
+        throw new OperationError('temporary unauthorized', {
+          operation: 'get',
+          statusCode: 401
+        })
+      }
+      return 'done'
+    }
+
+    const wrapped = withRetry(fn, {
+      initialDelay: 0,
+      maxDelay: 0,
+      maxRetries: 5
+    })
+
+    const result = await wrapped()
+
+    assert.strictEqual(result, 'done')
+    assert.strictEqual(attempts, 2)
+  })
+
+  test('does not retry transient auth errors more than once by default', async () => {
+    let attempts = 0
+    const fn = async () => {
+      attempts += 1
+      throw new OperationError('still unauthorized', {
+        operation: 'get',
+        statusCode: 401
+      })
+    }
+
+    const wrapped = withRetry(fn, {
+      initialDelay: 0,
+      maxDelay: 0,
+      maxRetries: 5
+    })
+
+    await assert.rejects(
+      () => wrapped(),
+      (err: unknown) => err instanceof OperationError && err.statusCode === 401
+    )
+    assert.strictEqual(attempts, 2)
   })
 })

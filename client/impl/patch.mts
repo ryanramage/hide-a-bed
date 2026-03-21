@@ -4,7 +4,8 @@ import { createLogger } from './utils/logger.mts'
 import { setTimeout } from 'node:timers/promises'
 import { CouchConfig, type CouchConfigInput } from '../schema/config.mts'
 import { z } from 'zod'
-import { ConflictError, HideABedError, OperationError, RetryableError } from './utils/errors.mts'
+import { ConflictError, HideABedError, OperationError } from './utils/errors.mts'
+import { shouldRetryError } from './retry.mts'
 
 const PatchProperties = z
   .looseObject({
@@ -106,7 +107,9 @@ export const patchDangerously = async (
         throw err
       }
 
-      if (!(err instanceof ConflictError) && !(err instanceof RetryableError)) {
+      const shouldRetry = err instanceof ConflictError || shouldRetryError(err, attempts)
+
+      if (!shouldRetry) {
         throw err
       }
 

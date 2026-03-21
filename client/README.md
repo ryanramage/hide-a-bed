@@ -779,6 +779,21 @@ const config = {
 }
 ```
 
+`bindConfig()` and `withRetry()` now perform a single built-in retry for transient `401` and `403` responses before surfacing the error.
+
+### withRetry
+
+`withRetry(fn, options)` wraps an async function and retries based on the built-in retry rules.
+
+```javascript
+import { withRetry, get } from 'hide-a-bed'
+
+const getWithCustomRetry = withRetry(id => get({ couch: 'http://localhost:5984/mydb' }, id), {
+  maxRetries: 2,
+  initialDelay: 250
+})
+```
+
 ### Migration Note
 
 `needleOpts` has been removed from the main `client` package. If you were passing transport-specific `needle` options through `config.needleOpts`, remove that configuration when upgrading. If you used `needleOpts.username` or `needleOpts.password`, move them to `config.auth.username` and `config.auth.password`. Couch URLs with embedded credentials are no longer supported and will fail validation. The package now uses native `fetch` internally and only supports the documented top-level config fields above.

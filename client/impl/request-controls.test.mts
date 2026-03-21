@@ -155,4 +155,40 @@ suite('request controls', () => {
     assert.strictEqual(info.db_name, 'retry-db')
     assert.strictEqual(attempt, 2)
   })
+
+  test('bindConfig retries a transient auth response once by default', async t => {
+    let attempt = 0
+
+    const fetchMock = t.mock.method(globalThis, 'fetch', async () => {
+      attempt++
+
+      if (attempt === 1) {
+        return new Response(JSON.stringify({ error: 'unauthorized', reason: 'socket hiccup' }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' }
+        })
+      }
+
+      return new Response(JSON.stringify({ db_name: 'retry-db' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    })
+
+    t.after(() => {
+      fetchMock.mock.restore()
+    })
+
+    const db = bindConfig({
+      backoffFactor: 1,
+      couch: 'http://localhost:5984/retry-db',
+      initialDelay: 0,
+      maxRetries: 5
+    })
+
+    const info = await db.getDBInfo()
+
+    assert.strictEqual(info.db_name, 'retry-db')
+    assert.strictEqual(attempt, 2)
+  })
 })

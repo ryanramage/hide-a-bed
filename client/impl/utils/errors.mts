@@ -1,5 +1,6 @@
 import { getCouchError, getReason } from './response.mts'
 import type { StandardSchemaV1 } from '../../types/standard-schema.ts'
+import { isObject } from '../../types/types.utils.ts'
 
 /**
  * Represents a network-level error emitted by Node.js or HTTP client libraries.
@@ -78,6 +79,17 @@ const getNestedNetworkError = (
 
   const candidate = value as ErrorWithCause
   return isNetworkError(candidate.cause) ? candidate.cause : null
+}
+
+export const hasStatusCode = (error: unknown): error is { statusCode: number } => {
+  return isObject(error) && 'statusCode' in error && typeof error.statusCode === 'number'
+}
+
+export const isTransientAuthError = (error: unknown, attempt: number) => {
+  if (!hasStatusCode(error)) return false
+  if (attempt > 0) return false
+
+  return error.statusCode === 401 || error.statusCode === 403
 }
 
 /**
