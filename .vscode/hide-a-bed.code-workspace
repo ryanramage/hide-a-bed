@@ -7,7 +7,7 @@
       "path": "../changes"
     },
     {
-      "path": "../client",
+      "path": "../client"
     },
     {
       "path": "../stub"
@@ -15,5 +15,5 @@
     {
       "path": "../test"
     }
-  ],
+  ]
 }

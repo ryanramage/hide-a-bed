@@ -44,16 +44,16 @@ const doc = await db.get(userId)
 
 ### Writing Testable Code
 
-The key to writing testable database code is to use dependency injection. The recommended pattern is: <!-- proofreader-ignore --> 
+The key to writing testable database code is to use dependency injection. The recommended pattern is: <!-- proofreader-ignore -->
 
 ```javascript
 // userService.js
 export async function getUserActivity(services, userId) {
   const user = await services.db.get(userId)
-  const query = { 
-    startkey: [userId, 0], 
-    endkey: [userId, Date.now()], 
-    include_docs: true 
+  const query = {
+    startkey: [userId, 0],
+    endkey: [userId, Date.now()],
+    include_docs: true
   }
   const activity = await services.db.query('_design/userThings/_view/byTime', query)
   return { user, activity: activity.rows }
@@ -76,19 +76,19 @@ import { createRequire } from 'module'
 const require = createRequire(import.meta.url)
 const viewDoc = require('./assets/viewDocs.cjs')
 
-const config = { couch: 'http://fake:5984' } 
+const config = { couch: 'http://fake:5984' }
 const { bindConfig } = await setup([viewDoc]) // this sets up the view to be available in your test
 const db = bindConfig(config)
 const services = { db }
 
 describe('getUserActivity', () => {
   it('retrieves user data and activity', async () => {
-    // add some docs here that match/don't match the view <!-- proofreader-ignore --> 
+    // add some docs here that match/don't match the view <!-- proofreader-ignore -->
     const docs = [
-        { _id: 'test-user-id', name: 'Bob'},
-        { _id: 'act1', ts: 1, value: 'clicked', user: 'test-user-id' },
-        { _id: 'act2', ts: 2, value: 'submit', user: 'test-user-id'},
-        { _id: 'should-not', ts: 3, value: 'clicked', user: 'no-user' }
+      { _id: 'test-user-id', name: 'Bob' },
+      { _id: 'act1', ts: 1, value: 'clicked', user: 'test-user-id' },
+      { _id: 'act2', ts: 2, value: 'submit', user: 'test-user-id' },
+      { _id: 'should-not', ts: 3, value: 'clicked', user: 'no-user' }
     ]
     await db.bulkSave(docs)
 
@@ -123,5 +123,3 @@ Contributions are welcome! Submit a pull request.
 `npm test` starts an in-memory PouchDB server via the shared global setup in `client/test/setup.mts` and tears it down after the suite finishes. Because every suite writes to the same `hide-a-bed-test-db` instance, make generated document IDs unique per test run (for example, prefix with the test title plus `crypto.randomUUID()`) and avoid reusing hard-coded `_id` strings across suites. This keeps parallel runs isolated and prevents conflicts when the shared database still contains documents from previous tests.## License
 
 Licensed under the MIT License.
-
-
