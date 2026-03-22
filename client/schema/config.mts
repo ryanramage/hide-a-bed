@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type { StandardSchemaV1 } from '../types/standard-schema.ts'
+import { RequestOptions } from './request.mts'
 
 const anyArgs = z.array(z.any())
 
@@ -12,46 +13,26 @@ const LoggerSchema = z
   })
   .or(z.function({ input: anyArgs, output: z.void() }))
 
-export const NeedleBaseOptions = z.object({
-  json: z.boolean(),
-  headers: z.record(z.string(), z.string()),
-  parse_response: z.boolean().optional()
+export const CouchAuth = z.strictObject({
+  username: z.string().describe('basic auth username for CouchDB requests'),
+  password: z.string().describe('basic auth password for CouchDB requests')
 })
-export type NeedleBaseOptionsSchema = z.infer<typeof NeedleBaseOptions>
 
-export const NeedleOptions = z.object({
-  json: z.boolean().optional(),
-  compressed: z.boolean().optional(),
-  follow_max: z.number().optional(),
-  follow_set_cookie: z.boolean().optional(),
-  follow_set_referer: z.boolean().optional(),
-  follow: z.number().optional(),
-  timeout: z.number().optional(),
-  read_timeout: z.number().optional(),
-  parse_response: z.boolean().optional(),
-  decode: z.boolean().optional(),
-  parse_cookies: z.boolean().optional(),
-  cookies: z.record(z.string(), z.string()).optional(),
-  headers: z.record(z.string(), z.string()).optional(),
-  auth: z.enum(['auto', 'digest', 'basic']).optional(),
-  username: z.string().optional(),
-  password: z.string().optional(),
-  proxy: z.string().optional(),
-  agent: z.any().optional(),
-  rejectUnauthorized: z.boolean().optional(),
-  output: z.string().optional(),
-  parse: z.boolean().optional(),
-  multipart: z.boolean().optional(),
-  open_timeout: z.number().optional(),
-  response_timeout: z.number().optional(),
-  keepAlive: z.boolean().optional()
+const CouchUrl = z.custom<string | URL>(value => {
+  try {
+    const url = new URL(value as string | URL)
+    return url.username === '' && url.password === ''
+  } catch {
+    return false
+  }
 })
 
 export const CouchConfig = z
   .strictObject({
+    auth: CouchAuth.optional().describe('basic auth credentials for CouchDB requests'),
     backoffFactor: z.number().optional().default(2).describe('multiplier for exponential backoff'),
     bindWithRetry: z.boolean().optional().default(true).describe('should we bind with retry'),
-    couch: z.string().describe('the url of the couch db'),
+    couch: CouchUrl.describe('URL of the couch db without embedded credentials'),
     initialDelay: z
       .number()
       .optional()
@@ -61,12 +42,12 @@ export const CouchConfig = z
       'logging interface supporting winston-like or simple function interface'
     ),
     maxRetries: z.number().optional().default(3).describe('maximum number of retry attempts'),
-    needleOpts: NeedleOptions.optional(),
+    request: RequestOptions.optional().describe('default request controls for CouchDB requests'),
     throwOnGetNotFound: z
       .boolean()
       .optional()
       .default(false)
-      .describe('if a get is 404 should we throw or return undefined'),
+      .describe('if true, get() throws NotFoundError on 404; otherwise it returns null'),
     useConsoleLogger: z
       .boolean()
       .optional()
@@ -77,5 +58,7 @@ export const CouchConfig = z
   })
   .describe('The std config object')
 
+export type CouchAuth = StandardSchemaV1.InferOutput<typeof CouchAuth>
+export type CouchAuthInput = StandardSchemaV1.InferInput<typeof CouchAuth>
 export type CouchConfig = StandardSchemaV1.InferOutput<typeof CouchConfig>
 export type CouchConfigInput = StandardSchemaV1.InferInput<typeof CouchConfig>

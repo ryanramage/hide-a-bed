@@ -2,7 +2,15 @@
   "exclude": ["node_modules", "dist", "types/output", "docs"],
   "compilerOptions": {
     "module": "nodenext",
-    "target": "esnext",
+    "target": "es2024",
+    "lib": [
+      "es2024",
+      "ESNext.Array",
+      "ESNext.Collection",
+      "ESNext.Error",
+      "ESNext.Iterator",
+      "ESNext.Promise"
+    ],
     "erasableSyntaxOnly": true,
     "rewriteRelativeImportExtensions": true,
     "allowImportingTsExtensions": true,

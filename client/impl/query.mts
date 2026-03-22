@@ -1,15 +1,57 @@
-import needle, { type BodyData, type NeedleHttpVerbs } from 'needle'
 import { createLogger } from './utils/logger.mts'
 
 import { CouchConfig, type CouchConfigInput } from '../schema/config.mts'
 import { z, ZodAny, ZodNever } from 'zod'
 import { queryString } from './utils/queryString.mts'
-import { mergeNeedleOpts } from './utils/mergeNeedleOpts.mts'
-import { RetryableError } from './utils/errors.mts'
+import { RetryableError, createResponseError } from './utils/errors.mts'
 import { ViewOptions, type ViewString } from '../schema/couch/couch.input.schema.ts'
 import type { CouchDoc, ViewQueryResponseValidated } from '../schema/couch/couch.output.schema.ts'
 import type { StandardSchemaV1 } from '../types/standard-schema.ts'
 import { parseRows, type OnInvalidDocAction } from './utils/parseRows.mts'
+import { fetchCouchJson } from './utils/fetch.mts'
+import { isSuccessStatusCode } from './utils/response.mts'
+import { createCouchPathUrl } from './utils/url.mts'
+
+type QueryBody = {
+  error?: string
+  reason?: string
+  rows?: unknown[]
+} & Record<string, unknown>
+
+const ValidSchema = z.custom(
+  value => {
+    return value !== null && typeof value === 'object' && '~standard' in value
+  },
+  {
+    message: 'schema must be a valid StandardSchemaV1 schema'
+  }
+)
+
+const QueryValidationSchema = z
+  .object({
+    docSchema: ValidSchema.optional(),
+    keySchema: ValidSchema.optional(),
+    onInvalidDoc: z.enum(['skip', 'throw']).optional(),
+    valueSchema: ValidSchema.optional()
+  })
+  .optional()
+
+const QueryOptionsSchema = ViewOptions.extend({
+  validate: QueryValidationSchema
+}).strict()
+
+type QueryRequestOptions<
+  DocSchema extends StandardSchemaV1,
+  KeySchema extends StandardSchemaV1,
+  ValueSchema extends StandardSchemaV1
+> = ViewOptions & {
+  validate?: {
+    onInvalidDoc?: OnInvalidDocAction
+    docSchema?: DocSchema
+    keySchema?: KeySchema
+    valueSchema?: ValueSchema
+  }
+}
 
 export async function query<
   DocSchema extends StandardSchemaV1 = typeof CouchDoc,
@@ -18,14 +60,8 @@ export async function query<
 >(
   config: CouchConfigInput,
   view: ViewString,
-  options: ViewOptions & {
+  options: QueryRequestOptions<DocSchema, KeySchema, ValueSchema> & {
     include_docs: true
-    validate?: {
-      onInvalidDoc?: OnInvalidDocAction
-      docSchema?: DocSchema
-      keySchema?: KeySchema
-      valueSchema?: ValueSchema
-    }
   }
 ): Promise<ViewQueryResponseValidated<DocSchema, KeySchema, ValueSchema>>
 
@@ -36,14 +72,8 @@ export async function query<
 >(
   config: CouchConfigInput,
   view: ViewString,
-  options: ViewOptions & {
+  options: QueryRequestOptions<DocSchema, KeySchema, ValueSchema> & {
     include_docs?: false | undefined
-    validate?: {
-      onInvalidDoc?: OnInvalidDocAction
-      docSchema?: DocSchema
-      keySchema?: KeySchema
-      valueSchema?: ValueSchema
-    }
   }
 ): Promise<ViewQueryResponseValidated<ZodNever, KeySchema, ValueSchema>>
 
@@ -72,8 +102,8 @@ export async function query(
  * @returns The parsed view response with rows validated against the supplied schemas.
  *
  * @throws {RetryableError} When a retryable HTTP status code is encountered or no response is received.
- * @throws {Error<Array<StandardSchemaV1.Issue>>} When the configuration or validation schemas fail to parse.
- * @throws {Error} When CouchDB returns a non-retryable error payload.
+ * @throws {ValidationError} When row, key, value, or included document validation fails.
+ * @throws {OperationError} When CouchDB returns a non-retryable response or malformed row payload.
  */
 export async function query<
   DocSchema extends StandardSchemaV1,
@@ -82,19 +112,13 @@ export async function query<
 >(
   _config: CouchConfigInput,
   view: ViewString,
-  options: ViewOptions & {
-    validate?: {
-      onInvalidDoc?: OnInvalidDocAction
-      docSchema?: DocSchema
-      keySchema?: KeySchema
-      valueSchema?: ValueSchema
-    }
-  } = {}
+  options: QueryRequestOptions<DocSchema, KeySchema, ValueSchema> = {}
 ): Promise<ViewQueryResponseValidated<DocSchema, KeySchema, ValueSchema>> {
   const configParseResult = CouchConfig.safeParse(_config)
+  const parsedOptions = QueryOptionsSchema.parse(options || {})
   const logger = createLogger(_config)
   logger.info(`Starting view query: ${view}`)
-  logger.debug('Query options:', ViewOptions.parse(options || {}))
+  logger.debug('Query options:', parsedOptions)
   if (!configParseResult.success) {
     logger.error(`Invalid configuration provided: ${z.prettifyError(configParseResult.error)}`)
     throw configParseResult.error
@@ -102,86 +126,94 @@ export async function query<
 
   const config = configParseResult.data
 
-  let qs = queryString(options)
-  let method: NeedleHttpVerbs = 'get'
-  let payload: BodyData = null
-
-  const opts = {
-    json: true,
-    headers: {
-      'Content-Type': 'application/json'
-    }
-  }
-
-  const mergedOpts = mergeNeedleOpts(config, opts)
+  let qs = queryString(parsedOptions)
+  let method: 'GET' | 'POST' = 'GET'
+  let payload: Record<string, unknown> | null = null
 
   // If keys are supplied, issue a POST to circumvent GET query string limits
   // see http://wiki.apache.org/couchdb/HTTP_view_API#Querying_Options
-  if (typeof options.keys !== 'undefined') {
+  if (typeof parsedOptions.keys !== 'undefined') {
     const MAX_URL_LENGTH = 2000
     // according to http://stackoverflow.com/a/417184/680742,
     // the de facto URL length limit is 2000 characters
 
-    const _options = structuredClone(options)
-    delete _options.keys
-    qs = queryString(_options)
+    const { keys, validate, ...queryableOptions } = parsedOptions
+    qs = queryString(queryableOptions)
 
-    const keysAsString = `keys=${JSON.stringify(options.keys)}`
+    const keysAsString = `keys=${JSON.stringify(keys)}`
 
     if (keysAsString.length + qs.length + 1 <= MAX_URL_LENGTH) {
       // If the keys are short enough, do a GET. we do this to work around
       // Safari not understanding 304s on POSTs (see pouchdb/pouchdb#1239)
-      method = 'get'
+      method = 'GET'
       if (qs.length > 0) qs += '&'
       else qs = ''
       qs += keysAsString
     } else {
-      method = 'post'
-      payload = { keys: options.keys }
+      method = 'POST'
+      payload = { keys: parsedOptions.keys }
     }
   }
 
   logger.debug('Generated query string:', qs)
-  const url = `${config.couch}/${view}?${qs}`
+  const url = createCouchPathUrl(view, config.couch)
+  if (qs) url.search = qs
   let results
 
   try {
     logger.debug(`Sending ${method} request to: ${url}`)
-    results =
-      method === 'get'
-        ? await needle('get', url, mergedOpts)
-        : await needle('post', url, payload, mergedOpts)
+    results = await fetchCouchJson<QueryBody>({
+      auth: config.auth,
+      method,
+      operation: 'query',
+      request: config.request,
+      url,
+      body: method === 'POST' ? payload : undefined
+    })
   } catch (err) {
     logger.error('Network error during query:', err)
-    RetryableError.handleNetworkError(err)
+    RetryableError.handleNetworkError(err, 'query')
   }
 
   if (!results) {
     logger.error('No response received from query request')
-    throw new RetryableError('no response', 503)
+    throw new RetryableError('Query failed', 503, { operation: 'query' })
   }
 
   const body = results.body
 
-  if (RetryableError.isRetryableStatusCode(results.statusCode)) {
-    logger.warn(`Retryable status code received: ${results.statusCode}`)
-    throw new RetryableError(body.error || 'retryable error during query', results.statusCode)
-  }
+  if (!isSuccessStatusCode('viewQuery', results.statusCode) || body.error) {
+    if (body.error) {
+      logger.error(`Query error: ${JSON.stringify(body)}`)
+    } else {
+      logger.error(`Unexpected status code: ${results.statusCode}`)
+    }
 
-  if (body.error) {
-    logger.error(`Query error: ${JSON.stringify(body)}`)
-    throw new Error(`CouchDB query error: ${body.error} - ${body.reason || ''}`)
+    throw createResponseError({
+      body,
+      defaultMessage: 'Query failed',
+      operation: 'query',
+      statusCode: results.statusCode
+    })
   }
 
   // If validation schemas are provided, validate each row accordingly
-  if (options.validate && body.rows) {
-    body.rows = await parseRows<DocSchema, KeySchema, ValueSchema>(body.rows, options.validate)
-  }
+  const rows: ViewQueryResponseValidated<DocSchema, KeySchema, ValueSchema>['rows'] =
+    options.validate && body.rows
+      ? await parseRows<DocSchema, KeySchema, ValueSchema>(body.rows, {
+          ...options.validate,
+          defaultMessage: 'Query failed',
+          operation: 'query'
+        })
+      : ((body.rows ?? []) as ViewQueryResponseValidated<DocSchema, KeySchema, ValueSchema>['rows'])
 
   logger.info(`Successfully executed view query: ${view}`)
-  logger.debug('Query response:', body)
+  logger.debug('Query response:', { ...body, rows })
 
-  return body
+  return {
+    ...body,
+    rows
+  }
 }
 
 export type QueryBound = {
@@ -191,14 +223,8 @@ export type QueryBound = {
     ValueSchema extends StandardSchemaV1 = ZodAny
   >(
     view: ViewString,
-    options: ViewOptions & {
+    options: QueryRequestOptions<DocSchema, KeySchema, ValueSchema> & {
       include_docs: true
-      validate?: {
-        onInvalidDoc?: OnInvalidDocAction
-        docSchema?: DocSchema
-        keySchema?: KeySchema
-        valueSchema?: ValueSchema
-      }
     }
   ): Promise<ViewQueryResponseValidated<DocSchema, KeySchema, ValueSchema>>
   <
@@ -207,14 +233,8 @@ export type QueryBound = {
     ValueSchema extends StandardSchemaV1 = ZodAny
   >(
     view: ViewString,
-    options: ViewOptions & {
+    options: QueryRequestOptions<DocSchema, KeySchema, ValueSchema> & {
       include_docs?: false | undefined
-      validate?: {
-        onInvalidDoc?: OnInvalidDocAction
-        docSchema?: DocSchema
-        keySchema?: KeySchema
-        valueSchema?: ValueSchema
-      }
     }
   ): Promise<ViewQueryResponseValidated<ZodNever, KeySchema, ValueSchema>>
   (

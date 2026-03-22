@@ -1,11 +1,17 @@
-import needle from 'needle'
 import { z } from 'zod'
-import type { CouchConfigInput } from '../schema/config.mts'
 import { createLogger } from './utils/logger.mts'
-import { mergeNeedleOpts } from './utils/mergeNeedleOpts.mts'
-import { RetryableError, NotFoundError } from './utils/errors.mts'
+import {
+  RetryableError,
+  NotFoundError,
+  ValidationError,
+  createResponseError
+} from './utils/errors.mts'
 import type { StandardSchemaV1 } from '../types/standard-schema.ts'
 import { CouchDoc } from '../schema/couch/couch.output.schema.ts'
+import { fetchCouchJson } from './utils/fetch.mts'
+import { CouchConfig, type CouchConfigInput } from '../schema/config.mts'
+import { isSuccessStatusCode } from './utils/response.mts'
+import { createCouchDocUrl } from './utils/url.mts'
 
 export type GetOptions<DocSchema extends StandardSchemaV1> = {
   validate?: {
@@ -26,7 +32,7 @@ const ValidSchema = z.custom(
   }
 )
 
-export const CouchGetOptions = z.object({
+export const CouchGetOptions = z.strictObject({
   rev: z.string().optional().describe('the couch doc revision'),
   validate: z
     .object({
@@ -37,74 +43,74 @@ export const CouchGetOptions = z.object({
 })
 
 async function _getWithOptions<DocSchema extends StandardSchemaV1>(
-  config: CouchConfigInput,
+  configInput: CouchConfigInput,
   id: string,
   options: InternalGetOptions<DocSchema>
 ): Promise<StandardSchemaV1.InferOutput<DocSchema> | null> {
-  const parsedOptions = CouchGetOptions.parse({
-    rev: options.rev,
-    validate: options.validate
-  })
+  const config = CouchConfig.parse(configInput)
+  const parsedOptions = CouchGetOptions.parse(options)
 
   const logger = createLogger(config)
   const rev = parsedOptions.rev
-  const path = rev ? `${id}?rev=${rev}` : id
-  const url = `${config.couch}/${path}`
+  const operation = rev ? 'getAtRev' : 'get'
+  const url = createCouchDocUrl(id, config.couch)
 
-  const httpOptions = {
-    json: true,
-    headers: {
-      'Content-Type': 'application/json'
-    }
+  if (rev) {
+    url.searchParams.set('rev', rev)
   }
-
-  const requestOptions = mergeNeedleOpts(config, httpOptions)
   logger.info(`Getting document with id: ${id}, rev ${rev ?? 'latest'}`)
 
   try {
-    const resp = await needle('get', url, null, requestOptions)
+    const resp = await fetchCouchJson({
+      auth: config.auth,
+      method: 'GET',
+      operation,
+      request: config.request,
+      url
+    })
     if (!resp) {
       logger.error('No response received from get request')
-      throw new RetryableError('no response', 503)
+      throw new RetryableError('Request failed', 503, { operation })
     }
 
     const body = resp.body ?? null
 
     if (resp.statusCode === 404) {
-      if (config.throwOnGetNotFound) {
-        const reason = typeof body?.reason === 'string' ? body.reason : 'not_found'
-        logger.warn(`Document not found (throwing error): ${id}, rev ${rev ?? 'latest'}`)
-        throw new NotFoundError(id, reason)
+      logger.warn(`Document not found: ${id}, rev ${rev ?? 'latest'}`)
+      if (config.throwOnGetNotFound === false) {
+        return null
       }
-
-      logger.debug(`Document not found (returning undefined): ${id}, rev ${rev ?? 'latest'}`)
-      return null
+      throw new NotFoundError(id, { operation, statusCode: resp.statusCode })
     }
 
-    if (RetryableError.isRetryableStatusCode(resp.statusCode)) {
-      const reason = typeof body?.reason === 'string' ? body.reason : 'retryable error'
-      logger.warn(`Retryable status code received: ${resp.statusCode}`)
-      throw new RetryableError(reason, resp.statusCode)
-    }
-
-    if (resp.statusCode !== 200) {
-      const reason = typeof body?.reason === 'string' ? body.reason : 'failed'
+    if (!isSuccessStatusCode('documentRead', resp.statusCode)) {
       logger.error(`Unexpected status code: ${resp.statusCode}`)
-      throw new Error(reason)
+      throw createResponseError({
+        body,
+        defaultMessage: 'Failed to fetch document',
+        docId: id,
+        operation,
+        statusCode: resp.statusCode
+      })
     }
 
     const docSchema = (parsedOptions.validate?.docSchema ?? CouchDoc) as DocSchema
     const typedDoc = await docSchema['~standard'].validate(body)
 
     if (typedDoc.issues) {
-      throw typedDoc.issues
+      throw new ValidationError({
+        docId: id,
+        issues: typedDoc.issues,
+        message: 'Document validation failed',
+        operation
+      })
     }
 
     logger.info(`Successfully retrieved document: ${id}, rev ${rev ?? 'latest'}`)
     return typedDoc.value
   } catch (err) {
     logger.error('Error during get operation:', err)
-    RetryableError.handleNetworkError(err)
+    RetryableError.handleNetworkError(err, operation)
   }
 }
 
@@ -127,7 +133,10 @@ export async function getAtRev<DocSchema extends StandardSchemaV1>(
   rev: string,
   options?: GetOptions<DocSchema>
 ): Promise<StandardSchemaV1.InferOutput<DocSchema> | null> {
-  return _getWithOptions<DocSchema>(config, id, { ...options, rev })
+  return _getWithOptions<DocSchema>(config, id, {
+    ...options,
+    rev
+  })
 }
 
 export type GetAtRevBound = <DocSchema extends StandardSchemaV1 = typeof CouchDoc>(

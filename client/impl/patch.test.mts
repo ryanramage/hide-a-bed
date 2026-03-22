@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict'
 import test, { suite } from 'node:test'
-import needle from 'needle'
 import type { CouchConfigInput } from '../schema/config.mts'
 import { get } from './get.mts'
 import { patch, patchDangerously } from './patch.mts'
+import { ConflictError, NotFoundError, OperationError } from './utils/errors.mts'
 import { TEST_DB_URL } from '../test/setup-db.mts'
+import { putJson } from '../test/http.mts'
 
 const baseConfig: CouchConfigInput = {
   couch: TEST_DB_URL,
@@ -16,21 +17,16 @@ const baseConfig: CouchConfigInput = {
 type DocBody = Record<string, unknown>
 
 async function saveDoc(id: string, body: DocBody) {
-  const response = await needle(
-    'put',
-    `${TEST_DB_URL}/${id}`,
-    {
-      _id: id,
-      ...body
-    },
-    { json: true }
-  )
+  const response = await putJson<{ rev: string }>(`${TEST_DB_URL}/${id}`, {
+    _id: id,
+    ...body
+  })
 
   if (response.statusCode !== 201 && response.statusCode !== 200) {
     throw new Error(`Failed to save document ${id}: ${response.statusCode}`)
   }
 
-  return response.body as { rev: string }
+  return response.body
 }
 
 suite('patch', () => {
@@ -82,20 +78,24 @@ suite('patch', () => {
       assert.strictEqual(doc?.updated, true)
     })
 
-    await t.test('patch returns conflict on stale revision', async () => {
+    await t.test('patch throws conflict on stale revision', async () => {
       const current = await get(baseConfig, patch_doc_id)
       const staleRev = initial.rev
 
-      const conflict = await patch(baseConfig, patch_doc_id, {
-        _rev: staleRev,
-        message: 'should-fail'
-      })
-      assert.strictEqual(conflict.ok, false)
-      assert.strictEqual(conflict.statusCode, 409)
-      assert.strictEqual(conflict.error, 'conflict')
+      await assert.rejects(
+        () =>
+          patch(baseConfig, patch_doc_id, {
+            _rev: staleRev,
+            message: 'should-fail'
+          }),
+        (err: unknown) =>
+          err instanceof ConflictError && err.docId === patch_doc_id && err.statusCode === 409
+      )
 
       const doc = await get(baseConfig, patch_doc_id)
-      assert.strictEqual(doc?.message, current?.message)
+      assert.ok(doc)
+      assert.ok(current)
+      assert.strictEqual(doc.message, current.message)
     })
 
     await t.test('patchDangerously merges properties without revision', async () => {
@@ -108,16 +108,18 @@ suite('patch', () => {
       assert.strictEqual(doc?.description, 'dangerously updated')
     })
 
-    await t.test('patchDangerously returns not_found when document missing', async () => {
-      const response = await patchDangerously(baseConfig, 'missing-doc', {
-        message: 'noop'
-      })
-      assert.strictEqual(response?.ok, false)
-      assert.strictEqual(response?.statusCode, 404)
-      assert.strictEqual(response?.error, 'not_found')
+    await t.test('patchDangerously throws not_found when document missing', async () => {
+      await assert.rejects(
+        () =>
+          patchDangerously(baseConfig, 'missing-doc', {
+            message: 'noop'
+          }),
+        (err: unknown) =>
+          err instanceof NotFoundError && err.docId === 'missing-doc' && err.statusCode === 404
+      )
     })
 
-    await t.test('patchDangerously reports failure after exhausting retries', async () => {
+    await t.test('patchDangerously throws after exhausting retries', async () => {
       const doc = await get(baseConfig, patch_doc_id)
       const conflictConfig: CouchConfigInput = {
         ...baseConfig,
@@ -126,17 +128,21 @@ suite('patch', () => {
         backoffFactor: 1
       }
 
-      const response = await patchDangerously(conflictConfig, patch_doc_id, {
-        _rev: initial.rev,
-        conflicted: true
-      })
-      assert.strictEqual(response?.ok, false)
-      assert.strictEqual(response?.statusCode, 500)
-      assert.match(response?.error ?? '', /Failed to patch after 1 attempts/)
+      await assert.rejects(
+        () =>
+          patchDangerously(conflictConfig, patch_doc_id, {
+            _rev: initial.rev,
+            conflicted: true
+          }),
+        (err: unknown) =>
+          err instanceof OperationError && err.statusCode === 409 && err.message === 'Patch failed'
+      )
 
       const current = await get(baseConfig, patch_doc_id)
-      assert.strictEqual(current?.conflicted, undefined)
-      assert.strictEqual(current?._rev, doc?._rev)
+      assert.ok(current)
+      assert.ok(doc)
+      assert.strictEqual(current.conflicted, undefined)
+      assert.strictEqual(current._rev, doc._rev)
     })
   })
 })

@@ -3,10 +3,38 @@ import { createServer } from 'node:http'
 import test, { suite } from 'node:test'
 import type { CouchConfigInput } from '../schema/config.mts'
 import { getDBInfo } from './getDBInfo.mts'
-import { RetryableError } from './utils/errors.mts'
+import { OperationError, RetryableError } from './utils/errors.mts'
 import { TEST_DB_URL } from '../test/setup-db.mts'
 
+type FetchInput = Parameters<typeof globalThis.fetch>[0]
+
 suite('getDBInfo', () => {
+  test('supports URL config input', async t => {
+    const requestUrls: URL[] = []
+    const fetchMock = t.mock.method(globalThis, 'fetch', async (input: FetchInput) => {
+      requestUrls.push(new URL(String(input)))
+      return new Response(JSON.stringify({ db_name: 'url-object-db', doc_count: 0 }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    })
+
+    t.after(() => {
+      fetchMock.mock.restore()
+    })
+
+    const info = await getDBInfo({
+      couch: new URL('http://localhost:5984/url-object-db')
+    })
+
+    assert.strictEqual(info.db_name, 'url-object-db')
+    const capturedUrl = requestUrls[0]
+    if (!capturedUrl) {
+      assert.fail('expected request URL to be captured')
+    }
+    assert.strictEqual(capturedUrl.pathname, '/url-object-db')
+  })
+
   test('it should throw if provided config is invalid', async () => {
     await assert.rejects(async () => {
       await getDBInfo({
@@ -47,9 +75,85 @@ suite('getDBInfo', () => {
       (err: unknown) => {
         assert.ok(err instanceof RetryableError)
         assert.strictEqual(err.statusCode, 503)
-        assert.strictEqual(err.message, 'maintenance')
+        assert.strictEqual(err.message, 'Failed to fetch database info: maintenance')
         return true
       }
+    )
+  })
+
+  test('throws RetryableError for retryable non-JSON response failures', async t => {
+    const port = 8995
+    const server = createServer((_req, res) => {
+      res.statusCode = 503
+      res.setHeader('Content-Type', 'text/html')
+      res.end('<html>maintenance</html>')
+    })
+
+    await new Promise<void>(resolve => {
+      server.listen(port, resolve)
+    })
+    t.after(() => {
+      server.close()
+    })
+
+    await assert.rejects(
+      () => getDBInfo({ couch: `http://localhost:${port}/retryable-text` }),
+      (err: unknown) => {
+        assert.ok(err instanceof RetryableError)
+        assert.strictEqual(err.statusCode, 503)
+        assert.strictEqual(err.message, 'Failed to fetch database info')
+        return true
+      }
+    )
+  })
+
+  test('throws OperationError for non-retryable response failures', async t => {
+    const port = 8994
+    const server = createServer((_req, res) => {
+      res.statusCode = 403
+      res.setHeader('Content-Type', 'application/json')
+      res.end(JSON.stringify({ error: 'forbidden', reason: 'no access' }))
+    })
+
+    await new Promise<void>(resolve => {
+      server.listen(port, resolve)
+    })
+    t.after(() => {
+      server.close()
+    })
+
+    await assert.rejects(
+      () => getDBInfo({ couch: `http://localhost:${port}/forbidden` }),
+      (err: unknown) =>
+        err instanceof OperationError &&
+        err.statusCode === 403 &&
+        err.message === 'Failed to fetch database info: no access' &&
+        err.couchError === 'forbidden'
+    )
+  })
+
+  test('throws OperationError for non-JSON response failures', async t => {
+    const port = 8996
+    const server = createServer((_req, res) => {
+      res.statusCode = 401
+      res.setHeader('Content-Type', 'text/plain')
+      res.end('access denied')
+    })
+
+    await new Promise<void>(resolve => {
+      server.listen(port, resolve)
+    })
+    t.after(() => {
+      server.close()
+    })
+
+    await assert.rejects(
+      () => getDBInfo({ couch: `http://localhost:${port}/forbidden-text` }),
+      (err: unknown) =>
+        err instanceof OperationError &&
+        err.statusCode === 401 &&
+        err.message === 'Failed to fetch database info' &&
+        err.couchError === undefined
     )
   })
 

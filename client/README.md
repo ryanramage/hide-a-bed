@@ -18,6 +18,11 @@ And some utility APIs
 - [`createQuery()`](#createquery) 🍭
 - [`withRetry()`](#withretry)
 
+### Migration Guides
+
+- [v6 Migration Guide](./migration_guides/v6.md)
+- [v7 Migration Guide](./migration_guides/v7.md)
+
 ### Setup
 
 Depending on your environment, use import or require
@@ -35,9 +40,34 @@ const { get, put, query } = require('hide-a-bed')
 ### Config
 
 Anywhere you see a config, it is an object with the following setup
-`{ couch: 'https://username:pass@the.couch.url.com:5984' }`
+`{ couch: 'https://the.couch.url.com:5984' }`
 And it is passed in as the first argument of all the functions
 `const doc = await get(config, 'doc-123')`
+
+If your CouchDB requires basic auth, pass `auth` on the config:
+
+```javascript
+const config = {
+  couch: 'https://the.couch.url.com:5984/mydb',
+  auth: {
+    username: process.env.COUCHDB_USER,
+    password: process.env.COUCHDB_PASSWORD
+  }
+}
+```
+
+You can also set default request controls on the config:
+
+```javascript
+const config = {
+  couch: 'https://the.couch.url.com:5984/mydb',
+  request: {
+    timeout: 5000,
+    signal: abortController.signal,
+    dispatcher
+  }
+}
+```
 
 See [Advanced Config Options](#advanced-config-options) for more advanced settings.
 
@@ -78,24 +108,25 @@ Get a single document by ID.
   - `couch` URL string
   - `throwOnGetNotFound` default false. If true, 404 docs throw
 - `id`: Document ID string
-- Returns: Promise resolving to document object or null if not found
+- `options`: Optional object with `validate`
+- Returns: Promise resolving to the document object, or `null` when the document does not exist and `throwOnGetNotFound` is false
+- Throws: `NotFoundError` when the document does not exist and `throwOnGetNotFound` is true
 
 ```javascript
 const config = { couch: 'http://localhost:5984/mydb' }
 const doc = await get(config, 'doc-123')
 console.log(doc._id, doc._rev)
 
-const notFound = await get(config, 'notFound')
-console.log(notFound) // null
+const missing = await get(config, 'notFound')
+console.log(missing) // null
 
 try {
-  const config = {
-    couch: 'http://localhost:5984/mydb',
-    throwOnGetNotFound: true
-  }
-  await get(config, 'notFound')
+  await get({ ...config, throwOnGetNotFound: true }, 'notFound')
 } catch (err) {
-  if (err.name === 'NotFoundError') console.log('Document not found')
+  if (err.name === 'NotFoundError') {
+    console.log(err.statusCode) // 404
+    console.log(err.docId) // notFound
+  }
 }
 ```
 
@@ -108,6 +139,7 @@ Save a document.
 - `config`: Object with `couch` URL string
 - `doc`: Document object with `_id` property
 - Returns: Promise resolving to response with `ok`, `id`, `rev` properties, eg: { ok: boolean, id: string, rev: string }
+- Throws: `ConflictError` when CouchDB returns a 409 for a single-document write
 
 ```javascript
 const config = { couch: 'http://localhost:5984/mydb' }
@@ -119,10 +151,14 @@ const doc = {
 const result = await put(config, doc)
 // result: { ok: true, id: 'doc-123', rev: '1-abc123' }
 
-// imaginary rev returns a conflict
-const doc = { _id: 'notThereDoc', _rev: '32-does-not-compute' }
-const result2 = await db.put(doc)
-console.log(result2) // { ok: false, error: 'conflict', statusCode: 409 }
+try {
+  await put(config, { _id: 'notThereDoc', _rev: '32-does-not-compute' })
+} catch (err) {
+  if (err.name === 'ConflictError') {
+    console.log(err.statusCode) // 409
+    console.log(err.docId) // notThereDoc
+  }
+}
 ```
 
 #### patch
@@ -312,6 +348,7 @@ Delete multiple documents in one request.
 - `config`: Object with `couch` URL string
 - `ids`: Array of document ID strings to delete
 - Returns: Promise resolving to array of results with `ok`, `id`, `rev` for each deletion
+- Throws: `RetryableError` or `OperationError` only for request-level failures. Missing documents remain item-level outcomes.
 
 ```javascript
 const config = { couch: 'http://localhost:5984/mydb' }
@@ -334,13 +371,14 @@ Allows more efficient deletion of document by providing only id and rev. This is
 - `config`: Object with `couch` URL string
 - `id`: document ID to delete
 - `rev`: rev of the document to delete
-- Returns: Promise resolving to array of results with `ok`, `id`, `rev` for the deletion
+- Returns: Promise resolving to the deletion result with `ok`, `id`, `rev`
+- Throws: `NotFoundError` when the document does not exist
 
 ```javascript
 const config = { couch: 'http://localhost:5984/mydb' }
 const id = 'doc1'
 const rev = '2-ghi789'
-const results = await remove(config, id, rev)
+const result = await remove(config, id, rev)
 // result:
 //   { ok: true, id: 'doc1', rev: '2-ghi789' }
 ```
@@ -354,6 +392,7 @@ Delete multiple documents in one request. Same inputs and outputs as [bulkRemove
 - `config`: Object with `couch` URL string
 - `ids`: Array of document ID strings to delete
 - Returns: Promise resolving to array of results with `ok`, `id`, `rev` for each deletion
+- Throws: `RetryableError` or `OperationError` only for request-level failures while deleting an item. Missing or otherwise unremovable items are skipped.
 
 ```javascript
 const config = { couch: 'http://localhost:5984/mydb' }
@@ -471,7 +510,10 @@ Get basic info about a db in couch
 
 ```
 const config = { couch: 'http://localhost:5984/mydb' }
-const result = await getDBInfo(config)
+const result = await getDBInfo({
+  ...config,
+  request: { timeout: 2000 }
+})
 // result: { db_name: 'test', doc_count: 3232 }
 ```
 
@@ -632,7 +674,7 @@ feed.on('error', console.error)
 feed.stop()
 ```
 
-`hide-a-bed-changes` reuses the same config structure, merges `config.needleOpts`, and resolves `since: 'now'` to the current `update_seq` before starting the feed.
+`hide-a-bed-changes` reuses the same config structure and resolves `since: 'now'` to the current `update_seq` before starting the feed.
 
 #### watchDocs ()
 
@@ -648,6 +690,8 @@ Watch specific documents for changes in real-time.
   - `maxRetries`: Number - maximum reconnection attempts (default: 10)
   - `initialDelay`: Number - initial reconnection delay in ms (default 1000)
   - `maxDelay`: Number - maximum reconnection delay in ms (default: 30000)
+
+Request controls for `watchDocs()` come from `config.request`. Aborting `config.request.signal` stops the watcher.
 
 Returns an EventEmitter that emits:
 
@@ -700,22 +744,31 @@ The watchDocs feed is useful for:
 
 The config object supports the following properties:
 
-| Property           | Type            | Default   | Description                                                             |
-| ------------------ | --------------- | --------- | ----------------------------------------------------------------------- |
-| couch              | string          | required  | The URL of the CouchDB database                                         |
-| throwOnGetNotFound | boolean         | false     | If true, throws an error when get() returns 404. If false, returns null |
-| bindWithRetry      | boolean         | true      | When using bindConfig(), adds retry logic to bound methods              |
-| maxRetries         | number          | 3         | Maximum number of retry attempts for retryable operations               |
-| initialDelay       | number          | 1000      | Initial delay in milliseconds before first retry                        |
-| backoffFactor      | number          | 2         | Multiplier for exponential backoff between retries                      |
-| useConsoleLogger   | boolean         | false     | If true, enables console logging when no logger is provided             |
-| logger             | object/function | undefined | Custom logging interface (winston-style object or function)             |
+| Property           | Type            | Default   | Description                                                                      |
+| ------------------ | --------------- | --------- | -------------------------------------------------------------------------------- |
+| couch              | string          | required  | The URL of the CouchDB database                                                  |
+| auth               | object          | undefined | Basic auth credentials for CouchDB requests                                      |
+| request            | object          | undefined | Default request controls: `signal`, `timeout`, and `dispatcher`                  |
+| throwOnGetNotFound | boolean         | false     | If true, `get()` throws `NotFoundError` on 404. If false, `get()` returns `null` |
+| bindWithRetry      | boolean         | true      | When using bindConfig(), adds retry logic to bound methods                       |
+| maxRetries         | number          | 3         | Maximum number of retry attempts for retryable operations                        |
+| initialDelay       | number          | 1000      | Initial delay in milliseconds before first retry                                 |
+| backoffFactor      | number          | 2         | Multiplier for exponential backoff between retries                               |
+| useConsoleLogger   | boolean         | false     | If true, enables console logging when no logger is provided                      |
+| logger             | object/function | undefined | Custom logging interface (winston-style object or function)                      |
 
 Example configuration with all options:
 
 ```javascript
 const config = {
   couch: 'http://localhost:5984/mydb',
+  auth: {
+    username: process.env.COUCHDB_USER,
+    password: process.env.COUCHDB_PASSWORD
+  },
+  request: {
+    timeout: 5000
+  },
   throwOnGetNotFound: true,
   bindWithRetry: true,
   maxRetries: 5,
@@ -725,6 +778,29 @@ const config = {
   logger: (level, ...args) => console.log(level, ...args)
 }
 ```
+
+`bindConfig()` and `withRetry()` now perform a single built-in retry for transient `401` and `403` responses before surfacing the error.
+
+### withRetry
+
+`withRetry(fn, options)` wraps an async function and retries based on the built-in retry rules.
+
+```javascript
+import { withRetry, get } from 'hide-a-bed'
+
+const getWithCustomRetry = withRetry(id => get({ couch: 'http://localhost:5984/mydb' }, id), {
+  maxRetries: 2,
+  initialDelay: 250
+})
+```
+
+### Migration Note
+
+`needleOpts` has been removed from the main `client` package. If you were passing transport-specific `needle` options through `config.needleOpts`, remove that configuration when upgrading. If you used `needleOpts.username` or `needleOpts.password`, move them to `config.auth.username` and `config.auth.password`. Couch URLs with embedded credentials are no longer supported and will fail validation. The package now uses native `fetch` internally and only supports the documented top-level config fields above.
+
+Native request controls now live under `config.request`. This surface intentionally only supports `signal`, `timeout`, and `dispatcher`.
+
+Single-document APIs now throw typed errors for non-success outcomes. Use `NotFoundError`, `ConflictError`, `RetryableError`, and `OperationError` for control flow, and rely on `statusCode`, `docId`, and `couchError` instead of parsing `.message`. Bulk APIs still return per-item result payloads for partial success and failure.
 
 ### Logging Support
 

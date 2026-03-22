@@ -1,26 +1,21 @@
 import assert from 'node:assert/strict'
 import test, { suite } from 'node:test'
-import needle from 'needle'
 import type { CouchConfigInput } from '../schema/config.mts'
 import { z } from 'zod'
-import { RetryableError } from './utils/errors.mts'
+import { OperationError, RetryableError, ValidationError } from './utils/errors.mts'
 import { bulkGet, bulkGetDictionary } from './bulkGet.mts'
 import { TEST_DB_URL } from '../test/setup-db.mts'
+import { putJson } from '../test/http.mts'
 
 const config: CouchConfigInput = {
   couch: TEST_DB_URL
 }
 
 async function ensureDoc(id: string, body: Record<string, unknown>) {
-  await needle(
-    'put',
-    `${TEST_DB_URL}/${id}`,
-    {
-      _id: id,
-      ...body
-    },
-    { json: true }
-  )
+  await putJson(`${TEST_DB_URL}/${id}`, {
+    _id: id,
+    ...body
+  })
 }
 
 suite('bulkGet', () => {
@@ -72,11 +67,12 @@ suite('bulkGet', () => {
               docSchema: schema
             }
           }),
-        (err: unknown) => {
-          assert.ok(Array.isArray(err))
-          assert.match(err[0]?.message, /Invalid input:/)
-          return true
-        }
+        (err: unknown) =>
+          err instanceof ValidationError &&
+          err.message === 'Bulk get failed' &&
+          err.docId === 'doc-invalid' &&
+          err.operation === 'request' &&
+          /Invalid input:/.test(err.issues[0]?.message ?? '')
       )
     })
 
@@ -107,6 +103,29 @@ suite('bulkGet', () => {
       await assert.rejects(
         () => bulkGet(offlineConfig, ['doc-1']),
         (err: unknown) => err instanceof RetryableError && err.statusCode === 503
+      )
+    })
+
+    await t.test('throws OperationError for non-retryable response failures', async t => {
+      const fetchMock = t.mock.method(globalThis, 'fetch', async () => {
+        return new Response(JSON.stringify({ error: 'forbidden', reason: 'no access' }), {
+          status: 403,
+          headers: { 'Content-Type': 'application/json' }
+        })
+      })
+
+      t.after(() => {
+        fetchMock.mock.restore()
+      })
+
+      await assert.rejects(
+        () => bulkGet({ couch: 'http://localhost:5984/mock-db' }, ['doc-1']),
+        (err: unknown) =>
+          err instanceof OperationError &&
+          err.statusCode === 403 &&
+          err.message === 'Bulk get failed: no access' &&
+          err.couchError === 'forbidden' &&
+          err.couchReason === 'no access'
       )
     })
 

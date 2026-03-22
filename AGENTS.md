@@ -32,8 +32,6 @@ This document orients automation and AI assistants working in hide-a-bed.
 ## Coding Guidelines
 
 - Prefer small, pure functions; follow existing module patterns in client/impl.
-- StandardJS provides linting rules; keep files eslint-clean.
-- Type definitions live under client/types/output. When adjusting TS sources ensure generated `.d.mts` files stay in sync.
 - Add focused comments only where non-obvious logic exists.
 
 ## Decision Heuristics for Agents
@@ -44,6 +42,10 @@ This document orients automation and AI assistants working in hide-a-bed.
 - Update or add tests alongside feature changes. Prefer placing new client tests in client/tests/ and stub tests in stub/tests/.
 - Generate unique CouchDB `_id` values per run. Use helpers such as `crypto.randomUUID()` or test-name prefixes so suites do not collide inside the shared `hide-a-bed-test-db` that persists for the life of the test process.
 - For cross-package changes, adjust stub/ and test/ as needed to keep APIs aligned.
+
+## NPM scripts
+
+- `npm run validate` – runs format, lint, and typecheck in sequence. Use this validate all changes.
 
 ## Verification Checklist
 

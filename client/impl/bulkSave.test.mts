@@ -1,14 +1,15 @@
 import assert from 'node:assert/strict'
 import test, { suite } from 'node:test'
-import needle from 'needle'
 import type { CouchConfigInput } from '../schema/config.mts'
 import { bulkSave, bulkSaveTransaction } from './bulkSave.mts'
-import { RetryableError } from './utils/errors.mts'
+import type { BulkSaveResponse } from '../schema/couch/couch.output.schema.ts'
+import { OperationError, RetryableError } from './utils/errors.mts'
 import {
   TransactionRollbackError,
   TransactionVersionConflictError
 } from './utils/transactionErrors.mts'
 import { TEST_DB_URL } from '../test/setup-db.mts'
+import { getJson, putJson } from '../test/http.mts'
 
 const baseConfig: CouchConfigInput = {
   couch: TEST_DB_URL,
@@ -22,6 +23,25 @@ const transactionBaseConfig: CouchConfigInput = {
 }
 
 type EventRecord = { event: string; payload: unknown }
+type BulkSaveRow = BulkSaveResponse[number]
+
+function assertBulkSaveSuccess(
+  row: BulkSaveRow | undefined
+): asserts row is Extract<BulkSaveRow, { ok: true }> {
+  assert.ok(row)
+  if (!('ok' in row) || row.ok !== true) {
+    assert.fail(`expected bulk save success row, got ${JSON.stringify(row)}`)
+  }
+}
+
+function assertBulkSaveFailure(
+  row: BulkSaveRow | undefined
+): asserts row is Exclude<BulkSaveRow, { ok: true }> {
+  assert.ok(row)
+  if ('ok' in row && row.ok === true) {
+    assert.fail(`expected bulk save failure row, got ${JSON.stringify(row)}`)
+  }
+}
 
 function createTestEmitter() {
   const events: EventRecord[] = []
@@ -46,17 +66,17 @@ function createTestEmitter() {
 }
 
 async function saveDoc(dbUrl: string, id: string, body: Record<string, unknown>) {
-  const response = await needle('put', `${dbUrl}/${id}`, { _id: id, ...body }, { json: true })
+  const response = await putJson<{ rev: string }>(`${dbUrl}/${id}`, { _id: id, ...body })
 
   if (response.statusCode !== 201 && response.statusCode !== 200) {
     throw new Error(`Failed to save document ${id}: ${response.statusCode}`)
   }
 
-  return response.body as { rev: string }
+  return response.body
 }
 
 async function getDocFrom(dbUrl: string, id: string) {
-  return needle('get', `${dbUrl}/${id}`, null, { json: true })
+  return getJson(`${dbUrl}/${id}`)
 }
 
 async function getDoc(id: string) {
@@ -74,13 +94,21 @@ suite('bulkSave', () => {
   })
 
   test('throws error if called with no docs', async () => {
-    await assert.rejects(async () => {
-      // @ts-expect-error testing no docs
-      await bulkSave(baseConfig, null)
-    })
-    await assert.rejects(async () => {
-      await bulkSave(baseConfig, [])
-    })
+    await assert.rejects(
+      async () => {
+        // @ts-expect-error testing no docs
+        await bulkSave(baseConfig, null)
+      },
+      (err: unknown) =>
+        err instanceof OperationError && err.message === 'Bulk save requires at least one document'
+    )
+    await assert.rejects(
+      async () => {
+        await bulkSave(baseConfig, [])
+      },
+      (err: unknown) =>
+        err instanceof OperationError && err.message === 'Bulk save requires at least one document'
+    )
   })
 
   test('propagates retryable network failures', async () => {
@@ -91,6 +119,50 @@ suite('bulkSave', () => {
     await assert.rejects(
       () => bulkSave(offlineConfig, [{ _id: 'offline-doc', count: 1 }]),
       (err: unknown) => err instanceof RetryableError && err.statusCode === 503
+    )
+  })
+
+  test('throws OperationError for non-retryable response failures', async t => {
+    const fetchMock = t.mock.method(globalThis, 'fetch', async () => {
+      return new Response(JSON.stringify({ error: 'forbidden', reason: 'blocked' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    })
+
+    t.after(() => {
+      fetchMock.mock.restore()
+    })
+
+    await assert.rejects(
+      () => bulkSave({ couch: 'http://localhost:5984/mock-db' }, [{ _id: 'doc-1' }]),
+      (err: unknown) =>
+        err instanceof OperationError &&
+        err.statusCode === 403 &&
+        err.message === 'Bulk save failed for 1 document: blocked' &&
+        err.couchError === 'forbidden' &&
+        err.couchReason === 'blocked'
+    )
+  })
+
+  test('throws RetryableError for retryable non-JSON response failures', async t => {
+    const fetchMock = t.mock.method(globalThis, 'fetch', async () => {
+      return new Response('<html>temporary outage</html>', {
+        status: 503,
+        headers: { 'Content-Type': 'text/html' }
+      })
+    })
+
+    t.after(() => {
+      fetchMock.mock.restore()
+    })
+
+    await assert.rejects(
+      () => bulkSave({ couch: 'http://localhost:5984/mock-db' }, [{ _id: 'doc-1' }]),
+      (err: unknown) =>
+        err instanceof RetryableError &&
+        err.statusCode === 503 &&
+        err.message === 'Bulk save failed for 1 document'
     )
   })
 
@@ -105,10 +177,10 @@ suite('bulkSave', () => {
       const results = await bulkSave(baseConfig, docs)
       assert.strictEqual(results.length, 2)
       const [first, second] = results
-      assert.ok(first)
+      assertBulkSaveSuccess(first)
       assert.strictEqual(first.id, docs[0]._id)
       assert.strictEqual(first.ok, true)
-      assert.ok(second)
+      assertBulkSaveSuccess(second)
       assert.strictEqual(second.id, docs[1]._id)
       assert.strictEqual(second.ok, true)
 
@@ -135,7 +207,7 @@ suite('bulkSave', () => {
 
       assert.strictEqual(updateResults.length, 1)
       const [updated] = updateResults
-      assert.ok(updated)
+      assertBulkSaveSuccess(updated)
       assert.strictEqual(updated.ok, true)
       assert.ok(updated.rev)
 
@@ -157,7 +229,7 @@ suite('bulkSave', () => {
 
       assert.strictEqual(conflictResults.length, 1)
       const [conflict] = conflictResults
-      assert.ok(conflict)
+      assertBulkSaveFailure(conflict)
       assert.strictEqual(conflict.id, docs[1]._id)
       assert.strictEqual(conflict.error, 'conflict')
       assert.ok(conflict.reason)
@@ -195,9 +267,9 @@ suite('bulkSaveTransaction', () => {
 
       const results = await bulkSaveTransaction(config, transactionId, docs)
       assert.strictEqual(results.length, 2)
-      assert.ok(results[0]?.ok)
+      assertBulkSaveSuccess(results[0])
       assert.strictEqual(results[0]?.id, existingId)
-      assert.ok(results[1]?.ok)
+      assertBulkSaveSuccess(results[1])
       assert.strictEqual(results[1]?.id, newId)
 
       const updatedExisting = await getDocFrom(TEST_DB_URL, existingId)
@@ -274,17 +346,12 @@ suite('bulkSaveTransaction', () => {
       })
 
       emitter.on('transaction-revs-checked', async () => {
-        await needle(
-          'put',
-          `${TEST_DB_URL}/${conflictId}`,
-          {
-            _id: conflictId,
-            _rev: conflicting.rev,
-            type: 'rollback',
-            count: 99
-          },
-          { json: true }
-        )
+        await putJson(`${TEST_DB_URL}/${conflictId}`, {
+          _id: conflictId,
+          _rev: conflicting.rev,
+          type: 'rollback',
+          count: 99
+        })
       })
 
       await assert.rejects(

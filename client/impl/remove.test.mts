@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict'
 import test, { suite } from 'node:test'
-import needle from 'needle'
 import type { CouchConfigInput } from '../schema/config.mts'
 import { remove } from './remove.mts'
-import { RetryableError } from './utils/errors.mts'
+import { NotFoundError, RetryableError } from './utils/errors.mts'
 import { TEST_DB_URL } from '../test/setup-db.mts'
+import { getJson, putJson } from '../test/http.mts'
 
 const baseConfig: CouchConfigInput = {
   couch: TEST_DB_URL
@@ -13,25 +13,20 @@ const baseConfig: CouchConfigInput = {
 type DocBody = Record<string, unknown>
 
 async function saveDoc(id: string, body: DocBody) {
-  const response = await needle(
-    'put',
-    `${TEST_DB_URL}/${id}`,
-    {
-      _id: id,
-      ...body
-    },
-    { json: true }
-  )
+  const response = await putJson<{ rev: string }>(`${TEST_DB_URL}/${id}`, {
+    _id: id,
+    ...body
+  })
 
   if (response.statusCode !== 201 && response.statusCode !== 200) {
     throw new Error(`Failed to save document ${id}: ${response.statusCode}`)
   }
 
-  return response.body as { rev: string }
+  return response.body
 }
 
 async function getDoc(id: string) {
-  return needle('get', `${TEST_DB_URL}/${id}`, null, { json: true })
+  return getJson(`${TEST_DB_URL}/${id}`)
 }
 
 suite('remove', () => {
@@ -61,11 +56,15 @@ suite('remove', () => {
       assert.strictEqual(body?.error, 'not_found')
     })
 
-    await t.test('returns not found metadata when document is missing', async () => {
-      const result = await remove(baseConfig, 'remove-doc-missing', '1-missing')
-      assert.strictEqual(result.ok, false)
-      assert.strictEqual(result.error, 'not_found')
-      assert.strictEqual(result.statusCode, 404)
+    await t.test('throws NotFoundError when document is missing', async () => {
+      await assert.rejects(
+        () => remove(baseConfig, 'remove-doc-missing', '1-missing'),
+        (err: unknown) =>
+          err instanceof NotFoundError &&
+          err.docId === 'remove-doc-missing' &&
+          err.statusCode === 404 &&
+          err.message === 'Document not found'
+      )
     })
 
     await t.test('propagates retryable network errors', async () => {

@@ -1,6 +1,4 @@
-import needle from 'needle'
 import { createLogger } from './utils/logger.mts'
-import { mergeNeedleOpts } from './utils/mergeNeedleOpts.mts'
 import { bulkGetDictionary } from './bulkGet.mts'
 import { setupEmitter } from './utils/trackedEmitter.mts'
 import {
@@ -14,10 +12,30 @@ import {
   CouchDoc,
   type CouchDocInput
 } from '../schema/couch/couch.output.schema.ts'
-import type { CouchConfigInput } from '../schema/config.mts'
-import { RetryableError } from './utils/errors.mts'
+import { CouchConfig, type CouchConfigInput } from '../schema/config.mts'
+import {
+  ConflictError,
+  OperationError,
+  RetryableError,
+  createResponseError
+} from './utils/errors.mts'
 import { withRetry } from './retry.mts'
 import { put } from './put.mts'
+import { fetchCouchJson } from './utils/fetch.mts'
+import { isSuccessStatusCode } from './utils/response.mts'
+import { createCouchPathUrl } from './utils/url.mts'
+
+type BulkSaveRow = BulkSaveResponse[number]
+type BulkSaveSuccessRow = Extract<BulkSaveRow, { ok: true }>
+type BulkSaveFailureRow = Exclude<BulkSaveRow, BulkSaveSuccessRow>
+
+const isBulkSaveSuccess = (row: BulkSaveRow): row is BulkSaveSuccessRow => {
+  return 'ok' in row && row.ok === true
+}
+
+const isBulkSaveFailure = (row: BulkSaveRow): row is BulkSaveFailureRow => {
+  return !isBulkSaveSuccess(row)
+}
 
 /**
  * Bulk saves documents to CouchDB using the _bulk_docs endpoint.
@@ -30,44 +48,52 @@ import { put } from './put.mts'
  * @returns {Promise<BulkSaveResponse>} - The response from CouchDB after the bulk save operation.
  *
  * @throws {RetryableError} When a retryable HTTP status code is encountered or no response is received.
- * @throws {Error} When CouchDB returns a non-retryable error payload.
+ * @throws {OperationError} When bulk save input is invalid or CouchDB returns a non-retryable request-level failure.
  */
 export const bulkSave = async (config: CouchConfigInput, docs: CouchDocInput[]) => {
-  const logger = createLogger(config)
+  const parsedConfig = CouchConfig.parse(config)
+  const logger = createLogger(parsedConfig)
 
   if (docs == null || !docs.length) {
     logger.error('bulkSave called with no docs')
-    throw new Error('no docs provided')
+    throw new OperationError('Bulk save requires at least one document', {
+      operation: 'request'
+    })
   }
 
   logger.info(`Starting bulk save of ${docs.length} documents`)
-  const url = `${config.couch}/_bulk_docs`
+  const url = createCouchPathUrl('_bulk_docs', parsedConfig.couch)
   const body = { docs }
-  const opts = {
-    json: true,
-    headers: {
-      'Content-Type': 'application/json'
-    }
-  }
-  const mergedOpts = mergeNeedleOpts(config, opts)
   let resp
   try {
-    resp = await needle('post', url, body, mergedOpts)
+    resp = await fetchCouchJson({
+      auth: parsedConfig.auth,
+      method: 'POST',
+      operation: 'request',
+      request: parsedConfig.request,
+      url,
+      body
+    })
   } catch (err) {
     logger.error('Network error during bulk save:', err)
-    RetryableError.handleNetworkError(err)
+    RetryableError.handleNetworkError(err, 'request')
   }
   if (!resp) {
     logger.error('No response received from bulk save request')
-    throw new RetryableError('no response', 503)
+    throw new RetryableError(
+      `Bulk save failed for ${docs.length} document${docs.length === 1 ? '' : 's'}`,
+      503,
+      { operation: 'request' }
+    )
   }
-  if (RetryableError.isRetryableStatusCode(resp.statusCode)) {
-    logger.warn(`Retryable status code received: ${resp.statusCode}`)
-    throw new RetryableError('retryable error during bulk save', resp.statusCode)
-  }
-  if (resp.statusCode !== 201) {
+  if (!isSuccessStatusCode('bulkSave', resp.statusCode)) {
     logger.error(`Unexpected status code: ${resp.statusCode}`)
-    throw new Error('could not save')
+    throw createResponseError({
+      body: resp.body,
+      defaultMessage: `Bulk save failed for ${docs.length} document${docs.length === 1 ? '' : 's'}`,
+      operation: 'request',
+      statusCode: resp.statusCode
+    })
   }
   const results = resp?.body || []
   return BulkSaveResponse.parse(results)
@@ -151,18 +177,24 @@ export const bulkSaveTransaction = async (
   }
 
   // Save transaction document
-  let transactionResponse = await _put(transactionDoc)
+  let transactionResponse
+  try {
+    transactionResponse = await _put(transactionDoc)
+  } catch (error) {
+    if (error instanceof ConflictError) {
+      throw new TransactionSetupError('Failed to create transaction document', {
+        error: error.couchError,
+        response: error
+      })
+    }
+
+    throw error
+  }
   logger.debug('Transaction document created:', transactionDoc, transactionResponse)
   await emitter.emit('transaction-created', {
     transactionResponse,
     txnDoc: transactionDoc
   })
-  if (transactionResponse.error) {
-    throw new TransactionSetupError('Failed to create transaction document', {
-      error: transactionResponse.error,
-      response: transactionResponse
-    })
-  }
 
   // Get current revisions of all documents
   const existingDocs = await bulkGetDictionary(
@@ -209,7 +241,7 @@ export const bulkSaveTransaction = async (
     // Check for failures
     results.forEach(r => {
       if (!r.id) return // not enough info
-      if (!r.error) {
+      if (isBulkSaveSuccess(r)) {
         if (existingDocs.notFound[r.id]) newDocsToRollback.push(r)
         if (existingDocs.found[r.id]) potentialExistingDocsToRollback.push(r)
       } else {
@@ -240,12 +272,14 @@ export const bulkSaveTransaction = async (
     // Rollback changes
     const toRollback: CouchDoc[] = []
     potentialExistingDocsToRollback.forEach(row => {
+      if (!isBulkSaveSuccess(row)) return
       if (!row.id || !row.rev) return
       const doc = existingDocs.found[row.id]
       doc._rev = row.rev
       toRollback.push(doc)
     })
     newDocsToRollback.forEach(d => {
+      if (!isBulkSaveSuccess(d)) return
       if (!d.id || !d.rev) return
       const before = JSON.parse(JSON.stringify(providedDocsById[d.id]))
       before._rev = d.rev
@@ -257,7 +291,7 @@ export const bulkSaveTransaction = async (
     const bulkRollbackResult = await bulkSave(config, toRollback)
     let status: TransactionStatus = 'rolled_back'
     bulkRollbackResult.forEach(r => {
-      if (r.error) status = 'rollback_failed'
+      if (isBulkSaveFailure(r)) status = 'rollback_failed'
     })
     logger.warn('Transaction rolled back:', { bulkRollbackResult, status })
     await emitter.emit('transaction-rolled-back', {

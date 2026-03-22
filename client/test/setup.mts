@@ -1,7 +1,7 @@
-import needle from 'needle'
 import { setTimeout } from 'timers/promises'
 import { TEST_DB_PORT, TEST_DB_URL } from './setup-db.mts'
 import { spawn } from 'child_process'
+import { putJson } from './http.mts'
 
 let db_server: ReturnType<typeof spawn> | null = null
 
@@ -17,7 +17,7 @@ export async function globalSetup() {
   await setTimeout(1000)
 
   // Create a test database
-  await needle('put', TEST_DB_URL, null)
+  await putJson(TEST_DB_URL)
   await setTimeout(250)
 
   console.log('Pouchdb-server started and test database created.')

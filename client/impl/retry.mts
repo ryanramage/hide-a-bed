@@ -1,5 +1,9 @@
 import { setTimeout } from 'node:timers/promises'
-import { RetryableError } from './utils/errors.mts'
+import { isTransientAuthError, RetryableError } from './utils/errors.mts'
+
+export const shouldRetryError = (error: unknown, attempt: number) => {
+  return error instanceof RetryableError || isTransientAuthError(error, attempt)
+}
 
 /**
  * Settings that control how retry attempts are scheduled.
@@ -47,7 +51,7 @@ export function withRetry<Fn extends (...args: any[]) => MaybePromise<any>>(
         const result = await fn(...args)
         return result
       } catch (error) {
-        if (!(error instanceof RetryableError)) {
+        if (!shouldRetryError(error, attempt)) {
           throw error
         }
 

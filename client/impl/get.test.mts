@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict'
 import test, { suite } from 'node:test'
-import needle from 'needle'
 import { z } from 'zod'
 import type { CouchConfigInput } from '../schema/config.mts'
 import { get, getAtRev } from './get.mts'
-import { NotFoundError, RetryableError } from './utils/errors.mts'
+import { NotFoundError, RetryableError, ValidationError } from './utils/errors.mts'
 import { TEST_DB_URL } from '../test/setup-db.mts'
+import { putJson } from '../test/http.mts'
 
 const baseConfig: CouchConfigInput = {
   couch: TEST_DB_URL
@@ -14,24 +14,48 @@ const baseConfig: CouchConfigInput = {
 type DocBody = Record<string, unknown>
 
 async function saveDoc(id: string, body: DocBody) {
-  const response = await needle(
-    'put',
-    `${TEST_DB_URL}/${id}`,
-    {
-      _id: id,
-      ...body
-    },
-    { json: true }
-  )
+  const response = await putJson<{ rev: string }>(`${TEST_DB_URL}/${id}`, {
+    _id: id,
+    ...body
+  })
 
   if (response.statusCode !== 201 && response.statusCode !== 200) {
     throw new Error(`Failed to save document ${id}: ${response.statusCode}`)
   }
 
-  return response.body as { rev: string }
+  return response.body
 }
 
+type FetchInput = Parameters<typeof globalThis.fetch>[0]
+
 suite('get', () => {
+  test('builds encoded request URLs from URL config input', async t => {
+    const requestUrls: URL[] = []
+    const fetchMock = t.mock.method(globalThis, 'fetch', async (input: FetchInput) => {
+      requestUrls.push(new URL(String(input)))
+      return new Response(JSON.stringify({ _id: 'folder/doc name' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    })
+
+    t.after(() => {
+      fetchMock.mock.restore()
+    })
+
+    const result = await get(
+      { couch: new URL('http://localhost:5984/url-object-db') },
+      'folder/doc name'
+    )
+
+    assert.strictEqual(result?._id, 'folder/doc name')
+    const capturedUrl = requestUrls[0]
+    if (!capturedUrl) {
+      assert.fail('expected request URL to be captured')
+    }
+    assert.strictEqual(capturedUrl.pathname, '/url-object-db/folder%2Fdoc%20name')
+  })
+
   test('integration with pouchdb-server', async t => {
     const doc_valid_id = `doc-valid-${Date.now()}`
     const doc_invalid_id = `doc-invalid-${Date.now()}`
@@ -57,29 +81,35 @@ suite('get', () => {
 
       await assert.rejects(
         () => get(baseConfig, doc_invalid_id, { validate: { docSchema: schema } }),
-        (err: unknown) => {
-          return (
-            Array.isArray(err) &&
-            err[0].message === 'Invalid input: expected number, received string'
-          )
-        }
+        (err: unknown) =>
+          err instanceof ValidationError &&
+          err.message === 'Document validation failed' &&
+          err.docId === doc_invalid_id &&
+          err.operation === 'get' &&
+          err.issues[0]?.message === 'Invalid input: expected number, received string'
       )
     })
 
-    await t.test('returns null when not found by default', async () => {
+    await t.test('returns null when document is missing by default', async () => {
       const missing = await get(baseConfig, 'doc-missing')
       assert.strictEqual(missing, null)
     })
 
     await t.test('throws NotFoundError when configured', async () => {
-      const strictConfig: CouchConfigInput = {
-        ...baseConfig,
-        throwOnGetNotFound: true
-      }
-
       await assert.rejects(
-        () => get(strictConfig, 'doc-missing'),
-        (err: unknown) => err instanceof NotFoundError && err.docId === 'doc-missing'
+        () =>
+          get(
+            {
+              ...baseConfig,
+              throwOnGetNotFound: true
+            },
+            'doc-missing'
+          ),
+        (err: unknown) =>
+          err instanceof NotFoundError &&
+          err.docId === 'doc-missing' &&
+          err.statusCode === 404 &&
+          err.message === 'Document not found'
       )
     })
 

@@ -27,7 +27,8 @@ import { CouchConfig, type CouchConfigInput } from '../schema/config.mts'
  * console.log(results);
  * ```
  *
- * @throws Will throw an error if the provided configuration is invalid or if the bulk delete operation fails.
+ * @throws {RetryableError} When the bulk request fails with a retryable transport or HTTP error.
+ * @throws {OperationError} When CouchDB returns a non-retryable request-level failure.
  */
 export const bulkRemove = async (configInput: CouchConfigInput, ids: string[]) => {
   const config = CouchConfig.parse(configInput)
@@ -71,7 +72,8 @@ export const bulkRemove = async (configInput: CouchConfigInput, ids: string[]) =
  * console.log(results);
  * ```
  *
- * @throws Will throw an error if the provided configuration is invalid or if any delete operation fails.
+ * @throws {RetryableError} When a request-level transport or retryable HTTP failure occurs.
+ * @throws {OperationError} When a request fails in a non-retryable way.
  */
 export const bulkRemoveMap = async (configInput: CouchConfigInput, ids: string[]) => {
   const config = CouchConfig.parse(configInput)

@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict'
 import test, { suite } from 'node:test'
-import needle from 'needle'
 import { randomUUID } from 'node:crypto'
 import { setTimeout as delay } from 'node:timers/promises'
 import { z } from 'zod'
@@ -8,29 +7,25 @@ import { z } from 'zod'
 import type { CouchConfigInput } from '../schema/config.mts'
 import { TEST_DB_URL } from '../test/setup-db.mts'
 import { query } from './query.mts'
-import { RetryableError } from './utils/errors.mts'
+import { OperationError, RetryableError } from './utils/errors.mts'
+import { putJson } from '../test/http.mts'
 
 const config: CouchConfigInput = {
   couch: TEST_DB_URL
 }
 
 async function putDoc(doc: Record<string, unknown> & { _id: string }) {
-  await needle('put', `${TEST_DB_URL}/${doc._id}`, doc, { json: true })
+  await putJson(`${TEST_DB_URL}/${doc._id}`, doc)
 }
 
 async function putDesignDoc(id: string, viewName: string, mapFn: string) {
-  await needle(
-    'put',
-    `${TEST_DB_URL}/_design/${id}`,
-    {
-      views: {
-        [viewName]: {
-          map: mapFn
-        }
+  await putJson(`${TEST_DB_URL}/_design/${id}`, {
+    views: {
+      [viewName]: {
+        map: mapFn
       }
-    },
-    { json: true }
-  )
+    }
+  })
 }
 
 async function eventually<T>(
@@ -275,6 +270,29 @@ suite('query', () => {
     await assert.rejects(
       () => query(offlineConfig, '_all_docs', {}),
       (err: unknown) => err instanceof RetryableError && err.statusCode === 503
+    )
+  })
+
+  test('throws OperationError on non-retryable response failure', async t => {
+    const fetchMock = t.mock.method(globalThis, 'fetch', async () => {
+      return new Response(JSON.stringify({ error: 'forbidden', reason: 'not allowed' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' }
+      })
+    })
+
+    t.after(() => {
+      fetchMock.mock.restore()
+    })
+
+    await assert.rejects(
+      () => query({ couch: 'http://localhost:5984/mock-db' }, '_all_docs', {}),
+      (err: unknown) =>
+        err instanceof OperationError &&
+        err.statusCode === 403 &&
+        err.message === 'Query failed: not allowed' &&
+        err.couchError === 'forbidden' &&
+        err.couchReason === 'not allowed'
     )
   })
 })

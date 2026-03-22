@@ -46,6 +46,15 @@ export {
   removeLock
 }
 
+export {
+  ConflictError,
+  HideABedError,
+  NotFoundError,
+  OperationError,
+  RetryableError,
+  ValidationError
+} from './impl/utils/errors.mts'
+
 export type {
   BulkGetBound,
   BulkGetDictionaryBound,
@@ -70,10 +79,18 @@ export type {
   ViewRowValidated
 } from './schema/couch/couch.output.schema.ts'
 export type { RetryOptions } from './impl/retry.mts'
-export type { NetworkError, RetryableError, NotFoundError } from './impl/utils/errors.mts'
+export type {
+  ErrorCategory,
+  ErrorOperation,
+  HideABedErrorOptions,
+  NetworkError,
+  ValidationErrorOptions
+} from './impl/utils/errors.mts'
 export type { OnRow } from './impl/stream.mts'
-export type { CouchConfig, CouchConfigInput } from './schema/config.mts'
+export type { CouchAuth, CouchAuthInput, CouchConfig, CouchConfigInput } from './schema/config.mts'
+export type { Dispatcher, RequestOptions, RequestOptionsInput } from './schema/request.mts'
 export type { LockOptions, LockOptionsInput, LockDoc } from './schema/sugar/lock.mts'
+export type { WatchHandle, WatchListener } from './impl/sugar/watch.mts'
 export type {
   WatchOptions as WatchOptionsSchema,
   WatchOptionsInput

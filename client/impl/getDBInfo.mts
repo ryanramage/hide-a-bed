@@ -1,9 +1,10 @@
-import needle, { type NeedleResponse } from 'needle'
-import { RetryableError } from './utils/errors.mts'
+import { RetryableError, createResponseError } from './utils/errors.mts'
 import { createLogger } from './utils/logger.mts'
-import { mergeNeedleOpts } from './utils/mergeNeedleOpts.mts'
 import { CouchConfig, type CouchConfigInput } from '../schema/config.mts'
 import { CouchDBInfo } from '../schema/couch/couch.output.schema.ts'
+import { fetchCouchJson } from './utils/fetch.mts'
+import { isSuccessStatusCode } from './utils/response.mts'
+import { createCouchDbUrl } from './utils/url.mts'
 
 /**
  * Fetches and returns CouchDB database information.
@@ -13,7 +14,7 @@ import { CouchDBInfo } from '../schema/couch/couch.output.schema.ts'
  * @param configInput - The CouchDB configuration input.
  * @returns A promise that resolves to the CouchDB database information.
  * @throws {RetryableError} `RetryableError` If a retryable error occurs during the request.
- * @throws {Error} `Error` For other non-retryable errors.
+ * @throws {OperationError} `OperationError` For other non-retryable response failures.
  *
  * @example
  * ```ts
@@ -33,35 +34,36 @@ import { CouchDBInfo } from '../schema/couch/couch.output.schema.ts'
 export const getDBInfo = async (configInput: CouchConfigInput) => {
   const config = CouchConfig.parse(configInput)
   const logger = createLogger(config)
-  const url = `${config.couch}`
+  const url = createCouchDbUrl(config.couch)
 
-  let resp: NeedleResponse | undefined
+  let resp
   try {
-    resp = await needle(
-      'get',
-      url,
-      mergeNeedleOpts(config, {
-        json: true,
-        headers: {
-          'Content-Type': 'application/json'
-        }
+    resp = await fetchCouchJson({
+      auth: config.auth,
+      method: 'GET',
+      operation: 'getDBInfo',
+      request: config.request,
+      url
+    })
+
+    if (!isSuccessStatusCode('database', resp.statusCode)) {
+      logger.error(`Non-success status code received: ${resp.statusCode}`)
+      throw createResponseError({
+        body: resp.body,
+        defaultMessage: 'Failed to fetch database info',
+        operation: 'getDBInfo',
+        statusCode: resp.statusCode
       })
-    )
+    }
   } catch (err) {
     logger.error('Error during get operation:', err)
-    RetryableError.handleNetworkError(err)
+    RetryableError.handleNetworkError(err, 'getDBInfo')
   }
 
   if (!resp) {
     logger.error('No response received from get request')
-    throw new RetryableError('no response', 503)
+    throw new RetryableError('Failed to fetch database info', 503, { operation: 'getDBInfo' })
   }
 
-  const result = resp.body
-  if (RetryableError.isRetryableStatusCode(resp.statusCode)) {
-    logger.warn(`Retryable status code received: ${resp.statusCode}`)
-    throw new RetryableError(result.reason ?? 'retryable error', resp.statusCode)
-  }
-
-  return CouchDBInfo.parse(result)
+  return CouchDBInfo.parse(resp.body)
 }

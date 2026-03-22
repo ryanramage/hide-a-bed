@@ -1,0 +1,151 @@
+import assert from 'node:assert/strict'
+import test, { suite } from 'node:test'
+import { CouchConfig } from './config.mts'
+
+suite('CouchConfig', () => {
+  test('applies defaults for retry and logging options', () => {
+    const parsed = CouchConfig.parse({
+      couch: 'http://localhost:5984'
+    })
+
+    assert.strictEqual(parsed.couch, 'http://localhost:5984')
+    assert.strictEqual(parsed.bindWithRetry, true)
+    assert.strictEqual(parsed.maxRetries, 3)
+    assert.strictEqual(parsed.initialDelay, 1000)
+    assert.strictEqual(parsed.backoffFactor, 2)
+    assert.strictEqual(parsed.throwOnGetNotFound, false)
+    assert.strictEqual(parsed.useConsoleLogger, false)
+  })
+
+  test('accepts object logger', () => {
+    const logger = {
+      error: () => {},
+      warn: () => {},
+      info: () => {},
+      debug: () => {}
+    }
+
+    const parsed = CouchConfig.parse({
+      couch: 'http://localhost:5984',
+      logger
+    })
+
+    assert.ok(parsed.logger)
+    assert.strictEqual(typeof parsed.logger, 'object')
+    if (typeof parsed.logger === 'function') {
+      assert.fail('expected object logger')
+    }
+    assert.strictEqual(typeof parsed.logger.error, 'function')
+    assert.strictEqual(typeof parsed.logger.warn, 'function')
+    assert.strictEqual(typeof parsed.logger.info, 'function')
+    assert.strictEqual(typeof parsed.logger.debug, 'function')
+  })
+
+  test('accepts function logger and internal emitter', () => {
+    const emitter = { emit: async () => {} }
+    const logger = () => {}
+
+    const parsed = CouchConfig.parse({
+      couch: 'http://localhost:5984',
+      logger,
+      '~emitter': emitter
+    })
+
+    assert.strictEqual(typeof parsed.logger, 'function')
+    assert.strictEqual(parsed['~emitter'], emitter)
+  })
+
+  test('accepts auth credentials', () => {
+    const parsed = CouchConfig.parse({
+      couch: 'http://localhost:5984',
+      auth: {
+        username: 'alice',
+        password: 'secret'
+      }
+    })
+
+    assert.deepStrictEqual(parsed.auth, {
+      username: 'alice',
+      password: 'secret'
+    })
+  })
+
+  test('accepts couch URL objects', () => {
+    const couch = new URL('http://localhost:5984/my-db')
+    const parsed = CouchConfig.parse({
+      couch
+    })
+
+    assert.ok(parsed.couch instanceof URL)
+    assert.strictEqual(parsed.couch.href, 'http://localhost:5984/my-db')
+  })
+
+  test('accepts request defaults', () => {
+    const signal = new AbortController().signal
+    const dispatcher = {
+      dispatch: () => true
+    }
+
+    const parsed = CouchConfig.parse({
+      couch: 'http://localhost:5984',
+      request: {
+        dispatcher,
+        signal,
+        timeout: 250
+      }
+    })
+
+    assert.strictEqual(parsed.request?.signal, signal)
+    assert.strictEqual(parsed.request?.dispatcher, dispatcher)
+    assert.strictEqual(parsed.request?.timeout, 250)
+  })
+
+  test('rejects couch URLs with embedded credentials', () => {
+    assert.throws(() => {
+      CouchConfig.parse({
+        couch: 'http://alice:secret@localhost:5984/mydb'
+      })
+    })
+  })
+
+  test('rejects unknown keys', () => {
+    assert.throws(
+      () => {
+        CouchConfig.parse({
+          couch: 'http://localhost:5984',
+          extra: true
+        })
+      },
+      (error: unknown) => {
+        if (!(error instanceof Error)) return false
+        const issues = (error as Error & { issues?: Array<{ message?: string }> }).issues
+        return (
+          Array.isArray(issues) && issues.some(issue => issue.message?.includes('Unrecognized key'))
+        )
+      }
+    )
+  })
+
+  test('rejects unknown request keys', () => {
+    assert.throws(() => {
+      CouchConfig.parse({
+        couch: 'http://localhost:5984',
+        request: {
+          timeout: 250,
+          unsupported: true
+        }
+      })
+    })
+  })
+
+  test('rejects removed needle options', () => {
+    assert.throws(() => {
+      CouchConfig.parse({
+        couch: 'http://localhost:5984',
+        needleOpts: {
+          timeout: 1234
+        }
+      })
+    })
+  })
+})

@@ -1,15 +1,20 @@
-import needle from 'needle'
 import { EventEmitter } from 'events'
-import { RetryableError } from '../utils/errors.mts'
+import { OperationError, RetryableError, createResponseError } from '../utils/errors.mts'
 import { createLogger } from '../utils/logger.mts'
 import { WatchOptions, type WatchOptionsInput } from '../../schema/sugar/watch.mts'
-import { mergeNeedleOpts } from '../utils/mergeNeedleOpts.mts'
 import { setTimeout } from 'node:timers/promises'
-import {
-  CouchConfig,
-  type CouchConfigInput,
-  type NeedleBaseOptionsSchema
-} from '../../schema/config.mts'
+import { CouchConfig, type CouchConfigInput } from '../../schema/config.mts'
+import { fetchCouchStream } from '../utils/fetch.mts'
+import { isSuccessStatusCode } from '../utils/response.mts'
+import { createCouchPathUrl } from '../utils/url.mts'
+
+export type WatchListener = (...args: Array<unknown>) => void
+
+export type WatchHandle = {
+  on: (event: string, listener: WatchListener) => EventEmitter
+  removeListener: (event: string, listener: WatchListener) => EventEmitter
+  stop: () => void
+}
 
 /**
  * Watch for changes to specified document IDs in CouchDB.
@@ -29,126 +34,187 @@ export function watchDocs(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onChange: (change: any) => void,
   optionsInput: WatchOptionsInput = {}
-) {
+): WatchHandle {
   const config = CouchConfig.parse(configInput)
   const options = WatchOptions.parse(optionsInput)
   const logger = createLogger(config)
   const emitter = new EventEmitter()
+  const request = config.request
   let lastSeq: null | 'now' = null
   let stopping = false
+  let stopEndEmitted = false
   let retryCount = 0
-  let currentRequest: null | ReturnType<typeof needle.get> = null
+  const lifecycleAbortController = new AbortController()
+  let currentAbortController: AbortController | null = null
   const maxRetries = options.maxRetries || 10
   const initialDelay = options.initialDelay || 1000
   const maxDelay = options.maxDelay || 30000
 
   const _docIds = Array.isArray(docIds) ? docIds : [docIds]
-  if (_docIds.length === 0) throw new Error('docIds must be a non-empty array')
-  if (_docIds.length > 100) throw new Error('docIds must be an array of 100 or fewer elements')
+  if (_docIds.length === 0) {
+    throw new OperationError('docIds must be a non-empty array', {
+      operation: 'watchDocs'
+    })
+  }
+  if (_docIds.length > 100) {
+    throw new OperationError('docIds must be an array of 100 or fewer elements', {
+      operation: 'watchDocs'
+    })
+  }
+
+  const emitStopEnd = () => {
+    if (stopEndEmitted) return
+    stopEndEmitted = true
+    emitter.emit('end', { lastSeq })
+  }
+
+  const stopWatching = () => {
+    if (stopping) return
+    stopping = true
+    lifecycleAbortController.abort()
+    currentAbortController?.abort()
+    request?.signal?.removeEventListener('abort', handleExternalAbort)
+    emitStopEnd()
+    emitter.removeAllListeners()
+  }
+
+  const handleExternalAbort = () => {
+    logger.info(`Request signal aborted, stopping watcher for [${_docIds}]`)
+    stopWatching()
+  }
+
+  request?.signal?.addEventListener('abort', handleExternalAbort, { once: true })
 
   const connect = async () => {
     if (stopping) return
 
     const feed = 'continuous'
     const includeDocs = options.include_docs ?? false
-    const ids = _docIds.join('","')
-    const url = `${config.couch}/_changes?feed=${feed}&since=${lastSeq}&include_docs=${includeDocs}&filter=_doc_ids&doc_ids=["${ids}"]`
-
-    const opts: NeedleBaseOptionsSchema = {
-      json: false,
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      parse_response: false
-    }
-    const mergedOpts = mergeNeedleOpts(config, opts)
+    const url = createCouchPathUrl('_changes', config.couch)
+    url.searchParams.set('feed', feed)
+    url.searchParams.set('since', String(lastSeq))
+    url.searchParams.set('include_docs', String(includeDocs))
+    url.searchParams.set('filter', '_doc_ids')
+    url.searchParams.set('doc_ids', JSON.stringify(_docIds))
+    const abortController = new AbortController()
+    currentAbortController = abortController
 
     let buffer = ''
-    currentRequest = needle.get(url, mergedOpts)
+    const processLine = (line: string) => {
+      if (!line.trim()) return
 
-    currentRequest.on('data', chunk => {
-      buffer += chunk.toString()
-      const lines = buffer.split('\n')
-
-      // Keep the last partial line in the buffer
-      buffer = lines.pop() || ''
-
-      // Process complete lines
-      for (const line of lines) {
-        if (line.trim()) {
-          try {
-            const change = JSON.parse(line)
-            if (!change.id) return null // ignore just last_seq
-            logger.debug(`Change detected, watching [${_docIds}]`, change)
-            lastSeq = change.seq || change.last_seq
-            emitter.emit('change', change)
-          } catch (err) {
-            logger.error('Error parsing change:', err, 'Line:', line)
-          }
-        }
+      try {
+        const change = JSON.parse(line)
+        if (!change.id) return
+        logger.debug(`Change detected, watching [${_docIds}]`, change)
+        lastSeq = change.seq || change.last_seq
+        emitter.emit('change', change)
+      } catch (err) {
+        logger.error('Error parsing change:', err, 'Line:', line)
       }
-    })
+    }
 
-    currentRequest.on('response', response => {
+    try {
+      const response = await fetchCouchStream({
+        auth: config.auth,
+        method: 'GET',
+        operation: 'watchDocs',
+        url,
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        request,
+        signal: AbortSignal.any([abortController.signal, lifecycleAbortController.signal])
+      })
+
       logger.debug(
         `Received response with status code, watching [${_docIds}]: ${response.statusCode}`
       )
       if (RetryableError.isRetryableStatusCode(response.statusCode)) {
         logger.warn(`Retryable status code received: ${response.statusCode}`)
-        // @ts-expect-error bad type?
-        currentRequest?.destroy()
-        handleReconnect()
-      } else {
-        // Reset retry count on successful connection
-        retryCount = 0
-      }
-    })
-
-    currentRequest.on('error', async err => {
-      if (stopping) {
-        logger.info('stopping in progress, ignore stream error')
+        abortController.abort()
+        await handleReconnect()
         return
       }
-      logger.error(`Network error during stream, watching [${_docIds}]:`, err.toString())
-      try {
-        RetryableError.handleNetworkError(err)
-      } catch (filteredError) {
-        if (filteredError instanceof RetryableError) {
-          logger.info(`Retryable error, watching [${_docIds}]:`, filteredError.toString())
-          handleReconnect()
-        } else {
-          logger.error(`Non-retryable error, watching [${_docIds}]`, filteredError?.toString())
-          emitter.emit('error', filteredError)
-        }
-      }
-    })
 
-    currentRequest.on('end', () => {
-      // Process any remaining data in buffer
-      if (buffer.trim()) {
-        try {
-          const change = JSON.parse(buffer)
-          logger.debug('Final change detected:', change)
-          emitter.emit('change', change)
-        } catch (err) {
-          logger.error('Error parsing final change:', err)
-        }
+      if (!isSuccessStatusCode('changesFeed', response.statusCode)) {
+        emitter.emit(
+          'error',
+          createResponseError({
+            defaultMessage: 'Watch request failed',
+            operation: 'watchDocs',
+            statusCode: response.statusCode
+          })
+        )
+        return
       }
+
+      retryCount = 0
+
+      if (!response.body) {
+        throw new RetryableError('Watch request failed', 503, { operation: 'watchDocs' })
+      }
+
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+
+      while (!stopping) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+        lines.forEach(processLine)
+      }
+
+      if (stopping || abortController.signal.aborted) {
+        return
+      }
+
+      buffer += decoder.decode()
+
+      if (buffer.trim()) {
+        processLine(buffer)
+      }
+
       logger.info('Stream completed. Last seen seq: ', lastSeq)
       emitter.emit('end', { lastSeq })
 
-      // If the stream ends and we're not stopping, attempt to reconnect
       if (!stopping) {
-        handleReconnect()
+        await handleReconnect()
       }
-    })
+    } catch (err) {
+      if (stopping || abortController.signal.aborted) {
+        logger.info('stopping in progress, ignore stream error')
+        return
+      }
+
+      logger.error(`Network error during stream, watching [${_docIds}]:`, String(err))
+      try {
+        RetryableError.handleNetworkError(err, 'watchDocs')
+      } catch (filteredError) {
+        if (filteredError instanceof RetryableError) {
+          logger.info(`Retryable error, watching [${_docIds}]:`, filteredError.toString())
+          await handleReconnect()
+        } else {
+          logger.error(`Non-retryable error, watching [${_docIds}]`, String(filteredError))
+          emitter.emit('error', filteredError)
+        }
+      }
+    }
   }
 
   const handleReconnect = async () => {
     if (stopping || retryCount >= maxRetries) {
       if (retryCount >= maxRetries) {
         logger.error(`Max retries (${maxRetries}) reached, giving up`)
-        emitter.emit('error', new Error('Max retries reached'))
+        emitter.emit(
+          'error',
+          new OperationError('Watch retries exhausted', {
+            operation: 'watchDocs'
+          })
+        )
       }
       return
     }
@@ -157,32 +223,34 @@ export function watchDocs(
     retryCount++
 
     logger.info(`Attempting to reconnect in ${delay}ms (attempt ${retryCount} of ${maxRetries})`)
-    await setTimeout(delay)
+    try {
+      await setTimeout(delay, undefined, { signal: lifecycleAbortController.signal })
+    } catch {
+      return
+    }
 
     try {
-      connect()
+      await connect()
     } catch (err) {
       logger.error('Error during reconnection:', err)
-      handleReconnect()
+      await handleReconnect()
     }
   }
-
-  // Start initial connection
-  connect()
 
   // Bind the provided change listener
   emitter.on('change', onChange)
 
+  // Start initial connection
+  if (request?.signal?.aborted) {
+    stopWatching()
+  } else {
+    void connect()
+  }
+
   return {
-    on: (event: string, listener: EventListener) => emitter.on(event, listener),
-    removeListener: (event: string, listener: EventListener) =>
+    on: (event: string, listener: WatchListener) => emitter.on(event, listener),
+    removeListener: (event: string, listener: WatchListener) =>
       emitter.removeListener(event, listener),
-    stop: () => {
-      stopping = true
-      // @ts-expect-error bad type?
-      if (currentRequest) currentRequest.destroy()
-      emitter.emit('end', { lastSeq })
-      emitter.removeAllListeners()
-    }
+    stop: stopWatching
   }
 }

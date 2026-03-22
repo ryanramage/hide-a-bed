@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict'
 import test, { suite } from 'node:test'
 import { TrackedEmitter } from './impl/utils/trackedEmitter.mts'
-import { bulkSaveTransaction, get } from './index.mts'
+import type { BulkSaveResponse } from './schema/couch/couch.output.schema.ts'
+import { ConflictError, ValidationError, bulkSaveTransaction, get } from './index.mts'
 import { bindConfig } from './impl/bindConfig.mts'
 import z from 'zod'
 import { TEST_DB_URL } from './test/setup-db.mts'
@@ -9,6 +10,17 @@ import {
   TransactionRollbackError,
   TransactionVersionConflictError
 } from './impl/utils/transactionErrors.mts'
+
+type BulkSaveRow = BulkSaveResponse[number]
+
+function assertBulkSaveSuccess(
+  row: BulkSaveRow | undefined
+): asserts row is Extract<BulkSaveRow, { ok: true }> {
+  assert.ok(row)
+  if (!('ok' in row) || row.ok !== true) {
+    assert.fail(`expected bulk save success row, got ${JSON.stringify(row)}`)
+  }
+}
 
 const config: Parameters<typeof get>[0] = {
   couch: TEST_DB_URL,
@@ -57,10 +69,10 @@ suite('Database Tests', () => {
     })
     await t.test('put with bad rev', async () => {
       const doc = { _id: 'notThereDoc', _rev: '32-does-not-compute' }
-      const notThereDoc = await db.put(doc)
-      assert.ok(!notThereDoc.ok)
-      assert.strictEqual(notThereDoc.error, 'conflict')
-      console.log(notThereDoc)
+      await assert.rejects(
+        () => db.put(doc),
+        (e: unknown) => e instanceof ConflictError && e.statusCode === 409
+      )
     })
     await t.test('bulk get, including one doc that does not exist', async () => {
       const results = await db.bulkGet([test_doc_id, 'notThereDoc'])
@@ -96,7 +108,12 @@ suite('Database Tests', () => {
               })
             }
           }),
-        (err: unknown) => Array.isArray(err)
+        (err: unknown) =>
+          err instanceof ValidationError &&
+          err.docId === schema_doc_id &&
+          err.operation === 'request' &&
+          err.message === 'Bulk get failed' &&
+          err.issues[0]?.message.includes('Invalid input:')
       )
     })
     await t.test('get validates docs with schema', async () => {
@@ -137,7 +154,12 @@ suite('Database Tests', () => {
               })
             }
           }),
-        (err: unknown) => Array.isArray(err) && err[0].message.includes('Invalid input:')
+        (err: unknown) =>
+          err instanceof ValidationError &&
+          err.docId === docId &&
+          err.operation === 'get' &&
+          err.message === 'Document validation failed' &&
+          err.issues[0]?.message.includes('Invalid input:')
       )
     })
     let _rev: string | null | undefined = null
@@ -148,6 +170,7 @@ suite('Database Tests', () => {
       const docs = [{ _id: doc_a, data: 'something' }]
       const resp = await bulkSaveTransaction(config, `transaction-${Date.now()}`, docs)
       assert.strictEqual(resp.length, 1, 'one response')
+      assertBulkSaveSuccess(resp[0])
       assert.strictEqual(resp[0].ok, true, 'response ok')
       _rev = resp[0].rev
       assert.ok(resp)
@@ -173,8 +196,10 @@ suite('Database Tests', () => {
       const resp = await bulkSaveTransaction(config, `transaction-${Date.now()}`, docs)
       assert.ok(resp)
       assert.strictEqual(resp.length, 2, 'one response')
+      assertBulkSaveSuccess(resp[0])
       assert.strictEqual(resp[0].ok, true, 'response ok')
       _rev = resp[0].rev
+      assertBulkSaveSuccess(resp[1])
       b_rev = resp[1].rev
       assert.strictEqual(resp[1].ok, true, 'response ok')
       assert.ok(resp[0].rev?.startsWith('2-'), 'second rev saved')
@@ -388,9 +413,8 @@ suite('Database Tests', () => {
       assert.ok(query_results.rows)
     })
     await t.test('not found doc', async () => {
-      // should not throw
       const notFound = await db.get('never-51st')
-      console.log('found status', notFound)
+      assert.strictEqual(notFound, null)
     })
 
     await t.test('remove test', async () => {

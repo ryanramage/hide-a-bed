@@ -1,8 +1,6 @@
-import needle from 'needle'
 import { CouchConfig, type CouchConfigInput } from '../schema/config.mts'
 import { createLogger } from './utils/logger.mts'
-import { mergeNeedleOpts } from './utils/mergeNeedleOpts.mts'
-import { RetryableError } from './utils/errors.mts'
+import { RetryableError, createResponseError } from './utils/errors.mts'
 import {
   ViewQueryResponse,
   type ViewQueryResponseValidated,
@@ -11,6 +9,15 @@ import {
 } from '../schema/couch/couch.output.schema.ts'
 import type { StandardSchemaV1 } from '../types/standard-schema.ts'
 import { parseRows, type OnInvalidDocAction } from './utils/parseRows.mts'
+import { fetchCouchJson } from './utils/fetch.mts'
+import { isSuccessStatusCode } from './utils/response.mts'
+import { createCouchPathUrl } from './utils/url.mts'
+
+type BulkGetBody = {
+  error?: string
+  reason?: string
+  rows?: unknown[]
+} & Record<string, unknown>
 
 export type BulkGetResponse<DocSchema extends StandardSchemaV1 = StandardSchemaV1<CouchDoc>> =
   ViewQueryResponseValidated<
@@ -39,13 +46,13 @@ export type BulkGetOptions<DocSchema extends StandardSchemaV1> = {
  * @returns The raw response body from CouchDB
  *
  * @throws {RetryableError} When a retryable HTTP status code is encountered or no response is received.
- * @throws {Error} When CouchDB returns a non-retryable error payload.
+ * @throws {OperationError} When CouchDB returns a non-retryable request-level failure.
  */
 async function executeBulkGet(
   _config: CouchConfigInput,
   ids: Array<string | undefined>,
   includeDocs: boolean
-) {
+): Promise<BulkGetBody | undefined> {
   const configParseResult = CouchConfig.safeParse(_config)
   const logger = createLogger(_config)
   logger.info(`Starting bulk get for ${ids.length} documents`)
@@ -56,30 +63,40 @@ async function executeBulkGet(
   }
 
   const config = configParseResult.data
-  const url = `${config.couch}/_all_docs${includeDocs ? '?include_docs=true' : ''}`
-  const payload = { keys: ids }
-  const opts = {
-    json: true,
-    headers: {
-      'Content-Type': 'application/json'
-    }
+  const url = createCouchPathUrl('_all_docs', config.couch)
+  if (includeDocs) {
+    url.searchParams.append('include_docs', 'true')
   }
-  const mergedOpts = mergeNeedleOpts(config, opts)
+  const payload = { keys: ids }
 
   try {
-    const resp = await needle('post', url, payload, mergedOpts)
+    const resp = await fetchCouchJson<BulkGetBody>({
+      auth: config.auth,
+      method: 'POST',
+      operation: 'request',
+      request: config.request,
+      url,
+      body: payload
+    })
     if (RetryableError.isRetryableStatusCode(resp.statusCode)) {
       logger.warn(`Retryable status code received: ${resp.statusCode}`)
-      throw new RetryableError('retryable error during bulk get', resp.statusCode)
+      throw new RetryableError('Bulk get failed', resp.statusCode, {
+        operation: 'request'
+      })
     }
-    if (resp.statusCode !== 200) {
+    if (!isSuccessStatusCode('bulkGet', resp.statusCode)) {
       logger.error(`Unexpected status code: ${resp.statusCode}`)
-      throw new Error('could not fetch')
+      throw createResponseError({
+        body: resp.body,
+        defaultMessage: 'Bulk get failed',
+        operation: 'request',
+        statusCode: resp.statusCode
+      })
     }
     return resp.body
   } catch (err) {
     logger.error('Network error during bulk get:', err)
-    RetryableError.handleNetworkError(err)
+    RetryableError.handleNetworkError(err, 'request')
   }
 }
 
@@ -95,8 +112,8 @@ async function executeBulkGet(
  * @returns The bulk get response with rows optionally validated against the supplied document schema.
  *
  * @throws {RetryableError} When a retryable HTTP status code is encountered or no response is received.
- * @throws {Error<StandardSchemaV1.FailureResult["issues"]>} When the configuration or validation schemas fail to parse.
- * @throws {Error} When CouchDB returns a non-retryable error payload.
+ * @throws {ValidationError} When returned documents fail schema validation.
+ * @throws {OperationError} When CouchDB returns a non-retryable request-level failure.
  */
 async function _bulkGetWithOptions<DocSchema extends StandardSchemaV1 = typeof CouchDoc>(
   config: CouchConfigInput,
@@ -107,16 +124,22 @@ async function _bulkGetWithOptions<DocSchema extends StandardSchemaV1 = typeof C
   const body = await executeBulkGet(config, ids, includeDocs)
 
   if (!body) {
-    throw new RetryableError('no response', 503)
+    throw new RetryableError('Bulk get failed', 503, { operation: 'request' })
   }
 
   if (body.error) {
-    throw new Error(typeof body.reason === 'string' ? body.reason : 'could not fetch')
+    throw createResponseError({
+      body,
+      defaultMessage: 'Bulk get failed',
+      operation: 'request'
+    })
   }
 
   const docSchema = options.validate?.docSchema || CouchDoc
   const rows = await parseRows(body.rows, {
+    defaultMessage: 'Bulk get failed',
     onInvalidDoc: options.validate?.onInvalidDoc,
+    operation: 'request',
     docSchema
   })
 
@@ -144,8 +167,8 @@ async function _bulkGetWithOptions<DocSchema extends StandardSchemaV1 = typeof C
  * @returns The bulk get response with rows optionally validated against the supplied document schema.
  *
  * @throws {RetryableError} When a retryable HTTP status code is encountered or no response is received.
- * @throws {Error<StandardSchemaV1.FailureResult["issues"]>} When the configuration or validation schemas fail to parse.
- * @throws {Error} When CouchDB returns a non-retryable error payload.
+ * @throws {ValidationError} When returned documents fail schema validation.
+ * @throws {OperationError} When CouchDB returns a non-retryable request-level failure.
  */
 export async function bulkGet<DocSchema extends StandardSchemaV1 = typeof CouchDoc>(
   config: CouchConfigInput,
@@ -196,7 +219,7 @@ export type BulkGetDictionaryResult<
 /**
  * Bulk get documents by IDs and return a dictionary of found and not found documents.
  *
- * @template DocSchema - Schema used to validate each returned document, if provided. Note: if a document is found and it fails validation this will throw a Error<StandardSchemaV1.FailureResult["issues"]>.
+ * @template DocSchema - Schema used to validate each returned document, if provided. Note: if a document is found and it fails validation this will throw a ValidationError.
  *
  * @param config - CouchDB configuration data that is validated before use.
  * @param ids - Array of document IDs to retrieve.
@@ -205,8 +228,8 @@ export type BulkGetDictionaryResult<
  * @returns An object containing found documents and not found rows.
  *
  * @throws {RetryableError} When a retryable HTTP status code is encountered or no response is received.
- * @throws {Error<StandardSchemaV1.FailureResult["issues"]>} When the configuration or validation schemas fail to parse.
- * @throws {Error} When CouchDB returns a non-retryable error payload.
+ * @throws {ValidationError} When returned documents fail schema validation.
+ * @throws {OperationError} When CouchDB returns a non-retryable request-level failure.
  */
 export async function bulkGetDictionary<DocSchema extends StandardSchemaV1 = typeof CouchDoc>(
   config: CouchConfigInput,

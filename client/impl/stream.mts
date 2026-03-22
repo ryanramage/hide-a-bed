@@ -1,16 +1,18 @@
-import needle from 'needle'
-import type { IncomingMessage } from 'node:http'
+import { Readable } from 'node:stream'
 import Chain from 'stream-chain'
 import Parser from 'stream-json/Parser.js'
 import Pick from 'stream-json/filters/Pick.js'
 import StreamArray from 'stream-json/streamers/StreamArray.js'
 import { CouchConfig, type CouchConfigInput } from '../schema/config.mts'
-import { RetryableError } from './utils/errors.mts'
+import { OperationError, RetryableError, createResponseError } from './utils/errors.mts'
 import { createLogger } from './utils/logger.mts'
 import { queryString } from './utils/queryString.mts'
-import { mergeNeedleOpts } from './utils/mergeNeedleOpts.mts'
 import type { ViewRow } from '../schema/couch/couch.output.schema.ts'
-import type { ViewOptions } from '../schema/couch/couch.input.schema.ts'
+import { ViewOptions } from '../schema/couch/couch.input.schema.ts'
+import { fetchCouchStream } from './utils/fetch.mts'
+import type { ReadableStream } from 'node:stream/web'
+import { isSuccessStatusCode } from './utils/response.mts'
+import { createCouchPathUrl } from './utils/url.mts'
 
 type StreamArrayChunk<Row> = {
   key: number
@@ -34,110 +36,169 @@ export async function queryStream(
   onRow: OnRow
 ): Promise<void> {
   return new Promise((resolve, reject) => {
-    const config = CouchConfig.parse(rawConfig)
-    const logger = createLogger(config)
-    logger.info(`Starting view query stream: ${view}`)
-    logger.debug('Query options:', options)
+    void (async () => {
+      const config = CouchConfig.parse(rawConfig)
+      const logger = createLogger(config)
+      logger.info(`Starting view query stream: ${view}`)
+      const queryOptions = ViewOptions.parse(options ?? {})
+      const request = config.request
+      logger.debug('Query options:', { ...queryOptions, request })
 
-    const queryOptions: ViewOptions = options ?? {}
+      let method: HttpMethod = 'GET'
+      let payload: Record<string, unknown> | null = null
+      let qs = queryString(queryOptions)
+      logger.debug('Generated query string:', qs)
 
-    let method: HttpMethod = 'GET'
-    let payload: Record<string, unknown> | null = null
-    let qs = queryString(queryOptions)
-    logger.debug('Generated query string:', qs)
+      if (typeof queryOptions.keys !== 'undefined') {
+        const MAX_URL_LENGTH = 2000
+        const keysAsString = `keys=${encodeURIComponent(JSON.stringify(queryOptions.keys))}`
 
-    if (typeof queryOptions.keys !== 'undefined') {
-      const MAX_URL_LENGTH = 2000
-      const keysAsString = `keys=${encodeURIComponent(JSON.stringify(queryOptions.keys))}`
-
-      if (keysAsString.length + qs.length + 1 <= MAX_URL_LENGTH) {
-        qs += (qs.length > 0 ? '&' : '') + keysAsString
-      } else {
-        method = 'POST'
-        payload = { keys: queryOptions.keys }
+        if (keysAsString.length + qs.length + 1 <= MAX_URL_LENGTH) {
+          qs += (qs.length > 0 ? '&' : '') + keysAsString
+        } else {
+          method = 'POST'
+          payload = { keys: queryOptions.keys }
+        }
       }
-    }
 
-    const url = `${config.couch}/${view}?${qs}`
-    const opts = {
-      json: true,
-      headers: {
+      const url = createCouchPathUrl(view, config.couch)
+      if (qs) url.search = qs
+
+      const requestHeaders = {
         'Content-Type': 'application/json'
-      },
-      parse_response: false as const
-    }
-    const mergedOpts = mergeNeedleOpts(config, opts)
+      }
+      const abortController = new AbortController()
+      const requestAbortHandler = () => {
+        const reason =
+          request?.signal?.reason instanceof Error
+            ? request.signal.reason
+            : new DOMException('The operation was aborted.', 'AbortError')
+        abortController.abort(reason)
+        responseStream?.destroy(reason)
+        parserPipeline.destroy(reason)
+        settleReject(reason)
+      }
 
-    const parserPipeline = Chain.chain([
-      new Parser(),
-      new Pick({ filter: 'rows' }),
-      new StreamArray()
-    ])
+      const parserPipeline = Chain.chain([
+        new Parser(),
+        new Pick({ filter: 'rows' }),
+        new StreamArray()
+      ])
 
-    let rowCount = 0
-    let settled = false
+      let rowCount = 0
+      let settled = false
 
-    const settleReject = (err: Error) => {
-      if (settled) return
-      settled = true
-      reject(err)
-    }
+      const settleReject = (err: unknown) => {
+        if (settled) return
+        settled = true
+        request?.signal?.removeEventListener('abort', requestAbortHandler)
+        reject(err)
+      }
 
-    const settleResolve = () => {
-      if (settled) return
-      settled = true
-      resolve()
-    }
+      const settleResolve = () => {
+        if (settled) return
+        settled = true
+        request?.signal?.removeEventListener('abort', requestAbortHandler)
+        resolve()
+      }
 
-    let request: ReturnType<typeof needle.get> | ReturnType<typeof needle.post> | null = null
+      let responseStream: Readable | null = null
 
-    parserPipeline.on('data', (chunk: StreamArrayChunk<ViewRow>) => {
+      request?.signal?.addEventListener('abort', requestAbortHandler, { once: true })
+
+      parserPipeline.on('data', (chunk: StreamArrayChunk<ViewRow>) => {
+        try {
+          rowCount++
+          onRow(chunk.value)
+        } catch (callbackErr) {
+          const error = callbackErr instanceof Error ? callbackErr : new Error(String(callbackErr))
+          parserPipeline.destroy(error)
+          settleReject(error)
+        }
+      })
+
+      parserPipeline.on('error', (err: Error) => {
+        logger.error('Stream parsing error:', err)
+        parserPipeline.destroy()
+        settleReject(
+          new OperationError('Stream parsing failed', {
+            cause: err,
+            operation: 'queryStream'
+          })
+        )
+      })
+
+      parserPipeline.on('end', () => {
+        logger.info(`Stream completed, processed ${rowCount} rows`)
+        settleResolve()
+      })
+
       try {
-        rowCount++
-        onRow(chunk.value)
-      } catch (callbackErr) {
-        const error = callbackErr instanceof Error ? callbackErr : new Error(String(callbackErr))
-        parserPipeline.destroy(error)
-        settleReject(error)
+        const response = await fetchCouchStream({
+          auth: config.auth,
+          method,
+          operation: 'queryStream',
+          url,
+          body: method === 'POST' ? payload : undefined,
+          headers: requestHeaders,
+          request,
+          signal: abortController.signal
+        })
+
+        logger.debug(`Received response with status code: ${response.statusCode}`)
+
+        if (RetryableError.isRetryableStatusCode(response.statusCode)) {
+          logger.warn(`Retryable status code received: ${response.statusCode}`)
+          abortController.abort()
+          settleReject(
+            new RetryableError('Stream query failed', response.statusCode, {
+              operation: 'queryStream'
+            })
+          )
+          return
+        }
+
+        if (!isSuccessStatusCode('viewStream', response.statusCode)) {
+          abortController.abort()
+          settleReject(
+            createResponseError({
+              defaultMessage: 'Stream query failed',
+              operation: 'queryStream',
+              statusCode: response.statusCode
+            })
+          )
+          return
+        }
+
+        if (!response.body) {
+          settleReject(new RetryableError('Stream query failed', 503, { operation: 'queryStream' }))
+          return
+        }
+
+        responseStream = Readable.fromWeb(response.body as unknown as ReadableStream)
+
+        responseStream.on('error', err => {
+          logger.error('Network error during stream query:', err)
+          parserPipeline.destroy(err as Error)
+          try {
+            RetryableError.handleNetworkError(err, 'queryStream')
+          } catch (retryErr) {
+            settleReject(retryErr)
+            return
+          }
+        })
+
+        responseStream.pipe(parserPipeline)
+      } catch (err) {
+        logger.error('Network error during stream query:', err)
+        parserPipeline.destroy(err as Error)
+        try {
+          RetryableError.handleNetworkError(err, 'queryStream')
+        } catch (retryErr) {
+          settleReject(retryErr)
+          return
+        }
       }
-    })
-
-    parserPipeline.on('error', (err: Error) => {
-      logger.error('Stream parsing error:', err)
-      parserPipeline.destroy()
-      settleReject(new Error(`Stream parsing error: ${err.message}`, { cause: err }))
-    })
-
-    parserPipeline.on('end', () => {
-      logger.info(`Stream completed, processed ${rowCount} rows`)
-      settleResolve()
-    })
-
-    request = method === 'GET' ? needle.get(url, mergedOpts) : needle.post(url, payload, mergedOpts)
-
-    request.on('response', (response: IncomingMessage) => {
-      logger.debug(`Received response with status code: ${response.statusCode}`)
-      if (RetryableError.isRetryableStatusCode(response.statusCode)) {
-        logger.warn(`Retryable status code received: ${response.statusCode}`)
-        settleReject(new RetryableError('retryable error during stream query', response.statusCode))
-        // @ts-expect-error bad type?
-        request.destroy()
-      }
-    })
-
-    request.on('error', (err: NodeJS.ErrnoException) => {
-      logger.error('Network error during stream query:', err)
-      parserPipeline.destroy(err)
-      try {
-        RetryableError.handleNetworkError(err)
-      } catch (retryErr) {
-        settleReject(retryErr as Error)
-        return
-      } finally {
-        settleReject(err)
-      }
-    })
-
-    request.pipe(parserPipeline)
+    })()
   })
 }
