@@ -37,7 +37,7 @@ This document orients automation and AI assistants working in hide-a-bed.
 ## Decision Heuristics for Agents
 
 - Before edits, scan related README.md files for domain context.
-- If touching CouchDB request logic, verify error handling in client/impl/errors.mts and transactionerrors.mts.
+- If touching CouchDB request logic, verify error handling in client/impl/errors.mts and transactionErrors.mts.
 - Mirror existing retry/backoff helpers when adding network calls (see client/impl/retry.mts).
 - Update or add tests alongside feature changes. Prefer placing new client tests in client/tests/ and stub tests in stub/tests/.
 - Generate unique CouchDB `_id` values per run. Use helpers such as `crypto.randomUUID()` or test-name prefixes so suites do not collide inside the shared `hide-a-bed-test-db` that persists for the life of the test process.
@@ -45,7 +45,8 @@ This document orients automation and AI assistants working in hide-a-bed.
 
 ## NPM scripts
 
-- `npm run validate` – runs format, lint, and typecheck in sequence. Use this validate all changes.
+- `npm run validate` – runs format:check, lint:check, and typecheck in sequence. Use this validate all changes.
+- `npm run format` – formats code with Oxfmt. Use `npm run format:check` to check formatting without modifying files.
 
 ## Verification Checklist
 
