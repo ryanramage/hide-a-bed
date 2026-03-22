@@ -257,7 +257,7 @@ export async function bulkGetDictionary<DocSchema extends StandardSchemaV1 = typ
 
     const doc = row.doc
     const docId =
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // oxlint-disable-next-line @typescript-eslint/no-explicit-any
       typeof (doc as any)?._id === 'string' ? (doc as any)._id : row.id
 
     if (!docId) {

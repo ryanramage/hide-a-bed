@@ -81,11 +81,9 @@ export const bindConfig = (config: CouchConfigInput): BoundInstance => {
  * @param config The CouchDB configuration
  * @returns The bound function, possibly wrapped with retry logic
  */
-export function getBoundWithRetry<
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  TBound extends (...args: any[]) => Promise<any>
->(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+// oxlint-disable-next-line typescript/no-explicit-any
+export function getBoundWithRetry<TBound extends (...args: any[]) => Promise<any>>(
+  // oxlint-disable-next-line typescript/no-explicit-any
   func: (config: CouchConfig, ...args: any[]) => Promise<any>,
   config: CouchConfig
 ) {

@@ -31,7 +31,7 @@ export type WatchHandle = {
 export function watchDocs(
   configInput: CouchConfigInput,
   docIds: string | string[],
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // oxlint-disable-next-line @typescript-eslint/no-explicit-any
   onChange: (change: any) => void,
   optionsInput: WatchOptionsInput = {}
 ): WatchHandle {

@@ -104,7 +104,7 @@ suite('watchDocs', () => {
       return firstResponse.response
     })
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // oxlint-disable-next-line @typescript-eslint/no-explicit-any
     const changes: any[] = []
     const watcher = watchDocs(
       baseConfig(),

@@ -25,7 +25,6 @@ function assertBulkSaveSuccess(
 const config: Parameters<typeof get>[0] = {
   couch: TEST_DB_URL,
   bindWithRetry: true,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   logger: (level: string, ...args: any[]) => {
     console.log(`[${level.toUpperCase()}]`, ...args)
   }
