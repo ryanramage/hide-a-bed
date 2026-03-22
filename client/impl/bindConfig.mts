@@ -1,3 +1,4 @@
+// oxlint-disable typescript/no-explicit-any
 import type z from 'zod'
 import { CouchConfig, type CouchConfigInput } from '../schema/config.mts'
 import { withRetry } from './retry.mts'
@@ -81,11 +82,7 @@ export const bindConfig = (config: CouchConfigInput): BoundInstance => {
  * @param config The CouchDB configuration
  * @returns The bound function, possibly wrapped with retry logic
  */
-export function getBoundWithRetry<
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  TBound extends (...args: any[]) => Promise<any>
->(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function getBoundWithRetry<TBound extends (...args: any[]) => Promise<any>>(
   func: (config: CouchConfig, ...args: any[]) => Promise<any>,
   config: CouchConfig
 ) {

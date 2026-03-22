@@ -167,7 +167,7 @@ export class QueryBuilder {
 
 type AssertViewOptionsCovered =
   Exclude<keyof ViewOptions, keyof QueryBuilder> extends never ? true : never
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+// oxlint-disable-next-line @typescript-eslint/no-unused-vars
 const _assertViewOptionsCovered: AssertViewOptionsCovered = true
 
 export const createQuery = (): QueryBuilder => new QueryBuilder()

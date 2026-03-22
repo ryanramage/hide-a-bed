@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/* oxlint-disable @typescript-eslint/no-explicit-any */
 import { ViewRow } from '../../schema/couch/couch.output.schema.ts'
 import type { StandardSchemaV1 } from '../../types/standard-schema.ts'
 import { z } from 'zod'
