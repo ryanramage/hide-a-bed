@@ -6,8 +6,7 @@ const KEYS_TO_QUOTE: (keyof ViewOptions)[] = [
   'key',
   'keys',
   'startkey',
-  'startkey_docid',
-  'update'
+  'startkey_docid'
 ]
 
 /**

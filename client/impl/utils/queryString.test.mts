@@ -9,8 +9,7 @@ const keysToQuote: Array<keyof ViewOptions> = [
   'key',
   'keys',
   'startkey',
-  'startkey_docid',
-  'update'
+  'startkey_docid'
 ]
 
 suite('queryString', () => {
@@ -32,8 +31,7 @@ suite('queryString', () => {
       endkey: '"banana"',
       key: '"banana"',
       startkey: '"banana"',
-      startkey_docid: '"banana"',
-      update: '"lazy"'
+      startkey_docid: '"banana"'
     })
   })
 
