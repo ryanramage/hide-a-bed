@@ -126,4 +126,29 @@ suite('createLogger', () => {
     assert.doesNotThrow(() => logger.info('ignored'))
     assert.doesNotThrow(() => logger.debug('ignored'))
   })
+
+  test('binds object logger methods to the original logger instance', () => {
+    const calls: unknown[][] = []
+    const rawLogger = {
+      calls,
+      info(this: { calls: unknown[][] }, ...args: unknown[]) {
+        this.calls.push(args)
+      }
+    }
+
+    const config: CouchConfigInput = {
+      ...baseConfig(),
+      logger: rawLogger
+    }
+
+    const logger = createLogger(config)
+
+    assert.doesNotThrow(() => {
+      const detached = { info: logger.info }
+      detached.info('hello', 42)
+    })
+
+    assert.deepStrictEqual(calls, [['hello', 42]])
+    assert.strictEqual(config['~normalizedLogger'], logger)
+  })
 })
