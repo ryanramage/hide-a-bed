@@ -27,6 +27,14 @@ const createNoopLogger = (): Logger => ({
   debug: noop
 })
 
+const bindLoggerMethod = (
+  logger: Partial<Logger>,
+  level: keyof Logger
+): LoggerMethod => {
+  const method = logger[level]
+  return typeof method === 'function' ? method.bind(logger) : noop
+}
+
 export function createLogger(config: CouchConfigInput): Logger {
   if (config['~normalizedLogger']) {
     return config['~normalizedLogger']
@@ -52,10 +60,10 @@ export function createLogger(config: CouchConfigInput): Logger {
 
   const loggerObj = config.logger as Partial<Logger>
   const normalized: Logger = {
-    error: loggerObj.error ?? noop,
-    warn: loggerObj.warn ?? noop,
-    info: loggerObj.info ?? noop,
-    debug: loggerObj.debug ?? noop
+    error: bindLoggerMethod(loggerObj, 'error'),
+    warn: bindLoggerMethod(loggerObj, 'warn'),
+    info: bindLoggerMethod(loggerObj, 'info'),
+    debug: bindLoggerMethod(loggerObj, 'debug')
   }
   config['~normalizedLogger'] = normalized
   return normalized
