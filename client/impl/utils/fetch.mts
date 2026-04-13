@@ -2,7 +2,7 @@ import { RetryableError } from './errors.mts'
 import type { RequestOptions } from '../../schema/request.mts'
 import { composeAbortSignal } from './request.mts'
 
-export type HttpMethod = 'DELETE' | 'GET' | 'POST' | 'PUT'
+export type HttpMethod = 'DELETE' | 'GET' | 'HEAD' | 'POST' | 'PUT'
 
 type NativeFetchBody = RequestInit['body']
 
@@ -33,6 +33,7 @@ export type FetchRequestOptions = {
     | 'get'
     | 'getAtRev'
     | 'getDBInfo'
+    | 'headDB'
     | 'patch'
     | 'patchDangerously'
     | 'put'

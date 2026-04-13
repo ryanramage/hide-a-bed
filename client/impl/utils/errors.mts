@@ -36,6 +36,7 @@ export type ErrorOperation =
   | 'get'
   | 'getAtRev'
   | 'getDBInfo'
+  | 'headDB'
   | 'patch'
   | 'patchDangerously'
   | 'put'

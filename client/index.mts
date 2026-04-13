@@ -11,6 +11,7 @@ import { remove } from './impl/remove.mts'
 import { bulkSave, bulkSaveTransaction } from './impl/bulkSave.mts'
 import { query } from './impl/query.mts'
 import { getDBInfo } from './impl/getDBInfo.mts'
+import { headDB } from './impl/headDB.mts'
 import { bulkRemove, bulkRemoveMap } from './impl/bulkRemove.mts'
 import { createLock, removeLock } from './impl/sugar/lock.mts'
 import { watchDocs } from './impl/sugar/watch.mts'
@@ -25,6 +26,7 @@ export {
   query,
   queryStream,
   getDBInfo,
+  headDB,
 
   // sugar methods
   patch,

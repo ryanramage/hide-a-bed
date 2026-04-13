@@ -15,6 +15,7 @@
 And some utility APIs
 
 - [`getDBInfo()`](#getdbinfo)
+- [`headDB()`](#headdb)
 - [`createQuery()`](#createquery) 🍭
 - [`withRetry()`](#withretry)
 
@@ -515,6 +516,19 @@ const result = await getDBInfo({
   request: { timeout: 2000 }
 })
 // result: { db_name: 'test', doc_count: 3232 }
+```
+
+#### headDB()
+
+Run a lightweight database health check using CouchDB's `HEAD /{db}` route.
+
+```javascript
+const config = { couch: 'http://localhost:5984/mydb' }
+const healthy = await headDB({
+  ...config,
+  request: { timeout: 2000 }
+})
+// healthy: true
 ```
 
 ### View Queries
