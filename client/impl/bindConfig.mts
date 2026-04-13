@@ -17,6 +17,7 @@ import { query } from './query.mts'
 import { bulkRemove, bulkRemoveMap } from './bulkRemove.mts'
 import { bulkSave, bulkSaveTransaction } from './bulkSave.mts'
 import { getDBInfo } from './getDBInfo.mts'
+import { headDB } from './headDB.mts'
 import { remove } from './remove.mts'
 import { createLock, removeLock } from './sugar/lock.mts'
 import { watchDocs } from './sugar/watch.mts'
@@ -38,6 +39,7 @@ type BoundMethods = {
   bulkSave: BoundConfigMethod<typeof bulkSave>
   bulkSaveTransaction: BoundConfigMethod<typeof bulkSaveTransaction>
   getDBInfo: BoundConfigMethod<typeof getDBInfo>
+  headDB: BoundConfigMethod<typeof headDB>
   patch: BoundConfigMethod<typeof patch>
   patchDangerously: BoundConfigMethod<typeof patchDangerously>
   put: BoundConfigMethod<typeof put>
@@ -141,6 +143,9 @@ function doBind(config: CouchConfig): BoundMethods {
     getDBInfo: config.bindWithRetry
       ? withRetry(getDBInfo.bind(null, config), retryOptions)
       : getDBInfo.bind(null, config),
+    headDB: config.bindWithRetry
+      ? withRetry(headDB.bind(null, config), retryOptions)
+      : headDB.bind(null, config),
     patch: config.bindWithRetry
       ? withRetry(patch.bind(null, config), retryOptions)
       : patch.bind(null, config),
