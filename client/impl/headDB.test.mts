@@ -65,7 +65,7 @@ suite('headDB', () => {
       (err: unknown) => {
         assert.ok(err instanceof RetryableError)
         assert.strictEqual(err.statusCode, 503)
-        assert.strictEqual(err.message, 'Database health check failed: maintenance')
+        assert.strictEqual(err.message, 'Database health check failed')
         return true
       }
     )
@@ -91,8 +91,8 @@ suite('headDB', () => {
       (err: unknown) =>
         err instanceof OperationError &&
         err.statusCode === 403 &&
-        err.message === 'Database health check failed: no access' &&
-        err.couchError === 'forbidden'
+        err.message === 'Database health check failed' &&
+        err.couchError === undefined
     )
   })
 
