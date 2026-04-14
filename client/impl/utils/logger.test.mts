@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test, { suite } from 'node:test'
+import { CouchConfig } from '../../schema/config.mts'
 import type { CouchConfigInput } from '../../schema/config.mts'
 import { createLogger, type Logger } from './logger.mts'
 
@@ -150,5 +151,28 @@ suite('createLogger', () => {
 
     assert.deepStrictEqual(calls, [['hello', 42]])
     assert.strictEqual(config['~normalizedLogger'], logger)
+  })
+
+  test('supports parsed logger objects that rely on internal methods like winston child loggers', () => {
+    const calls: unknown[][] = []
+    const rawLogger = {
+      calls,
+      _addDefaultMeta(this: { calls: unknown[][] }, ...args: unknown[]) {
+        this.calls.push(args)
+      },
+      info(this: { _addDefaultMeta: (...args: unknown[]) => void }, ...args: unknown[]) {
+        this._addDefaultMeta(...args)
+      }
+    }
+
+    const parsed = CouchConfig.parse({
+      ...baseConfig(),
+      logger: rawLogger
+    })
+
+    const logger = createLogger(parsed)
+
+    assert.doesNotThrow(() => logger.info('hello', 42))
+    assert.deepStrictEqual(calls, [['hello', 42]])
   })
 })

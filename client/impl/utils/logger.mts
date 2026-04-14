@@ -27,10 +27,7 @@ const createNoopLogger = (): Logger => ({
   debug: noop
 })
 
-const bindLoggerMethod = (
-  logger: Partial<Logger>,
-  level: keyof Logger
-): LoggerMethod => {
+const bindLoggerMethod = (logger: Partial<Logger>, level: keyof Logger): LoggerMethod => {
   const method = logger[level]
   return typeof method === 'function' ? method.bind(logger) : noop
 }
