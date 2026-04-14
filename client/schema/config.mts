@@ -2,16 +2,35 @@ import { z } from 'zod'
 import type { StandardSchemaV1 } from '../types/standard-schema.ts'
 import { RequestOptions } from './request.mts'
 
-const anyArgs = z.array(z.any())
+type LoggerMethod = (...args: unknown[]) => void
+type ObjectLogger = Partial<Record<'error' | 'warn' | 'info' | 'debug', LoggerMethod>>
+type FunctionLogger = (level: keyof ObjectLogger, ...args: unknown[]) => void
+type ConfigLogger = ObjectLogger | FunctionLogger
 
-const LoggerSchema = z
-  .object({
-    error: z.function({ input: anyArgs, output: z.void() }).optional(),
-    warn: z.function({ input: anyArgs, output: z.void() }).optional(),
-    info: z.function({ input: anyArgs, output: z.void() }).optional(),
-    debug: z.function({ input: anyArgs, output: z.void() }).optional()
-  })
-  .or(z.function({ input: anyArgs, output: z.void() }))
+const loggerLevels = ['error', 'warn', 'info', 'debug'] as const
+
+const isLoggerMethod = (value: unknown): value is LoggerMethod => typeof value === 'function'
+
+const LoggerSchema = z.custom<ConfigLogger>(
+  value => {
+    if (isLoggerMethod(value)) {
+      return true
+    }
+
+    if (value === null || typeof value !== 'object') {
+      return false
+    }
+
+    return loggerLevels.every(level => {
+      const method = (value as Record<string, unknown>)[level]
+      return method === undefined || isLoggerMethod(method)
+    })
+  },
+  {
+    message:
+      'logger must be a function or object with optional error, warn, info, and debug methods'
+  }
+)
 
 export const CouchAuth = z.strictObject({
   username: z.string().describe('basic auth username for CouchDB requests'),

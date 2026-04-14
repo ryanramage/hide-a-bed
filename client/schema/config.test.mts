@@ -32,6 +32,7 @@ suite('CouchConfig', () => {
 
     assert.ok(parsed.logger)
     assert.strictEqual(typeof parsed.logger, 'object')
+    assert.strictEqual(parsed.logger, logger)
     if (typeof parsed.logger === 'function') {
       assert.fail('expected object logger')
     }
@@ -39,6 +40,24 @@ suite('CouchConfig', () => {
     assert.strictEqual(typeof parsed.logger.warn, 'function')
     assert.strictEqual(typeof parsed.logger.info, 'function')
     assert.strictEqual(typeof parsed.logger.debug, 'function')
+  })
+
+  test('preserves opaque logger objects with internal methods', () => {
+    const logger = {
+      _addDefaultMeta: () => {},
+      info() {}
+    }
+
+    const parsed = CouchConfig.parse({
+      couch: 'http://localhost:5984',
+      logger
+    })
+
+    assert.strictEqual(parsed.logger, logger)
+    if (typeof parsed.logger === 'function' || !parsed.logger) {
+      assert.fail('expected object logger')
+    }
+    assert.strictEqual(parsed.logger._addDefaultMeta, logger._addDefaultMeta)
   })
 
   test('accepts function logger and internal emitter', () => {
