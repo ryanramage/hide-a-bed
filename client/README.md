@@ -868,8 +868,23 @@ Mango query to `_find`. `options` contains `selector`, with optional `use_index`
 `update`, `stable`, deprecated `stale`, `execution_stats`, and `allow_fallback`.
 Returns `{docs, bookmark?, warning?, execution_stats?}` without discarding metadata.
 Use config auth/request controls and bound retries as with `query`. Check your
-CouchDB version before using `allow_fallback`. Mango is part of CouchDB; it does
-not require MongoDB. Index creation and planner verification belong to deployment.
+CouchDB version before using `allow_fallback`. Mango was introduced in
+[CouchDB 2.0](https://docs.couchdb.org/en/stable/whatsnew/2.0.html); it does not
+require MongoDB. Individual options and statistics depend on the server version.
+
+Index creation and planner verification belong to deployment. Before using
+`use_index`, create the named index in the target database; `find` does not create
+indexes. CouchDB's documentation covers the setup:
+
+- [Mango index design](https://docs.couchdb.org/en/stable/ddocs/mango.html#indexes)
+  explains index definitions, JSON indexes, and partial indexes.
+- [`POST /{db}/_index`](https://docs.couchdb.org/en/stable/api/database/find.html#api-db-find-index-post)
+  documents index creation, with request examples and the `fields`, `ddoc`, and
+  `name` settings used to define and identify an index.
+- [`POST /{db}/_explain`](https://docs.couchdb.org/en/stable/api/database/find.html#api-db-find-explain)
+  shows which index a query will use. Check the selector and sort against the
+  intended index before deploying; queries without a suitable index may fall back
+  to a full database scan.
 
 ```javascript
 const result = await db.find({
@@ -905,6 +920,6 @@ support, including quoting `startkey_docid` and `endkey_docid`. Mango options ar
 validated separately by `MangoQuerySchema` and sent as a JSON POST body to `_find`;
 they do not change the supported options or serialization of existing view queries.
 
-Mango options/statistics follow the [CouchDB 3.4.3 API](https://docs.couchdb.org/en/3.4.3/api/database/find.html)
+Mango options/statistics are documented in the [CouchDB Mango API reference](https://docs.couchdb.org/en/stable/api/database/find.html)
 and [Apache Nano's Mango definitions](https://github.com/apache/couchdb-nano/blob/main/lib/nano.d.ts).
 No Nano dependency is required.
