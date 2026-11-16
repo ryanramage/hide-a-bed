@@ -4,37 +4,29 @@ import { fetchCouchJson } from './utils/fetch.mts'
 import { createCouchPathUrl } from './utils/url.mts'
 import { RetryableError, createResponseError, OperationError } from './utils/errors.mts'
 
-const FindOptions = z
-  .object({
-    selector: z.record(z.string(), z.unknown()),
-    use_index: z.union([z.string(), z.tuple([z.string(), z.string()])]).optional(),
-    limit: z.number().int().positive().optional(),
-    bookmark: z.string().optional(),
-    fields: z.array(z.string()).optional(),
-    sort: z.array(z.union([z.string(), z.record(z.string(), z.enum(['asc', 'desc']))])).optional(),
-    execution_stats: z.boolean().optional(),
-    allow_fallback: z.boolean().optional()
-  })
-  .strict()
+import {
+  MangoQuerySchema,
+  createMangoResponseSchema,
+  type MangoQuery,
+  type MangoResponse
+} from '../schema/couch/mango.schema.ts'
 
-export type FindOptions = z.input<typeof FindOptions>
-export type FindResponse<Doc = Record<string, unknown>> = {
-  docs: Doc[]
-  bookmark?: string
-  warning?: string
-  execution_stats?: Record<string, number>
-}
+const MangoResponseSchema = createMangoResponseSchema(z.record(z.string(), z.unknown()))
+
+// Retain the original names for consumers of the initial find API.
+export type FindOptions = MangoQuery
+export type FindResponse<Doc = Record<string, unknown>> = MangoResponse<Doc>
 
 /** Query a Mango JSON index. Request controls come from config, as with query(). */
 export async function find<Doc = Record<string, unknown>>(
   configInput: CouchConfigInput,
-  options: FindOptions
-): Promise<FindResponse<Doc>> {
+  options: MangoQuery
+): Promise<MangoResponse<Doc>> {
   const config = CouchConfig.parse(configInput)
-  const body = FindOptions.parse(options)
+  const body = MangoQuerySchema.parse(options)
   let response
   try {
-    response = await fetchCouchJson<FindResponse<Doc> & { error?: string }>({
+    response = await fetchCouchJson<MangoResponse<Doc> & { error?: string }>({
       auth: config.auth,
       request: config.request,
       method: 'POST',
@@ -53,12 +45,15 @@ export async function find<Doc = Record<string, unknown>>(
       statusCode: response.statusCode
     })
   }
-  if (!Array.isArray(response.body?.docs)) {
-    throw new OperationError('Mango response is missing docs', { operation: 'find' })
+  const parsed = MangoResponseSchema.safeParse(response.body)
+  if (!parsed.success) {
+    throw new OperationError('Invalid Mango response', { operation: 'find' })
   }
-  return response.body
+  // The generic supplies compile-time document typing; use the exported response
+  // factory with a document schema when runtime document validation is needed.
+  return parsed.data as MangoResponse<Doc>
 }
 
 export type FindBound = <Doc = Record<string, unknown>>(
-  options: FindOptions
-) => Promise<FindResponse<Doc>>
+  options: MangoQuery
+) => Promise<MangoResponse<Doc>>

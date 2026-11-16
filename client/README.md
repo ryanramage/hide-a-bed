@@ -864,7 +864,8 @@ Each operation logs appropriate information at these levels:
 
 `find(config, options)` and `bindConfig(config).find(options)` POST a native CouchDB
 Mango query to `_find`. `options` contains `selector`, with optional `use_index`,
-`limit`, `bookmark`, `fields`, `sort`, `execution_stats`, and `allow_fallback`.
+`limit`, `skip`, `bookmark`, `fields`, `sort`, `conflicts`, read quorum `r`,
+`update`, `stable`, deprecated `stale`, `execution_stats`, and `allow_fallback`.
 Returns `{docs, bookmark?, warning?, execution_stats?}` without discarding metadata.
 Use config auth/request controls and bound retries as with `query`. Check your
 CouchDB version before using `allow_fallback`. Mango is part of CouchDB; it does
@@ -877,3 +878,34 @@ const result = await db.find({
   limit: 100
 })
 ```
+
+`MangoQuery`, `MangoSelector`, `MangoSort`, `MangoExecutionStats`, and
+`MangoResponse<Doc>` are inferred from/reuse the exported Zod schemas. The older
+`FindOptions` / `FindResponse<Doc>` names remain aliases. Both standalone and
+bound methods support `find<Job>(...)`; omitting the generic keeps
+`Record<string, unknown>` documents. A generic is a compile-time assertion, not
+runtime validation of your domain fields. Projections can omit `_id` and `_rev`.
+
+`find` validates response envelopes and the five named execution-stat fields.
+Use `createMangoResponseSchema(jobSchema).parse(result)` for domain/document
+validation. Envelope and execution-stat schemas preserve additional response
+metadata. `MangoQuerySchema` rejects unknown request options.
+
+```typescript
+import { createMangoResponseSchema, type MangoQuery } from 'hide-a-bed'
+import { z } from 'zod'
+
+const query: MangoQuery = { selector: { type: 'job' }, fields: ['title'] }
+const result = await db.find<{ title: string }>(query)
+const validated = createMangoResponseSchema(z.object({ title: z.string() })).parse(result)
+```
+
+View paging uses raw string `startkey_docid` / `endkey_docid` values. Only `key`,
+`keys`, `startkey`, and `endkey` are JSON-encoded. Adding JSON quotes to a document
+ID changes the cursor value and breaks continuation when coordinate keys repeat.
+This follows [CouchDB's view query parameter types](https://docs.couchdb.org/en/3.4.3/api/ddoc/views.html).
+The same distinction is covered in the query-string test's expected key list.
+
+Mango options/statistics follow the [CouchDB 3.4.3 API](https://docs.couchdb.org/en/3.4.3/api/database/find.html)
+and [Apache Nano's Mango definitions](https://github.com/apache/couchdb-nano/blob/main/lib/nano.d.ts).
+No Nano dependency is required.

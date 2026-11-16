@@ -103,3 +103,18 @@ export type { BoundInstance } from './impl/bindConfig.mts'
 export type { StandardSchemaV1 } from './types/standard-schema.ts'
 
 export type { FindOptions, FindResponse, FindBound } from './impl/find.mts'
+
+export {
+  MangoSelectorSchema,
+  MangoSortSchema,
+  MangoQuerySchema,
+  MangoExecutionStatsSchema,
+  createMangoResponseSchema
+} from './schema/couch/mango.schema.ts'
+export type {
+  MangoSelector,
+  MangoSort,
+  MangoQuery,
+  MangoExecutionStats,
+  MangoResponse
+} from './schema/couch/mango.schema.ts'
