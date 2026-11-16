@@ -40,6 +40,7 @@ export type ErrorOperation =
   | 'patch'
   | 'patchDangerously'
   | 'put'
+  | 'find'
   | 'query'
   | 'queryStream'
   | 'remove'

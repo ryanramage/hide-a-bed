@@ -859,3 +859,21 @@ Each operation logs appropriate information at these levels:
 - warn: Retryable errors, conflicts.
 - info: Operation start/completion.
 - debug: Detailed operation information.
+
+### find
+
+`find(config, options)` and `bindConfig(config).find(options)` POST a native CouchDB
+Mango query to `_find`. `options` contains `selector`, with optional `use_index`,
+`limit`, `bookmark`, `fields`, `sort`, `execution_stats`, and `allow_fallback`.
+Returns `{docs, bookmark?, warning?, execution_stats?}` without discarding metadata.
+Use config auth/request controls and bound retries as with `query`. Check your
+CouchDB version before using `allow_fallback`. Mango is part of CouchDB; it does
+not require MongoDB. Index creation and planner verification belong to deployment.
+
+```javascript
+const result = await db.find({
+  selector: { type: 'job' },
+  use_index: ['_design/jobs-geo-mango', 'published_lat_lng_expiry'],
+  limit: 100
+})
+```

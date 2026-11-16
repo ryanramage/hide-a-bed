@@ -37,6 +37,7 @@ export type FetchRequestOptions = {
     | 'patch'
     | 'patchDangerously'
     | 'put'
+    | 'find'
     | 'query'
     | 'queryStream'
     | 'remove'

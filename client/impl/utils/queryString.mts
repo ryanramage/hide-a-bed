@@ -1,13 +1,7 @@
 import { ViewOptions } from '../../schema/couch/couch.input.schema.ts'
 
-const KEYS_TO_QUOTE: (keyof ViewOptions)[] = [
-  'endkey_docid',
-  'endkey',
-  'key',
-  'keys',
-  'startkey',
-  'startkey_docid'
-]
+// CouchDB document-ID cursors are raw strings; only view keys use JSON encoding.
+const KEYS_TO_QUOTE: (keyof ViewOptions)[] = ['endkey', 'key', 'keys', 'startkey']
 
 /**
  * Serialize CouchDB view options into a URL-safe query string, quoting values CouchDB expects as JSON.

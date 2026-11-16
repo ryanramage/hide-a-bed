@@ -1,3 +1,4 @@
+import { find, type FindBound } from './find.mts'
 // oxlint-disable typescript/no-explicit-any
 import type z from 'zod'
 import { CouchConfig, type CouchConfigInput } from '../schema/config.mts'
@@ -33,6 +34,7 @@ type BoundMethods = {
   bulkGetDictionary: BulkGetDictionaryBound
   get: GetBound
   getAtRev: GetAtRevBound
+  find: FindBound
   query: QueryBound
   bulkRemove: BoundConfigMethod<typeof bulkRemove>
   bulkRemoveMap: BoundConfigMethod<typeof bulkRemoveMap>
@@ -125,6 +127,7 @@ function doBind(config: CouchConfig): BoundMethods {
     bulkGetDictionary: getBoundWithRetry<BulkGetDictionaryBound>(bulkGetDictionary, config),
     get: getBoundWithRetry<GetBound>(get, config),
     getAtRev: getBoundWithRetry<GetAtRevBound>(getAtRev, config),
+    find: getBoundWithRetry<FindBound>(find, config),
     query: getBoundWithRetry<QueryBound>(query, config),
 
     /**
