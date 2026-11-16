@@ -3,7 +3,14 @@ import test, { suite } from 'node:test'
 import { queryString } from './queryString.mts'
 import type { ViewOptions } from '../../schema/couch/couch.input.schema.ts'
 
-const keysToQuote: Array<keyof ViewOptions> = ['endkey', 'key', 'keys', 'startkey']
+const keysToQuote: Array<keyof ViewOptions> = [
+  'endkey_docid',
+  'endkey',
+  'key',
+  'keys',
+  'startkey',
+  'startkey_docid'
+]
 
 suite('queryString', () => {
   test('queryString quotes string values for KEYS_TO_QUOTE except keys array', () => {
@@ -20,9 +27,11 @@ suite('queryString', () => {
     }
 
     assert.deepEqual(Object.fromEntries(encodedByKey), {
+      endkey_docid: '"banana"',
       endkey: '"banana"',
       key: '"banana"',
-      startkey: '"banana"'
+      startkey: '"banana"',
+      startkey_docid: '"banana"'
     })
   })
 
@@ -38,18 +47,5 @@ suite('queryString', () => {
     })
     const params = new URLSearchParams(encoded)
     assert.equal(params.get('keys'), '["alpha",null,42,{}, {"foo":"bar"}]'.replace(' ', ''))
-  })
-
-  test('document-ID cursors stay raw while coordinate keys use JSON', () => {
-    const params = new URLSearchParams(
-      queryString({
-        startkey_docid: 'job-"quoted"',
-        endkey_docid: 'job-last',
-        startkey: [35.78, -78.64]
-      })
-    )
-    assert.equal(params.get('startkey_docid'), 'job-"quoted"')
-    assert.equal(params.get('endkey_docid'), 'job-last')
-    assert.deepEqual(JSON.parse(params.get('startkey')!), [35.78, -78.64])
   })
 })

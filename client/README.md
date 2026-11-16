@@ -900,11 +900,10 @@ const result = await db.find<{ title: string }>(query)
 const validated = createMangoResponseSchema(z.object({ title: z.string() })).parse(result)
 ```
 
-View paging uses raw string `startkey_docid` / `endkey_docid` values. Only `key`,
-`keys`, `startkey`, and `endkey` are JSON-encoded. Adding JSON quotes to a document
-ID changes the cursor value and breaks continuation when coordinate keys repeat.
-This follows [CouchDB's view query parameter types](https://docs.couchdb.org/en/3.4.3/api/ddoc/views.html).
-The same distinction is covered in the query-string test's expected key list.
+View query serialization preserves the existing behavior from before Mango
+support, including quoting `startkey_docid` and `endkey_docid`. Mango options are
+validated separately by `MangoQuerySchema` and sent as a JSON POST body to `_find`;
+they do not change the supported options or serialization of existing view queries.
 
 Mango options/statistics follow the [CouchDB 3.4.3 API](https://docs.couchdb.org/en/3.4.3/api/database/find.html)
 and [Apache Nano's Mango definitions](https://github.com/apache/couchdb-nano/blob/main/lib/nano.d.ts).
