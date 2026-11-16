@@ -859,3 +859,67 @@ Each operation logs appropriate information at these levels:
 - warn: Retryable errors, conflicts.
 - info: Operation start/completion.
 - debug: Detailed operation information.
+
+### find
+
+`find(config, options)` and `bindConfig(config).find(options)` POST a native CouchDB
+Mango query to `_find`. `options` contains `selector`, with optional `use_index`,
+`limit`, `skip`, `bookmark`, `fields`, `sort`, `conflicts`, read quorum `r`,
+`update`, `stable`, deprecated `stale`, `execution_stats`, and `allow_fallback`.
+Returns `{docs, bookmark?, warning?, execution_stats?}` without discarding metadata.
+Use config auth/request controls and bound retries as with `query`. Check your
+CouchDB version before using `allow_fallback`. Mango was introduced in
+[CouchDB 2.0](https://docs.couchdb.org/en/stable/whatsnew/2.0.html); it does not
+require MongoDB. Individual options and statistics depend on the server version.
+
+Index creation and planner verification belong to deployment. Before using
+`use_index`, create the named index in the target database; `find` does not create
+indexes. CouchDB's documentation covers the setup:
+
+- [Mango index design](https://docs.couchdb.org/en/stable/ddocs/mango.html#indexes)
+  explains index definitions, JSON indexes, and partial indexes.
+- [`POST /{db}/_index`](https://docs.couchdb.org/en/stable/api/database/find.html#api-db-find-index-post)
+  documents index creation, with request examples and the `fields`, `ddoc`, and
+  `name` settings used to define and identify an index.
+- [`POST /{db}/_explain`](https://docs.couchdb.org/en/stable/api/database/find.html#api-db-find-explain)
+  shows which index a query will use. Check the selector and sort against the
+  intended index before deploying; queries without a suitable index may fall back
+  to a full database scan.
+
+```javascript
+const result = await db.find({
+  selector: { type: 'job' },
+  use_index: ['_design/jobs-geo-mango', 'published_lat_lng_expiry'],
+  limit: 100
+})
+```
+
+`MangoQuery`, `MangoSelector`, `MangoSort`, `MangoExecutionStats`, and
+`MangoResponse<Doc>` are inferred from/reuse the exported Zod schemas. The older
+`FindOptions` / `FindResponse<Doc>` names remain aliases. Both standalone and
+bound methods support `find<Job>(...)`; omitting the generic keeps
+`Record<string, unknown>` documents. A generic is a compile-time assertion, not
+runtime validation of your domain fields. Projections can omit `_id` and `_rev`.
+
+`find` validates response envelopes and the five named execution-stat fields.
+Use `createMangoResponseSchema(jobSchema).parse(result)` for domain/document
+validation. Envelope and execution-stat schemas preserve additional response
+metadata. `MangoQuerySchema` rejects unknown request options.
+
+```typescript
+import { createMangoResponseSchema, type MangoQuery } from 'hide-a-bed'
+import { z } from 'zod'
+
+const query: MangoQuery = { selector: { type: 'job' }, fields: ['title'] }
+const result = await db.find<{ title: string }>(query)
+const validated = createMangoResponseSchema(z.object({ title: z.string() })).parse(result)
+```
+
+View query serialization preserves the existing behavior from before Mango
+support, including quoting `startkey_docid` and `endkey_docid`. Mango options are
+validated separately by `MangoQuerySchema` and sent as a JSON POST body to `_find`;
+they do not change the supported options or serialization of existing view queries.
+
+Mango options/statistics are documented in the [CouchDB Mango API reference](https://docs.couchdb.org/en/stable/api/database/find.html)
+and [Apache Nano's Mango definitions](https://github.com/apache/couchdb-nano/blob/main/lib/nano.d.ts).
+No Nano dependency is required.

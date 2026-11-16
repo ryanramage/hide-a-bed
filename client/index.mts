@@ -1,3 +1,4 @@
+import { find } from './impl/find.mts'
 import { createQuery } from './impl/utils/queryBuilder.mts'
 import { QueryBuilder } from './impl/utils/queryBuilder.mts'
 import { bindConfig } from './impl/bindConfig.mts'
@@ -24,6 +25,7 @@ export {
   bulkGet,
   bulkSave,
   query,
+  find,
   queryStream,
   getDBInfo,
   headDB,
@@ -99,3 +101,20 @@ export type {
 } from './schema/sugar/watch.mts'
 export type { BoundInstance } from './impl/bindConfig.mts'
 export type { StandardSchemaV1 } from './types/standard-schema.ts'
+
+export type { FindOptions, FindResponse, FindBound } from './impl/find.mts'
+
+export {
+  MangoSelectorSchema,
+  MangoSortSchema,
+  MangoQuerySchema,
+  MangoExecutionStatsSchema,
+  createMangoResponseSchema
+} from './schema/couch/mango.schema.ts'
+export type {
+  MangoSelector,
+  MangoSort,
+  MangoQuery,
+  MangoExecutionStats,
+  MangoResponse
+} from './schema/couch/mango.schema.ts'
