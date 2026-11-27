@@ -73,6 +73,28 @@ suite('errors', () => {
     )
   })
 
+  test('handleNetworkError wraps undici fetch network errors in cause', () => {
+    for (const code of [
+      'UND_ERR_CONNECT_TIMEOUT',
+      'UND_ERR_HEADERS_TIMEOUT',
+      'UND_ERR_BODY_TIMEOUT',
+      'UND_ERR_SOCKET'
+    ]) {
+      const fetchErr = new TypeError('fetch failed', {
+        cause: Object.assign(new Error(code), { code })
+      })
+      assert.throws(
+        () => RetryableError.handleNetworkError(fetchErr, 'get'),
+        (err: unknown) =>
+          err instanceof RetryableError &&
+          err.category === 'network' &&
+          err.statusCode === 503 &&
+          err.operation === 'get' &&
+          err.cause === fetchErr
+      )
+    }
+  })
+
   test('handleNetworkError rethrows unknown errors', () => {
     const original = new Error('boom')
     assert.throws(
